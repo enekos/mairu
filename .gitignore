@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+dashboard/node_modules/
+
+# Build artifacts
+dist/
+dashboard/dist/
+*.tsbuildinfo
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/

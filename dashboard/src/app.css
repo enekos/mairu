@@ -1,0 +1,92 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: #111;
+  background: #f6f7f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+main {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+button {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+article {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+article h2 {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+article p {
+  margin: 8px 0 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.table-wrap {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+th,
+td {
+  text-align: left;
+  border-bottom: 1px solid #eee;
+  padding: 8px;
+  vertical-align: top;
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.error {
+  color: #b00020;
+}

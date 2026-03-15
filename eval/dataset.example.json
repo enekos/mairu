@@ -1,0 +1,22 @@
+{
+  "cases": [
+    {
+      "id": "mem-preference-1",
+      "domain": "memory",
+      "query": "What coding style does the user prefer?",
+      "expectedIds": ["mem_replace_with_real_id"]
+    },
+    {
+      "id": "skill-tenant-1",
+      "domain": "skill",
+      "query": "Which skill covers tenant isolation?",
+      "expectedIds": ["skill_replace_with_real_id"]
+    },
+    {
+      "id": "ctx-backend-1",
+      "domain": "context",
+      "query": "Show me backend architecture context",
+      "expectedUris": ["contextfs://duo/backend"]
+    }
+  ]
+}
