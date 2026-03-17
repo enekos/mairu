@@ -6,7 +6,6 @@ import {
   MemorySearchOptions,
   SkillSearchOptions,
   ContextSearchOptions,
-  HybridSearchWeights,
 } from "./types";
 import { assertEmbeddingDimension, getEmbeddingConfig } from "./embeddingConfig";
 
@@ -14,26 +13,17 @@ const EMBEDDING_DIM = getEmbeddingConfig().dimension;
 const SKILLS_TABLE = "agent_skills";
 const MEMORIES_TABLE = "agent_memories";
 const CONTEXT_TABLE = "agent_context_nodes";
-const DEFAULT_SKILL_WEIGHTS: HybridSearchWeights = { vector: 0.8, keyword: 0.2, recency: 0 };
-const DEFAULT_MEMORY_WEIGHTS: HybridSearchWeights = {
-  vector: 0.65,
-  keyword: 0.15,
-  importance: 0.15,
-  recency: 0.05,
-};
-const DEFAULT_CONTEXT_WEIGHTS: HybridSearchWeights = { vector: 0.8, keyword: 0.2, recency: 0 };
+
+// Multiplier for how many vector candidates to fetch before application-side re-ranking
+const CANDIDATE_MULTIPLIER = 4;
 
 export class TursoVectorDB {
   private client: Client;
 
   constructor(url: string, authToken?: string) {
-    this.client = createClient({
-      url,
-      authToken,
-    });
+    this.client = createClient({ url, authToken });
   }
 
-  // Initialize the database tables with F32_BLOB for vectors
   async initTables() {
     await this.client.executeMultiple(`
       CREATE TABLE IF NOT EXISTS ${SKILLS_TABLE} (
@@ -42,9 +32,9 @@ export class TursoVectorDB {
         description TEXT NOT NULL,
         embedding F32_BLOB(${EMBEDDING_DIM}),
         metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_skills_vec ON ${SKILLS_TABLE}(libsql_vector_idx(embedding));
 
       CREATE TABLE IF NOT EXISTS ${MEMORIES_TABLE} (
@@ -55,9 +45,9 @@ export class TursoVectorDB {
         importance INTEGER DEFAULT 1,
         embedding F32_BLOB(${EMBEDDING_DIM}),
         metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
       );
-
       CREATE INDEX IF NOT EXISTS idx_memories_vec ON ${MEMORIES_TABLE}(libsql_vector_idx(embedding));
 
       CREATE TABLE IF NOT EXISTS ${CONTEXT_TABLE} (
@@ -69,40 +59,31 @@ export class TursoVectorDB {
         content TEXT,
         embedding F32_BLOB(${EMBEDDING_DIM}),
         metadata TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
         FOREIGN KEY (parent_uri) REFERENCES ${CONTEXT_TABLE}(uri) ON DELETE CASCADE
       );
-
       CREATE INDEX IF NOT EXISTS idx_context_nodes_vec ON ${CONTEXT_TABLE}(libsql_vector_idx(embedding));
     `);
   }
 
   async resetTables() {
     await this.client.executeMultiple(`
-      DROP INDEX IF EXISTS idx_skills_vec_v3;
-      DROP INDEX IF EXISTS idx_memories_vec_v3;
-      DROP INDEX IF EXISTS idx_context_nodes_vec_v3;
       DROP INDEX IF EXISTS idx_skills_vec;
       DROP INDEX IF EXISTS idx_memories_vec;
       DROP INDEX IF EXISTS idx_context_nodes_vec;
-
-      DROP TABLE IF EXISTS agent_context_nodes_v4;
-      DROP TABLE IF EXISTS agent_memories_v4;
-      DROP TABLE IF EXISTS agent_skills_v4;
-
       DROP TABLE IF EXISTS ${CONTEXT_TABLE};
       DROP TABLE IF EXISTS ${MEMORIES_TABLE};
       DROP TABLE IF EXISTS ${SKILLS_TABLE};
     `);
   }
 
-  // Helper to convert array of numbers into standard JSON for passing to libsql vector functions
-  private floatArrayToVector(arr: number[]): string {
-    assertEmbeddingDimension(arr, "TursoVectorDB.floatArrayToVector");
+  private vec(arr: number[]): string {
+    assertEmbeddingDimension(arr, "TursoVectorDB.vec");
     return `[${arr.join(",")}]`;
   }
 
-  private parseMetadata(raw: unknown): Record<string, any> | null {
+  private parseMeta(raw: unknown): Record<string, any> | null {
     if (!raw) return null;
     try {
       return JSON.parse(raw as string);
@@ -111,207 +92,172 @@ export class TursoVectorDB {
     }
   }
 
-  private resolveWeights(defaults: HybridSearchWeights, weights?: HybridSearchWeights): Required<HybridSearchWeights> {
-    const merged = {
-      vector: weights?.vector ?? defaults.vector,
-      keyword: weights?.keyword ?? defaults.keyword,
-      recency: weights?.recency ?? defaults.recency ?? 0,
-      importance: weights?.importance ?? defaults.importance ?? 0,
-    };
-    const total = merged.vector + merged.keyword + merged.recency + merged.importance;
-    if (total <= 0) {
-      throw new Error("Hybrid search weights must sum to a positive number.");
-    }
-    return {
-      vector: merged.vector / total,
-      keyword: merged.keyword / total,
-      recency: merged.recency / total,
-      importance: merged.importance / total,
-    };
+  private now(): string {
+    return new Date().toISOString();
   }
 
-  // --- Skills ---
+  // ---------------------------------------------------------------------------
+  // Skills
+  // ---------------------------------------------------------------------------
 
   async addSkill(skill: AgentSkill, embedding: number[]) {
+    const ts = this.now();
     await this.client.execute({
-      sql: `
-        INSERT INTO ${SKILLS_TABLE} (id, name, description, embedding, metadata, created_at)
-        VALUES (?, ?, ?, vector(?), ?, ?)
-      `,
+      sql: `INSERT INTO ${SKILLS_TABLE} (id, name, description, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         skill.id,
         skill.name,
         skill.description,
-        this.floatArrayToVector(embedding),
+        this.vec(embedding),
         skill.metadata ? JSON.stringify(skill.metadata) : null,
-        skill.created_at || new Date().toISOString(),
+        skill.created_at || ts,
+        skill.updated_at || ts,
       ],
     });
   }
 
-  async searchSkills(query: string, queryEmbedding: number[], options: SkillSearchOptions = {}) {
-    const topK = options.topK ?? 5;
-    const weights = this.resolveWeights(DEFAULT_SKILL_WEIGHTS, options.weights);
+  async updateSkill(id: string, updates: { name?: string; description?: string; metadata?: Record<string, any> }, embedding?: number[]) {
+    const sets: string[] = ["updated_at = ?"];
+    const args: any[] = [this.now()];
+
+    if (updates.name !== undefined) { sets.push("name = ?"); args.push(updates.name); }
+    if (updates.description !== undefined) { sets.push("description = ?"); args.push(updates.description); }
+    if (updates.metadata !== undefined) { sets.push("metadata = ?"); args.push(JSON.stringify(updates.metadata)); }
+    if (embedding) { sets.push("embedding = vector(?)"); args.push(this.vec(embedding)); }
+
+    args.push(id);
+    await this.client.execute({
+      sql: `UPDATE ${SKILLS_TABLE} SET ${sets.join(", ")} WHERE id = ?`,
+      args,
+    });
+  }
+
+  /**
+   * Fetch broad vector candidates. Application code does the final re-ranking.
+   * Returns rows with a `distance` field (cosine distance, lower = more similar).
+   */
+  async searchSkills(queryEmbedding: number[], options: SkillSearchOptions = {}) {
+    const topK = options.topK ?? 10;
+    const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `
-        SELECT id, name, description, metadata, created_at,
-               vector_distance_cos(embedding, vector(?)) as distance,
-               CASE WHEN lower(name || ' ' || description) LIKE '%' || lower(?) || '%' THEN 1.0 ELSE 0.0 END AS keyword_score,
-               CASE
-                 WHEN created_at IS NULL THEN 0.0
-                 ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-               END AS recency_score,
-               ((1.0 - vector_distance_cos(embedding, vector(?))) * ?
-                 + CASE WHEN lower(name || ' ' || description) LIKE '%' || lower(?) || '%' THEN 1.0 ELSE 0.0 END * ?
-                 + CASE
-                     WHEN created_at IS NULL THEN 0.0
-                     ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-                   END * ?) AS hybrid_score
-        FROM ${SKILLS_TABLE}
-        WHERE (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
-        ORDER BY hybrid_score DESC
-        LIMIT ?
-      `,
+      sql: `SELECT id, name, description, metadata, created_at, updated_at,
+                   vector_distance_cos(embedding, vector(?)) as distance
+            FROM ${SKILLS_TABLE}
+            WHERE (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
+            ORDER BY distance ASC
+            LIMIT ?`,
       args: [
-        this.floatArrayToVector(queryEmbedding),
-        query,
-        this.floatArrayToVector(queryEmbedding),
-        weights.vector,
-        query,
-        weights.keyword,
-        weights.recency,
+        this.vec(queryEmbedding),
         options.maxAgeDays ?? null,
         options.maxAgeDays ?? null,
-        topK,
+        limit,
       ],
     });
-
-    const rows = res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
-    return options.threshold !== undefined
-      ? rows.filter((r: any) => (r.distance as number) <= options.threshold!)
-      : rows;
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listSkills(limit: number = 50) {
+  async listSkills(limit = 100) {
     const res = await this.client.execute({
-      sql: `SELECT id, name, description, metadata, created_at FROM ${SKILLS_TABLE} ORDER BY created_at DESC LIMIT ?`,
+      sql: `SELECT id, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE} ORDER BY updated_at DESC LIMIT ?`,
       args: [limit],
     });
-    return res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
   async deleteSkill(id: string) {
     await this.client.execute({ sql: `DELETE FROM ${SKILLS_TABLE} WHERE id = ?`, args: [id] });
   }
 
-  // --- Memories ---
+  // ---------------------------------------------------------------------------
+  // Memories
+  // ---------------------------------------------------------------------------
 
   async addMemory(memory: AgentMemory, embedding: number[]) {
+    const ts = this.now();
     await this.client.execute({
-      sql: `
-        INSERT INTO ${MEMORIES_TABLE} (id, content, category, owner, importance, embedding, metadata, created_at)
-        VALUES (?, ?, ?, ?, ?, vector(?), ?, ?)
-      `,
+      sql: `INSERT INTO ${MEMORIES_TABLE} (id, content, category, owner, importance, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         memory.id,
         memory.content,
         memory.category,
         memory.owner,
         memory.importance,
-        this.floatArrayToVector(embedding),
+        this.vec(embedding),
         memory.metadata ? JSON.stringify(memory.metadata) : null,
-        memory.created_at || new Date().toISOString(),
+        memory.created_at || ts,
+        memory.updated_at || ts,
       ],
     });
   }
 
-  async searchMemories(query: string, queryEmbedding: number[], options: MemorySearchOptions = {}) {
-    const topK = options.topK ?? 5;
-    const weights = this.resolveWeights(DEFAULT_MEMORY_WEIGHTS, options.weights);
+  async updateMemory(
+    id: string,
+    updates: { content?: string; importance?: number; metadata?: Record<string, any> },
+    embedding?: number[]
+  ) {
+    const sets: string[] = ["updated_at = ?"];
+    const args: any[] = [this.now()];
+
+    if (updates.content !== undefined) { sets.push("content = ?"); args.push(updates.content); }
+    if (updates.importance !== undefined) { sets.push("importance = ?"); args.push(updates.importance); }
+    if (updates.metadata !== undefined) { sets.push("metadata = ?"); args.push(JSON.stringify(updates.metadata)); }
+    if (embedding) { sets.push("embedding = vector(?)"); args.push(this.vec(embedding)); }
+
+    args.push(id);
+    await this.client.execute({
+      sql: `UPDATE ${MEMORIES_TABLE} SET ${sets.join(", ")} WHERE id = ?`,
+      args,
+    });
+  }
+
+  async searchMemories(queryEmbedding: number[], options: MemorySearchOptions = {}) {
+    const topK = options.topK ?? 10;
+    const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `
-        SELECT id, content, category, owner, importance, metadata, created_at,
-               vector_distance_cos(embedding, vector(?)) as distance,
-               CASE WHEN lower(content) LIKE '%' || lower(?) || '%' THEN 1.0 ELSE 0.0 END AS keyword_score,
-               MIN(1.0, MAX(0.0, importance / 10.0)) AS importance_score,
-               CASE
-                 WHEN created_at IS NULL THEN 0.0
-                 ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-               END AS recency_score,
-               ((1.0 - vector_distance_cos(embedding, vector(?))) * ?
-                 + CASE WHEN lower(content) LIKE '%' || lower(?) || '%' THEN 1.0 ELSE 0.0 END * ?
-                 + MIN(1.0, MAX(0.0, importance / 10.0)) * ?
-                 + CASE
-                     WHEN created_at IS NULL THEN 0.0
-                     ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-                   END * ?) AS hybrid_score
-        FROM ${MEMORIES_TABLE}
-        WHERE (? IS NULL OR owner = ?)
-          AND (? IS NULL OR category = ?)
-          AND (? IS NULL OR importance >= ?)
-          AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
-        ORDER BY hybrid_score DESC
-        LIMIT ?
-      `,
+      sql: `SELECT id, content, category, owner, importance, metadata, created_at, updated_at,
+                   vector_distance_cos(embedding, vector(?)) as distance
+            FROM ${MEMORIES_TABLE}
+            WHERE (? IS NULL OR owner = ?)
+              AND (? IS NULL OR category = ?)
+              AND (? IS NULL OR importance >= ?)
+              AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
+            ORDER BY distance ASC
+            LIMIT ?`,
       args: [
-        this.floatArrayToVector(queryEmbedding),
-        query,
-        this.floatArrayToVector(queryEmbedding),
-        weights.vector,
-        query,
-        weights.keyword,
-        weights.importance,
-        weights.recency,
-        options.owner ?? null,
-        options.owner ?? null,
-        options.category ?? null,
-        options.category ?? null,
-        options.minImportance ?? null,
-        options.minImportance ?? null,
-        options.maxAgeDays ?? null,
-        options.maxAgeDays ?? null,
-        topK,
+        this.vec(queryEmbedding),
+        options.owner ?? null, options.owner ?? null,
+        options.category ?? null, options.category ?? null,
+        options.minImportance ?? null, options.minImportance ?? null,
+        options.maxAgeDays ?? null, options.maxAgeDays ?? null,
+        limit,
       ],
     });
-
-    const rows = res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
-    return options.threshold !== undefined
-      ? rows.filter((r: any) => (r.distance as number) <= options.threshold!)
-      : rows;
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listMemories(limit: number = 50) {
+  async listMemories(limit = 100) {
     const res = await this.client.execute({
-      sql: `SELECT id, content, category, owner, importance, metadata, created_at FROM ${MEMORIES_TABLE} ORDER BY created_at DESC LIMIT ?`,
+      sql: `SELECT id, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE} ORDER BY updated_at DESC LIMIT ?`,
       args: [limit],
     });
-    return res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
   async deleteMemory(id: string) {
     await this.client.execute({ sql: `DELETE FROM ${MEMORIES_TABLE} WHERE id = ?`, args: [id] });
   }
 
-  // --- Hierarchical Context ---
+  // ---------------------------------------------------------------------------
+  // Context Nodes
+  // ---------------------------------------------------------------------------
 
   async addContextNode(node: AgentContextNode, embedding: number[]) {
+    const ts = this.now();
     await this.client.execute({
-      sql: `
-        INSERT INTO ${CONTEXT_TABLE} (uri, parent_uri, name, abstract, overview, content, embedding, metadata, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, vector(?), ?, ?)
-      `,
+      sql: `INSERT INTO ${CONTEXT_TABLE} (uri, parent_uri, name, abstract, overview, content, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         node.uri,
         node.parent_uri,
@@ -319,146 +265,100 @@ export class TursoVectorDB {
         node.abstract,
         node.overview || null,
         node.content || null,
-        this.floatArrayToVector(embedding),
+        this.vec(embedding),
         node.metadata ? JSON.stringify(node.metadata) : null,
-        node.created_at || new Date().toISOString(),
+        node.created_at || ts,
+        node.updated_at || ts,
       ],
     });
   }
 
-  async searchContextNodes(query: string, queryEmbedding: number[], options: ContextSearchOptions = {}) {
-    const topK = options.topK ?? 5;
-    const weights = this.resolveWeights(DEFAULT_CONTEXT_WEIGHTS, options.weights);
+  async updateContextNode(
+    uri: string,
+    updates: { abstract?: string; overview?: string; content?: string; metadata?: Record<string, any> },
+    embedding?: number[]
+  ) {
+    const sets: string[] = ["updated_at = ?"];
+    const args: any[] = [this.now()];
+
+    if (updates.abstract !== undefined) { sets.push("abstract = ?"); args.push(updates.abstract); }
+    if (updates.overview !== undefined) { sets.push("overview = ?"); args.push(updates.overview); }
+    if (updates.content !== undefined) { sets.push("content = ?"); args.push(updates.content); }
+    if (updates.metadata !== undefined) { sets.push("metadata = ?"); args.push(JSON.stringify(updates.metadata)); }
+    if (embedding) { sets.push("embedding = vector(?)"); args.push(this.vec(embedding)); }
+
+    args.push(uri);
+    await this.client.execute({
+      sql: `UPDATE ${CONTEXT_TABLE} SET ${sets.join(", ")} WHERE uri = ?`,
+      args,
+    });
+  }
+
+  async searchContextNodes(queryEmbedding: number[], options: ContextSearchOptions = {}) {
+    const topK = options.topK ?? 10;
+    const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `
-        SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at,
-               vector_distance_cos(embedding, vector(?)) as distance,
-               CASE
-                 WHEN lower(name || ' ' || abstract || ' ' || COALESCE(overview, '')) LIKE '%' || lower(?) || '%'
-                 THEN 1.0
-                 ELSE 0.0
-               END AS keyword_score,
-               CASE
-                 WHEN created_at IS NULL THEN 0.0
-                 ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-               END AS recency_score,
-               ((1.0 - vector_distance_cos(embedding, vector(?))) * ?
-                 + CASE
-                     WHEN lower(name || ' ' || abstract || ' ' || COALESCE(overview, '')) LIKE '%' || lower(?) || '%'
-                     THEN 1.0
-                     ELSE 0.0
-                   END * ?
-                 + CASE
-                     WHEN created_at IS NULL THEN 0.0
-                     ELSE 1.0 / (1.0 + MAX(0.0, julianday('now') - julianday(created_at)))
-                   END * ?) AS hybrid_score
-        FROM ${CONTEXT_TABLE}
-        WHERE (? IS NULL OR parent_uri = ?)
-          AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
-        ORDER BY hybrid_score DESC
-        LIMIT ?
-      `,
+      sql: `SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at,
+                   vector_distance_cos(embedding, vector(?)) as distance
+            FROM ${CONTEXT_TABLE}
+            WHERE (? IS NULL OR parent_uri = ?)
+              AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
+            ORDER BY distance ASC
+            LIMIT ?`,
       args: [
-        this.floatArrayToVector(queryEmbedding),
-        query,
-        this.floatArrayToVector(queryEmbedding),
-        weights.vector,
-        query,
-        weights.keyword,
-        weights.recency,
-        options.parentUri ?? null,
-        options.parentUri ?? null,
-        options.maxAgeDays ?? null,
-        options.maxAgeDays ?? null,
-        topK,
+        this.vec(queryEmbedding),
+        options.parentUri ?? null, options.parentUri ?? null,
+        options.maxAgeDays ?? null, options.maxAgeDays ?? null,
+        limit,
       ],
     });
-
-    const rows = res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
-    return options.threshold !== undefined
-      ? rows.filter((r: any) => (r.distance as number) <= options.threshold!)
-      : rows;
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listContextNodes(parentUri?: string, limit: number = 50) {
+  async listContextNodes(parentUri?: string, limit = 100) {
     const res = parentUri
       ? await this.client.execute({
-          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? ORDER BY created_at DESC LIMIT ?`,
+          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? ORDER BY updated_at DESC LIMIT ?`,
           args: [parentUri, limit],
         })
       : await this.client.execute({
-          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at FROM ${CONTEXT_TABLE} ORDER BY created_at DESC LIMIT ?`,
+          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} ORDER BY updated_at DESC LIMIT ?`,
           args: [limit],
         });
-    return res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
   async deleteContextNode(uri: string) {
-    await this.client.execute({
-      sql: `DELETE FROM ${CONTEXT_TABLE} WHERE uri = ?`,
-      args: [uri],
-    });
+    await this.client.execute({ sql: `DELETE FROM ${CONTEXT_TABLE} WHERE uri = ?`, args: [uri] });
   }
 
-  // Get a specific node and all of its deep descendants (Recursive)
-  async getContextSubtree(nodeId: string) {
+  async getContextSubtree(nodeUri: string) {
     const res = await this.client.execute({
-      sql: `
-        WITH RECURSIVE subtree AS (
-          -- Base case: the root node of our subtree
-          SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, 0 as level
-          FROM ${CONTEXT_TABLE}
-          WHERE uri = ?
-          
-          UNION ALL
-          
-          -- Recursive step: find all children of nodes currently in the subtree
-          SELECT a.uri, a.parent_uri, a.name, a.abstract, a.overview, a.content, a.metadata, a.created_at, s.level + 1
-          FROM ${CONTEXT_TABLE} a
-          JOIN subtree s ON a.parent_uri = s.uri
-        )
-        SELECT * FROM subtree ORDER BY level ASC;
-      `,
-      args: [nodeId],
+      sql: `WITH RECURSIVE subtree AS (
+              SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
+              FROM ${CONTEXT_TABLE} WHERE uri = ?
+              UNION ALL
+              SELECT c.uri, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, s.depth + 1
+              FROM ${CONTEXT_TABLE} c JOIN subtree s ON c.parent_uri = s.uri
+            )
+            SELECT * FROM subtree ORDER BY depth ASC`,
+      args: [nodeUri],
     });
-
-    return res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  // Get the path from a specific node up to the root (Recursive)
-  async getContextPath(nodeId: string) {
+  async getContextPath(nodeUri: string) {
     const res = await this.client.execute({
-      sql: `
-        WITH RECURSIVE ancestor_path AS (
-          -- Base case: the specific node
-          SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, 0 as level
-          FROM ${CONTEXT_TABLE}
-          WHERE uri = ?
-          
-          UNION ALL
-          
-          -- Recursive step: find the parent
-          SELECT a.uri, a.parent_uri, a.name, a.abstract, a.overview, a.content, a.metadata, a.created_at, p.level - 1
-          FROM ${CONTEXT_TABLE} a
-          JOIN ancestor_path p ON p.parent_uri = a.uri
-        )
-        SELECT * FROM ancestor_path ORDER BY level ASC;
-      `,
-      args: [nodeId],
+      sql: `WITH RECURSIVE ancestors AS (
+              SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
+              FROM ${CONTEXT_TABLE} WHERE uri = ?
+              UNION ALL
+              SELECT c.uri, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, a.depth - 1
+              FROM ${CONTEXT_TABLE} c JOIN ancestors a ON a.parent_uri = c.uri
+            )
+            SELECT * FROM ancestors ORDER BY depth ASC`,
+      args: [nodeUri],
     });
-
-    return res.rows.map((row) => ({
-      ...row,
-      metadata: this.parseMetadata(row.metadata),
-    }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 }

@@ -4,6 +4,7 @@ export interface AgentSkill {
   description: string;
   metadata?: Record<string, any>;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface HybridSearchWeights {
@@ -21,7 +22,11 @@ export type MemoryCategory =
   | "cases"
   | "patterns"
   | "observation"
-  | "reflection";
+  | "reflection"
+  | "decision"
+  | "constraint"
+  | "architecture";
+
 export type MemoryOwner = "user" | "agent" | "system";
 
 export interface AgentMemory {
@@ -32,18 +37,20 @@ export interface AgentMemory {
   importance: number;
   metadata?: Record<string, any>;
   created_at: string;
+  updated_at?: string;
 }
 
 // OpenContextFS File System Paradigm Context Node
 export interface AgentContextNode {
-  uri: string; // Unique resource identifier (e.g., contextfs://resources/backend/api)
-  parent_uri: string | null; // Parent directory URI
-  name: string; // File or directory name
-  abstract: string; // L0 layer: abstract (~100 tokens) - used for vector search
-  overview?: string; // L1 layer: overview (~2k tokens) - used for reranking/navigation
-  content?: string; // L2 layer: detailed content - loaded on demand
+  uri: string;           // Unique resource identifier (e.g., contextfs://project/backend/auth)
+  parent_uri: string | null;
+  name: string;
+  abstract: string;      // L0: ~100 tokens, used for vector search and embedding
+  overview?: string;     // L1: ~2k tokens, for reranking/navigation
+  content?: string;      // L2: full detail, loaded on demand
   metadata?: Record<string, any>;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface MemorySearchOptions {
@@ -69,4 +76,17 @@ export interface ContextSearchOptions {
   parentUri?: string;
   maxAgeDays?: number;
   weights?: HybridSearchWeights;
+}
+
+/** Result type when LLM router decides to skip a write */
+export interface SkippedWrite {
+  skipped: true;
+  reason: string;
+  existingId: string;
+}
+
+/** Result type when LLM router decides to update an existing entry */
+export interface UpdatedWrite {
+  updated: true;
+  id: string;
 }

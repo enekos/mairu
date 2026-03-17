@@ -2,107 +2,106 @@
 import { Command } from "commander";
 import { createContextManager } from "./client";
 
-const contextManager = createContextManager();
-
+const cm = createContextManager();
 const program = new Command();
+
 program
   .name("context-cli")
-  .description(
-    "CLI to manage the Ultimate Context DB for local code agents (Turso + Vector Search)"
-  )
-  .version("1.0.0");
+  .description("contextfs CLI — manage agent memory, skills, and context nodes")
+  .version("2.0.0");
 
-// --- Memories ---
-const memoryCmd = program.command("memory").description("Manage memories");
+// ─────────────────────────────────────────────────────────────────────────────
+// Memories
+// ─────────────────────────────────────────────────────────────────────────────
+const memCmd = program.command("memory").description("Manage memories");
 
-memoryCmd
-  .command("add <content>")
-  .description("Add a new memory")
-  .option(
-    "-c, --category <category>",
-    "Category: profile, preferences, entities, events, cases, patterns, observation, reflection",
-    "observation"
-  )
-  .option("-o, --owner <owner>", "Owner: user, agent, system", "agent")
-  .option("-i, --importance <number>", "Importance score (1-10)", "1")
-  .action(async (content, options) => {
+memCmd
+  .command("store <content>")
+  .description("Intelligently store a memory (LLM decides create/update/skip)")
+  .option("-c, --category <cat>", "Category", "observation")
+  .option("-o, --owner <owner>", "Owner: user | agent | system", "agent")
+  .option("-i, --importance <n>", "Importance 1-10", "5")
+  .action(async (content, opts) => {
     try {
-      const memory = await contextManager.addMemory(
-        content,
-        options.category,
-        options.owner,
-        parseInt(options.importance)
-      );
-      console.log("Added memory:", JSON.stringify(memory, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), {}, true);
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-memoryCmd
-  .command("search <query>")
-  .description("Search memories via hybrid vector + keyword ranking")
-  .option("-k, --topK <number>", "Number of results to return", "5")
-  .option("-t, --threshold <number>", "Max cosine distance to include (0-2, lower = more similar)")
-  .option("--owner <owner>", "Filter by owner (user, agent, system)")
-  .option("--category <category>", "Filter by category")
-  .option("--minImportance <number>", "Filter by minimum importance score")
-  .option("--maxAgeDays <number>", "Filter to memories not older than N days")
-  .option("--vectorWeight <number>", "Hybrid rank vector score weight")
-  .option("--keywordWeight <number>", "Hybrid rank keyword score weight")
-  .option("--importanceWeight <number>", "Hybrid rank importance score weight")
-  .option("--recencyWeight <number>", "Hybrid rank recency score weight")
-  .action(async (query, options) => {
+memCmd
+  .command("add <content>")
+  .description("Force-create a new memory (skips LLM dedup check)")
+  .option("-c, --category <cat>", "Category", "observation")
+  .option("-o, --owner <owner>", "Owner: user | agent | system", "agent")
+  .option("-i, --importance <n>", "Importance 1-10", "1")
+  .action(async (content, opts) => {
     try {
-      const threshold = options.threshold !== undefined ? parseFloat(options.threshold) : undefined;
-      const results = await contextManager.searchMemories(query, {
-        topK: parseInt(options.topK),
-        threshold,
-        owner: options.owner,
-        category: options.category,
-        minImportance:
-          options.minImportance !== undefined ? parseInt(options.minImportance) : undefined,
-        maxAgeDays: options.maxAgeDays !== undefined ? parseInt(options.maxAgeDays) : undefined,
-        weights: {
-          vector: options.vectorWeight !== undefined ? parseFloat(options.vectorWeight) : 0.65,
-          keyword: options.keywordWeight !== undefined ? parseFloat(options.keywordWeight) : 0.15,
-          importance:
-            options.importanceWeight !== undefined ? parseFloat(options.importanceWeight) : 0.15,
-          recency: options.recencyWeight !== undefined ? parseFloat(options.recencyWeight) : 0.05,
-        },
+      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), {}, false);
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+memCmd
+  .command("search <query>")
+  .description("Search memories with hybrid vector + keyword re-ranking")
+  .option("-k, --topK <n>", "Results to return", "10")
+  .option("-t, --threshold <n>", "Max cosine distance (0-2)")
+  .option("--owner <owner>", "Filter by owner")
+  .option("--category <cat>", "Filter by category")
+  .option("--minImportance <n>", "Min importance score")
+  .option("--maxAgeDays <n>", "Max age in days")
+  .action(async (query, opts) => {
+    try {
+      const results = await cm.searchMemories(query, {
+        topK: parseInt(opts.topK),
+        threshold: opts.threshold !== undefined ? parseFloat(opts.threshold) : undefined,
+        owner: opts.owner,
+        category: opts.category,
+        minImportance: opts.minImportance !== undefined ? parseInt(opts.minImportance) : undefined,
+        maxAgeDays: opts.maxAgeDays !== undefined ? parseInt(opts.maxAgeDays) : undefined,
       });
       console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-memoryCmd
-  .command("list")
-  .description("List all memories (most recent first)")
-  .option("-l, --limit <number>", "Max number of results", "50")
-  .action(async (options) => {
+memCmd
+  .command("update <id>")
+  .description("Update a memory's content or importance")
+  .option("--content <text>", "New content")
+  .option("-i, --importance <n>", "New importance 1-10")
+  .action(async (id, opts) => {
     try {
-      const results = await contextManager.listMemories(parseInt(options.limit));
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      const result = await cm.updateMemory(id, {
+        content: opts.content,
+        importance: opts.importance !== undefined ? parseInt(opts.importance) : undefined,
+      });
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-memoryCmd
+memCmd
+  .command("list")
+  .description("List all memories (most recently updated first)")
+  .option("-l, --limit <n>", "Max results", "100")
+  .action(async (opts) => {
+    try {
+      console.log(JSON.stringify(await cm.listMemories(parseInt(opts.limit)), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+memCmd
   .command("delete <id>")
   .description("Delete a memory by ID")
   .action(async (id) => {
     try {
-      await contextManager.deleteMemory(id);
+      await cm.deleteMemory(id);
       console.log(`Deleted memory: ${id}`);
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-// --- Skills ---
+// ─────────────────────────────────────────────────────────────────────────────
+// Skills
+// ─────────────────────────────────────────────────────────────────────────────
 const skillCmd = program.command("skill").description("Manage skills");
 
 skillCmd
@@ -110,52 +109,35 @@ skillCmd
   .description("Add a new skill")
   .action(async (name, description) => {
     try {
-      const skill = await contextManager.addSkill(name, description);
-      console.log("Added skill:", JSON.stringify(skill, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      console.log(JSON.stringify(await cm.addSkill(name, description), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
 skillCmd
   .command("search <query>")
-  .description("Search skills via hybrid vector + keyword ranking")
-  .option("-k, --topK <number>", "Number of results to return", "5")
-  .option("-t, --threshold <number>", "Max cosine distance to include (0-2, lower = more similar)")
-  .option("--maxAgeDays <number>", "Filter to skills not older than N days")
-  .option("--vectorWeight <number>", "Hybrid rank vector score weight")
-  .option("--keywordWeight <number>", "Hybrid rank keyword score weight")
-  .option("--recencyWeight <number>", "Hybrid rank recency score weight")
-  .action(async (query, options) => {
+  .description("Search skills with hybrid vector + keyword re-ranking")
+  .option("-k, --topK <n>", "Results to return", "10")
+  .option("-t, --threshold <n>", "Max cosine distance (0-2)")
+  .option("--maxAgeDays <n>", "Max age in days")
+  .action(async (query, opts) => {
     try {
-      const threshold = options.threshold !== undefined ? parseFloat(options.threshold) : undefined;
-      const results = await contextManager.searchSkills(query, {
-        topK: parseInt(options.topK),
-        threshold,
-        maxAgeDays: options.maxAgeDays !== undefined ? parseInt(options.maxAgeDays) : undefined,
-        weights: {
-          vector: options.vectorWeight !== undefined ? parseFloat(options.vectorWeight) : 0.8,
-          keyword: options.keywordWeight !== undefined ? parseFloat(options.keywordWeight) : 0.2,
-          recency: options.recencyWeight !== undefined ? parseFloat(options.recencyWeight) : 0,
-        },
+      const results = await cm.searchSkills(query, {
+        topK: parseInt(opts.topK),
+        threshold: opts.threshold !== undefined ? parseFloat(opts.threshold) : undefined,
+        maxAgeDays: opts.maxAgeDays !== undefined ? parseInt(opts.maxAgeDays) : undefined,
       });
       console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
 skillCmd
   .command("list")
-  .description("List all skills (most recent first)")
-  .option("-l, --limit <number>", "Max number of results", "50")
-  .action(async (options) => {
+  .description("List all skills")
+  .option("-l, --limit <n>", "Max results", "100")
+  .action(async (opts) => {
     try {
-      const results = await contextManager.listSkills(parseInt(options.limit));
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      console.log(JSON.stringify(await cm.listSkills(parseInt(opts.limit)), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
 skillCmd
@@ -163,145 +145,135 @@ skillCmd
   .description("Delete a skill by ID")
   .action(async (id) => {
     try {
-      await contextManager.deleteSkill(id);
+      await cm.deleteSkill(id);
       console.log(`Deleted skill: ${id}`);
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-// --- Context Nodes ---
-const contextNodeCmd = program.command("node").description("Manage hierarchical context nodes");
+// ─────────────────────────────────────────────────────────────────────────────
+// Context Nodes
+// ─────────────────────────────────────────────────────────────────────────────
+const nodeCmd = program.command("node").description("Manage hierarchical context nodes");
 
-contextNodeCmd
-  .command("add <uri> <name> <abstract>")
-  .description("Add a context node (OpenContextFS file system paradigm)")
-  .option("-o, --overview <content>", "L1 overview content")
-  .option("-c, --content <content>", "L2 detailed content")
+nodeCmd
+  .command("store <uri> <name> <abstract>")
+  .description("Intelligently store a context node (LLM decides create/update/skip)")
+  .option("-o, --overview <text>", "L1 overview content")
+  .option("-c, --content <text>", "L2 detailed content")
   .option("-p, --parent <uri>", "Parent node URI")
-  .action(async (uri, name, abstract, options) => {
+  .action(async (uri, name, abstract, opts) => {
     try {
-      const node = await contextManager.addContextNode(
-        uri,
-        name,
-        abstract,
-        options.overview,
-        options.content,
-        options.parent || null
-      );
-      console.log("Added context node:", JSON.stringify(node, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, {}, true);
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
-  .command("search <query>")
-  .description("Search context nodes via hybrid vector + keyword ranking")
-  .option("-k, --topK <number>", "Number of results to return", "5")
-  .option("-t, --threshold <number>", "Max cosine distance to include (0-2, lower = more similar)")
-  .option("--parentUri <uri>", "Filter by parent URI")
-  .option("--maxAgeDays <number>", "Filter to nodes not older than N days")
-  .option("--vectorWeight <number>", "Hybrid rank vector score weight")
-  .option("--keywordWeight <number>", "Hybrid rank keyword score weight")
-  .option("--recencyWeight <number>", "Hybrid rank recency score weight")
-  .action(async (query, options) => {
+nodeCmd
+  .command("add <uri> <name> <abstract>")
+  .description("Force-create a context node (skips LLM dedup check)")
+  .option("-o, --overview <text>", "L1 overview content")
+  .option("-c, --content <text>", "L2 detailed content")
+  .option("-p, --parent <uri>", "Parent node URI")
+  .action(async (uri, name, abstract, opts) => {
     try {
-      const threshold = options.threshold !== undefined ? parseFloat(options.threshold) : undefined;
-      const results = await contextManager.searchContext(query, {
-        topK: parseInt(options.topK),
-        threshold,
-        parentUri: options.parentUri,
-        maxAgeDays: options.maxAgeDays !== undefined ? parseInt(options.maxAgeDays) : undefined,
-        weights: {
-          vector: options.vectorWeight !== undefined ? parseFloat(options.vectorWeight) : 0.8,
-          keyword: options.keywordWeight !== undefined ? parseFloat(options.keywordWeight) : 0.2,
-          recency: options.recencyWeight !== undefined ? parseFloat(options.recencyWeight) : 0,
-        },
+      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, {}, false);
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+nodeCmd
+  .command("search <query>")
+  .description("Search context nodes (searches name, abstract, overview, content)")
+  .option("-k, --topK <n>", "Results to return", "10")
+  .option("-t, --threshold <n>", "Max cosine distance (0-2)")
+  .option("--parentUri <uri>", "Filter by parent URI")
+  .option("--maxAgeDays <n>", "Max age in days")
+  .action(async (query, opts) => {
+    try {
+      const results = await cm.searchContext(query, {
+        topK: parseInt(opts.topK),
+        threshold: opts.threshold !== undefined ? parseFloat(opts.threshold) : undefined,
+        parentUri: opts.parentUri,
+        maxAgeDays: opts.maxAgeDays !== undefined ? parseInt(opts.maxAgeDays) : undefined,
       });
       console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
-  .command("list")
-  .description("List all context nodes (most recent first)")
-  .option("-p, --parent <uri>", "Filter by parent URI")
-  .option("-l, --limit <number>", "Max number of results", "50")
-  .action(async (options) => {
+nodeCmd
+  .command("update <uri>")
+  .description("Update a context node")
+  .option("--abstract <text>", "New abstract")
+  .option("--overview <text>", "New overview")
+  .option("--content <text>", "New content")
+  .action(async (uri, opts) => {
     try {
-      const results = await contextManager.listContextNodes(options.parent, parseInt(options.limit));
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      const result = await cm.updateContextNode(uri, {
+        abstract: opts.abstract,
+        overview: opts.overview,
+        content: opts.content,
+      });
+      console.log(JSON.stringify(result, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
+nodeCmd
+  .command("list")
+  .description("List context nodes")
+  .option("-p, --parent <uri>", "Filter by parent URI")
+  .option("-l, --limit <n>", "Max results", "100")
+  .action(async (opts) => {
+    try {
+      console.log(JSON.stringify(await cm.listContextNodes(opts.parent, parseInt(opts.limit)), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+nodeCmd
   .command("delete <uri>")
-  .description("Delete a context node (and its descendants via CASCADE)")
+  .description("Delete a context node (cascades to descendants)")
   .action(async (uri) => {
     try {
-      await contextManager.deleteContextNode(uri);
+      await cm.deleteContextNode(uri);
       console.log(`Deleted context node: ${uri}`);
-    } catch (e) {
-      console.error("Error:", e);
-    }
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
-  .command("subtree <id>")
-  .description("Get a context node and all of its deep descendants")
-  .action(async (id) => {
+nodeCmd
+  .command("subtree <uri>")
+  .description("Get a node and all its descendants")
+  .action(async (uri) => {
     try {
-      const results = await contextManager.getContextSubtree(id);
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      console.log(JSON.stringify(await cm.getContextSubtree(uri), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
-  .command("path <id>")
-  .description("Get the ancestor path from a node up to the root")
-  .action(async (id) => {
+nodeCmd
+  .command("path <uri>")
+  .description("Get the ancestor chain from a node to the root")
+  .action(async (uri) => {
     try {
-      const results = await contextManager.getContextPath(id);
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      console.log(JSON.stringify(await cm.getContextPath(uri), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
+nodeCmd
   .command("ls <uri>")
   .description("List direct children of a context node")
   .action(async (uri) => {
     try {
-      const results = await contextManager.listContextNodes(uri);
-      console.log(JSON.stringify(results, null, 2));
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      console.log(JSON.stringify(await cm.listContextNodes(uri), null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
-contextNodeCmd
+nodeCmd
   .command("read <uri>")
-  .description("Read the detailed content of a context node")
+  .description("Read full content of a context node")
   .action(async (uri) => {
     try {
-      const results = await contextManager.getContextSubtree(uri);
-      const node = results.find((r: any) => r.uri === uri);
-      if (node) {
-        console.log(JSON.stringify(node, null, 2));
-      } else {
-        console.log("Not found.");
-      }
-    } catch (e) {
-      console.error("Error:", e);
-    }
+      const subtree = await cm.getContextSubtree(uri);
+      const node = subtree.find((r: any) => r.uri === uri);
+      console.log(node ? JSON.stringify(node, null, 2) : "Not found.");
+    } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
 program.parse(process.argv);

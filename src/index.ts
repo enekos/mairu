@@ -3,3 +3,4 @@ export * from "./TursoVectorDB";
 export * from "./ContextManager";
 export * from "./client";
 export * from "./embeddingConfig";
+export * from "./scorer";
