@@ -1,4 +1,6 @@
 import * as dotenv from "dotenv";
+import * as fs from "fs/promises";
+import * as path from "path";
 import { createContextManager } from "./client";
 import {
   loadDataset,
@@ -11,7 +13,9 @@ import {
 dotenv.config({ path: require("path").resolve(__dirname, "..", ".env") });
 
 async function run() {
-  const { datasetPath, topK, verbose } = parseArgs(process.argv.slice(2));
+  const { datasetPath, topK, verbose, outputPath, failBelowMrr, failBelowRecall } = parseArgs(
+    process.argv.slice(2)
+  );
   const dataset = await loadDataset(datasetPath);
   const contextManager = createContextManager();
 
@@ -44,22 +48,30 @@ async function run() {
     const latencyMs = Date.now() - start;
 
     const retrieved = rows.map((row) => String(row.id ?? row.uri ?? ""));
-    const { hitCount, firstRelevantRank, reciprocalRank, recallAtK } = computeRecallMetrics(
+    const metrics = computeRecallMetrics(
       retrieved,
-      expected
+      expected,
+      entry.negativeIds ?? [],
+      entry.relevanceScores ?? {}
     );
 
     perCase.push({
       id: label,
       domain: entry.domain,
       query: entry.query,
+      description: entry.description,
       topK: effectiveTopK,
       expected,
       retrieved,
-      hitCount,
-      recallAtK,
-      firstRelevantRank,
-      reciprocalRank,
+      hitCount: metrics.hitCount,
+      recallAtK: metrics.recallAtK,
+      precisionAtK: metrics.precisionAtK,
+      hitRate: metrics.hitRate,
+      averagePrecision: metrics.averagePrecision,
+      firstRelevantRank: metrics.firstRelevantRank,
+      reciprocalRank: metrics.reciprocalRank,
+      ndcg: metrics.ndcg,
+      negativeHits: metrics.negativeHits,
       latencyMs,
     });
   }
@@ -71,6 +83,8 @@ async function run() {
     context: summarize(perCase.filter((x) => x.domain === "context")),
   };
 
+  const failedCases = perCase.filter((c) => !c.hitRate);
+
   const output = {
     datasetPath,
     generatedAt: new Date().toISOString(),
@@ -80,10 +94,50 @@ async function run() {
     },
     global,
     byDomain,
+    failedCases: failedCases.length > 0 ? failedCases.map((c) => ({
+      id: c.id,
+      domain: c.domain,
+      query: c.query,
+      description: c.description,
+      expected: c.expected,
+      retrieved: c.retrieved,
+    })) : undefined,
     perCase: verbose ? perCase : undefined,
   };
 
-  console.log(JSON.stringify(output, null, 2));
+  const json = JSON.stringify(output, null, 2);
+  console.log(json);
+
+  if (outputPath) {
+    const absolute = path.isAbsolute(outputPath)
+      ? outputPath
+      : path.resolve(process.cwd(), outputPath);
+    await fs.writeFile(absolute, json, "utf8");
+    console.error(`Results written to ${absolute}`);
+  }
+
+  // CI threshold checks
+  let exitCode = 0;
+  if (failBelowMrr != null && global.mrr < failBelowMrr) {
+    console.error(
+      `FAIL: MRR ${global.mrr.toFixed(4)} is below threshold ${failBelowMrr}`
+    );
+    exitCode = 1;
+  }
+  if (failBelowRecall != null && global.avgRecallAtK < failBelowRecall) {
+    console.error(
+      `FAIL: Recall@K ${global.avgRecallAtK.toFixed(4)} is below threshold ${failBelowRecall}`
+    );
+    exitCode = 1;
+  }
+  if (failedCases.length > 0) {
+    console.error(`\n${failedCases.length} case(s) had zero hits:`);
+    for (const c of failedCases) {
+      console.error(`  - [${c.domain}] "${c.query}" (expected: ${c.expected.join(", ")})`);
+    }
+  }
+
+  process.exit(exitCode);
 }
 
 run().catch((error) => {
