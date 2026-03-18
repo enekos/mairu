@@ -15,7 +15,7 @@ const MEMORIES_TABLE = "agent_memories";
 const CONTEXT_TABLE = "agent_context_nodes";
 
 // Multiplier for how many vector candidates to fetch before application-side re-ranking
-const CANDIDATE_MULTIPLIER = 4;
+const CANDIDATE_MULTIPLIER = Number(process.env.CANDIDATE_MULTIPLIER || "4");
 
 export class TursoVectorDB {
   private client: Client;
@@ -163,17 +163,20 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listSkills(options?: SkillSearchOptions, limit = 100) {
+  async listSkills(options?: SkillSearchOptions, limit = 100, offset = 0) {
     const res = await this.client.execute({
       sql: `SELECT id, project, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE}
             WHERE (? IS NULL OR project = ?)
-            ORDER BY updated_at DESC LIMIT ?`,
-      args: [
-        options?.project ?? null, options?.project ?? null,
-        limit
-      ],
+            ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
+      args: [options?.project ?? null, options?.project ?? null, limit, offset],
     });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+  }
+
+  async getSkill(id: string) {
+    const res = await this.client.execute({ sql: `SELECT id, project, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE} WHERE id = ?`, args: [id] });
+    if (res.rows.length === 0) return null;
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
   }
 
   async deleteSkill(id: string) {
@@ -251,17 +254,20 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listMemories(options?: MemorySearchOptions, limit = 100) {
+  async listMemories(options?: MemorySearchOptions, limit = 100, offset = 0) {
     const res = await this.client.execute({
       sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE}
             WHERE (? IS NULL OR project = ?)
             ORDER BY updated_at DESC LIMIT ?`,
-      args: [
-        options?.project ?? null, options?.project ?? null,
-        limit
-      ],
+      args: [options?.project ?? null, options?.project ?? null, limit, offset],
     });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+  }
+
+  async getMemory(id: string) {
+    const res = await this.client.execute({ sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE} WHERE id = ?`, args: [id] });
+    if (res.rows.length === 0) return null;
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
   }
 
   async deleteMemory(id: string) {
@@ -338,20 +344,23 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100) {
+  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100, offset = 0) {
     const res = parentUri
       ? await this.client.execute({
           sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? AND (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
-          args: [parentUri, options?.project ?? null, options?.project ?? null, limit],
+          args: [parentUri, options?.project ?? null, options?.project ?? null, limit, offset],
         })
       : await this.client.execute({
           sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
-          args: [
-        options?.project ?? null, options?.project ?? null,
-        limit
-      ],
+          args: [options?.project ?? null, options?.project ?? null, limit, offset],
         });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+  }
+
+  async getContextNode(uri: string) {
+    const res = await this.client.execute({ sql: `SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE uri = ?`, args: [uri] });
+    if (res.rows.length === 0) return null;
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
   }
 
   async deleteContextNode(uri: string) {

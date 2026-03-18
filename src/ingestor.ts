@@ -25,6 +25,25 @@ export interface ProposedContextNode {
   parent_uri: string | null;
 }
 
+
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+async function generateWithRetry(model: string, contents: string, attempt = 1): Promise<any> {
+  if (!ai) throw new Error("GoogleGenAI not initialized");
+  try {
+    return await ai.models.generateContent({ model, contents });
+  } catch (error: any) {
+    if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(`[ingestor] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return generateWithRetry(model, contents, attempt + 1);
+    }
+    throw error;
+  }
+}
+
 const MAX_INPUT_CHARS = 100_000;
 
 /**
@@ -82,10 +101,7 @@ ${text}
 Respond with ONLY a JSON array of node objects. No markdown fences, no explanation.
 Example shape: [{"uri":"...","name":"...","abstract":"...","overview":"...","content":"...","parent_uri":null}, ...]`;
 
-  const response = await ai.models.generateContent({
-    model: LLM_MODEL,
-    contents: prompt,
-  });
+  const response = await generateWithRetry(LLM_MODEL, prompt);
 
   const raw = response.text?.trim() || "";
   const parsed = extractJsonArray(raw);

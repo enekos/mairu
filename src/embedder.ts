@@ -10,15 +10,17 @@ const ai = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
   : null;
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
 export class Embedder {
-  static async getEmbedding(text: string): Promise<number[]> {
+  static async getEmbedding(text: string, attempt = 1): Promise<number[]> {
     if (!ai) {
       if (!embeddingConfig.allowZeroEmbeddings) {
         throw new Error(
           "GEMINI_API_KEY is not set and ALLOW_ZERO_EMBEDDINGS=false. Set a key or explicitly enable zero embeddings."
         );
       }
-      console.warn("GEMINI_API_KEY not set, using zero vector fallback");
       return Array(embeddingConfig.dimension).fill(0);
     }
 
@@ -37,8 +39,14 @@ export class Embedder {
       const values = response.embeddings[0].values;
       assertEmbeddingDimension(values, "Embedder.getEmbedding");
       return values;
-    } catch (error) {
-      console.error("Failed to generate embedding:", error);
+    } catch (error: any) {
+      if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+        const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+        console.warn(`[Embedder] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        return this.getEmbedding(text, attempt + 1);
+      }
+      console.error("Failed to generate embedding after retries:", error);
       throw error;
     }
   }

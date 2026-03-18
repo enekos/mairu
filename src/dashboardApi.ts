@@ -19,6 +19,14 @@ function sendJson(res: ServerResponse<IncomingMessage>, statusCode: number, body
   res.end(JSON.stringify(body));
 }
 
+
+function validateString(val: any, name: string): string {
+  if (typeof val !== "string" || !val.trim()) {
+    throw new Error(`Invalid or missing ${name}`);
+  }
+  return val.trim();
+}
+
 async function readBody(req: IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let data = "";
@@ -91,7 +99,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
       }
       if (req.method === "POST") {
         const body = await readBody(req);
-        const result = await cm.addSkill(body.name, body.description, body.project, body.metadata ?? {});
+        const name = validateString(body.name, "name");
+        const description = validateString(body.description, "description");
+        const result = await cm.addSkill(name, description, body.project, body.metadata ?? {});
         sendJson(res, 201, result);
         return;
       }
@@ -119,7 +129,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         const body = await readBody(req);
         const useRouter = body.useRouter !== false;
         const result = await cm.addMemory(
-          body.content,
+          validateString(body.content, "content"),
           body.category ?? "observation",
           body.owner ?? "agent",
           body.importance ?? 5,
@@ -155,9 +165,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         const body = await readBody(req);
         const useRouter = body.useRouter !== false;
         const result = await cm.addContextNode(
-          body.uri,
-          body.name,
-          body.abstract,
+          validateString(body.uri, "uri"),
+          validateString(body.name, "name"),
+          validateString(body.abstract, "abstract"),
           body.overview,
           body.content,
           body.parent_uri || null,

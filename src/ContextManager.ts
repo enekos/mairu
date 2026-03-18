@@ -51,7 +51,7 @@ export class ContextManager {
 
   async updateSkill(id: string, updates: { name?: string; description?: string; project?: string; metadata?: Record<string, any> }) {
     let embedding: number[] | undefined;
-    const current = await this.db.listSkills({}, 1000).then((rows) => rows.find((r: any) => r.id === id)) as any;
+    const current = await this.db.getSkill(id) as any;
     
     if (current && (
       (updates.name !== undefined && updates.name !== current.name) || 
@@ -162,7 +162,7 @@ export class ContextManager {
     updates: { content?: string; importance?: number; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    const current = await this.db.listMemories({}, 1000).then((rows) => rows.find((r: any) => r.id === id)) as any;
+    const current = await this.db.getMemory(id) as any;
     
     if (current && updates.content !== undefined && updates.content !== current.content) {
       embedding = await Embedder.getEmbedding(updates.content);
@@ -269,7 +269,7 @@ export class ContextManager {
     updates: { name?: string; abstract?: string; overview?: string; content?: string; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    const current = await this.db.listContextNodes(undefined, {}, 1000).then((rows) => rows.find((r: any) => r.uri === uri)) as any;
+    const current = await this.db.getContextNode(uri) as any;
     
     if (current && (
       (updates.name !== undefined && updates.name !== current.name) || 

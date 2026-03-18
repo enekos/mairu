@@ -31,6 +31,24 @@ export interface RouterCandidate {
 
 const SIMILARITY_GATE = 0.75; // only invoke LLM if best candidate score >= this
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000;
+
+async function generateWithRetry(model: string, contents: string, attempt = 1): Promise<any> {
+  if (!ai) throw new Error("GoogleGenAI not initialized");
+  try {
+    return await ai.models.generateContent({ model, contents });
+  } catch (error: any) {
+    if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+      const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+      console.warn(`[llmRouter] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return generateWithRetry(model, contents, attempt + 1);
+    }
+    throw error;
+  }
+}
+
 /**
  * Decide what to do with a new memory entry.
  */
@@ -69,10 +87,7 @@ Respond with ONLY a JSON object (no markdown fences):
 - {"action":"skip","reason":"<brief reason>"}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: LLM_MODEL,
-      contents: prompt,
-    });
+    const response = await generateWithRetry(LLM_MODEL, prompt);
     const text = response.text?.trim() || "";
     const decision = extractJsonObject(text);
     if (!decision) return { action: "create" };
@@ -139,10 +154,7 @@ Respond with ONLY a JSON object:
 - {"action":"skip","reason":"<brief reason>"}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: LLM_MODEL,
-      contents: prompt,
-    });
+    const response = await generateWithRetry(LLM_MODEL, prompt);
     const text = response.text?.trim() || "";
     const decision = extractJsonObject(text);
     if (!decision) return { action: "create" };
