@@ -91,3 +91,30 @@ Optional:
 ALLOW_ZERO_EMBEDDINGS=false   # set true for local testing without Gemini
 DASHBOARD_API_PORT=8787
 ```
+
+# Agent Integration Instructions
+
+To integrate OpenContextFS into Claude or Opencode using the CLI, refer to this section. Since there is no MCP, you must use the terminal (`bash` tool) to invoke `context-cli`.
+
+**IMPORTANT**: Always use the `-P, --project <project>` flag when managing or searching memories/context so that information is correctly isolated by project.
+
+### 1. Saving context/memory
+Whenever you learn something new, solve a complex bug, or want to remember a project convention:
+```bash
+context-cli memory store "In project X, we use Vitest instead of Jest for unit testing." -c observation -o agent -i 5 -P my-project
+```
+
+### 2. Searching memory
+If you are starting a new session or need to recall constraints or architecture decisions for the current task:
+```bash
+context-cli memory search "testing framework" -k 5 -P my-project
+```
+
+### 3. Managing Context Nodes (Hierarchical Knowledge)
+For broader documentation or code architecture, you can store and read nodes:
+```bash
+context-cli node store "contextfs://my-project/backend/auth" "Auth Module" "Uses JWT with RSA signatures." -P my-project
+context-cli node ls "contextfs://my-project/backend" -P my-project
+```
+
+Agents should proactively search memories when beginning a task and store important discoveries or user preferences as they work.

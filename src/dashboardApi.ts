@@ -48,9 +48,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
     // Dashboard overview
     if (pathname === "/api/dashboard" && req.method === "GET") {
       const [skills, memories, contextNodes] = await Promise.all([
-        cm.listSkills(limit),
-        cm.listMemories(limit),
-        cm.listContextNodes(undefined, limit),
+        cm.listSkills({}, limit),
+        cm.listMemories({}, limit),
+        cm.listContextNodes(undefined, {}, limit),
       ]);
       sendJson(res, 200, {
         counts: { skills: skills.length, memories: memories.length, contextNodes: contextNodes.length },
@@ -86,12 +86,12 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
     // Skills CRUD
     if (pathname === "/api/skills") {
       if (req.method === "GET") {
-        sendJson(res, 200, await cm.listSkills(limit));
+        sendJson(res, 200, await cm.listSkills({}, limit));
         return;
       }
       if (req.method === "POST") {
         const body = await readBody(req);
-        const result = await cm.addSkill(body.name, body.description, body.metadata ?? {});
+        const result = await cm.addSkill(body.name, body.description, body.project, body.metadata ?? {});
         sendJson(res, 201, result);
         return;
       }
@@ -112,7 +112,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
     // Memories CRUD
     if (pathname === "/api/memories") {
       if (req.method === "GET") {
-        sendJson(res, 200, await cm.listMemories(limit));
+        sendJson(res, 200, await cm.listMemories({}, limit));
         return;
       }
       if (req.method === "POST") {
@@ -123,6 +123,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
           body.category ?? "observation",
           body.owner ?? "agent",
           body.importance ?? 5,
+          body.project,
           body.metadata ?? {},
           useRouter
         );
@@ -147,7 +148,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
     if (pathname === "/api/context") {
       if (req.method === "GET") {
         const parentUri = parsed.searchParams.get("parentUri") || undefined;
-        sendJson(res, 200, await cm.listContextNodes(parentUri, limit));
+        sendJson(res, 200, await cm.listContextNodes(parentUri, {}, limit));
         return;
       }
       if (req.method === "POST") {
@@ -160,6 +161,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
           body.overview,
           body.content,
           body.parent_uri || null,
+          body.project,
           body.metadata ?? {},
           useRouter
         );

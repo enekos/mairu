@@ -28,6 +28,7 @@ export class TursoVectorDB {
     await this.client.executeMultiple(`
       CREATE TABLE IF NOT EXISTS ${SKILLS_TABLE} (
         id TEXT PRIMARY KEY,
+        project TEXT,
         name TEXT NOT NULL,
         description TEXT NOT NULL,
         embedding F32_BLOB(${EMBEDDING_DIM}),
@@ -39,6 +40,7 @@ export class TursoVectorDB {
 
       CREATE TABLE IF NOT EXISTS ${MEMORIES_TABLE} (
         id TEXT PRIMARY KEY,
+        project TEXT,
         content TEXT NOT NULL,
         category TEXT NOT NULL,
         owner TEXT NOT NULL,
@@ -52,6 +54,7 @@ export class TursoVectorDB {
 
       CREATE TABLE IF NOT EXISTS ${CONTEXT_TABLE} (
         uri TEXT PRIMARY KEY,
+        project TEXT,
         parent_uri TEXT,
         name TEXT NOT NULL,
         abstract TEXT NOT NULL,
@@ -103,10 +106,11 @@ export class TursoVectorDB {
   async addSkill(skill: AgentSkill, embedding: number[]) {
     const ts = this.now();
     await this.client.execute({
-      sql: `INSERT INTO ${SKILLS_TABLE} (id, name, description, embedding, metadata, created_at, updated_at)
-            VALUES (?, ?, ?, vector(?), ?, ?, ?)`,
+      sql: `INSERT INTO ${SKILLS_TABLE} (id, project, name, description, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         skill.id,
+        skill.project || null,
         skill.name,
         skill.description,
         this.vec(embedding),
@@ -141,14 +145,16 @@ export class TursoVectorDB {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `SELECT id, name, description, metadata, created_at, updated_at,
+      sql: `SELECT id, project, name, description, metadata, created_at, updated_at,
                    vector_distance_cos(embedding, vector(?)) as distance
             FROM ${SKILLS_TABLE}
-            WHERE (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
+            WHERE (? IS NULL OR project = ?)
+              AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
             ORDER BY distance ASC
             LIMIT ?`,
       args: [
         this.vec(queryEmbedding),
+        options.project ?? null, options.project ?? null,
         options.maxAgeDays ?? null,
         options.maxAgeDays ?? null,
         limit,
@@ -157,10 +163,15 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listSkills(limit = 100) {
+  async listSkills(options?: SkillSearchOptions, limit = 100) {
     const res = await this.client.execute({
-      sql: `SELECT id, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE} ORDER BY updated_at DESC LIMIT ?`,
-      args: [limit],
+      sql: `SELECT id, project, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE}
+            WHERE (? IS NULL OR project = ?)
+            ORDER BY updated_at DESC LIMIT ?`,
+      args: [
+        options?.project ?? null, options?.project ?? null,
+        limit
+      ],
     });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
@@ -176,10 +187,11 @@ export class TursoVectorDB {
   async addMemory(memory: AgentMemory, embedding: number[]) {
     const ts = this.now();
     await this.client.execute({
-      sql: `INSERT INTO ${MEMORIES_TABLE} (id, content, category, owner, importance, embedding, metadata, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
+      sql: `INSERT INTO ${MEMORIES_TABLE} (id, project, content, category, owner, importance, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         memory.id,
+        memory.project || null,
         memory.content,
         memory.category,
         memory.owner,
@@ -216,10 +228,11 @@ export class TursoVectorDB {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `SELECT id, content, category, owner, importance, metadata, created_at, updated_at,
+      sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at,
                    vector_distance_cos(embedding, vector(?)) as distance
             FROM ${MEMORIES_TABLE}
-            WHERE (? IS NULL OR owner = ?)
+            WHERE (? IS NULL OR project = ?)
+              AND (? IS NULL OR owner = ?)
               AND (? IS NULL OR category = ?)
               AND (? IS NULL OR importance >= ?)
               AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
@@ -227,6 +240,7 @@ export class TursoVectorDB {
             LIMIT ?`,
       args: [
         this.vec(queryEmbedding),
+        options.project ?? null, options.project ?? null,
         options.owner ?? null, options.owner ?? null,
         options.category ?? null, options.category ?? null,
         options.minImportance ?? null, options.minImportance ?? null,
@@ -237,10 +251,15 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listMemories(limit = 100) {
+  async listMemories(options?: MemorySearchOptions, limit = 100) {
     const res = await this.client.execute({
-      sql: `SELECT id, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE} ORDER BY updated_at DESC LIMIT ?`,
-      args: [limit],
+      sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE}
+            WHERE (? IS NULL OR project = ?)
+            ORDER BY updated_at DESC LIMIT ?`,
+      args: [
+        options?.project ?? null, options?.project ?? null,
+        limit
+      ],
     });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
@@ -256,10 +275,11 @@ export class TursoVectorDB {
   async addContextNode(node: AgentContextNode, embedding: number[]) {
     const ts = this.now();
     await this.client.execute({
-      sql: `INSERT INTO ${CONTEXT_TABLE} (uri, parent_uri, name, abstract, overview, content, embedding, metadata, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
+      sql: `INSERT INTO ${CONTEXT_TABLE} (uri, project, parent_uri, name, abstract, overview, content, embedding, metadata, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, vector(?), ?, ?, ?)`,
       args: [
         node.uri,
+        node.project || null,
         node.parent_uri,
         node.name,
         node.abstract,
@@ -298,15 +318,17 @@ export class TursoVectorDB {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
-      sql: `SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at,
+      sql: `SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at,
                    vector_distance_cos(embedding, vector(?)) as distance
             FROM ${CONTEXT_TABLE}
-            WHERE (? IS NULL OR parent_uri = ?)
+            WHERE (? IS NULL OR project = ?)
+              AND (? IS NULL OR parent_uri = ?)
               AND (? IS NULL OR julianday(created_at) >= julianday('now') - ?)
             ORDER BY distance ASC
             LIMIT ?`,
       args: [
         this.vec(queryEmbedding),
+        options.project ?? null, options.project ?? null,
         options.parentUri ?? null, options.parentUri ?? null,
         options.maxAgeDays ?? null, options.maxAgeDays ?? null,
         limit,
@@ -315,15 +337,18 @@ export class TursoVectorDB {
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
 
-  async listContextNodes(parentUri?: string, limit = 100) {
+  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100) {
     const res = parentUri
       ? await this.client.execute({
-          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? ORDER BY updated_at DESC LIMIT ?`,
-          args: [parentUri, limit],
+          sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? AND (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
+          args: [parentUri, options?.project ?? null, options?.project ?? null, limit],
         })
       : await this.client.execute({
-          sql: `SELECT uri, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} ORDER BY updated_at DESC LIMIT ?`,
-          args: [limit],
+          sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
+          args: [
+        options?.project ?? null, options?.project ?? null,
+        limit
+      ],
         });
     return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
   }
@@ -335,10 +360,10 @@ export class TursoVectorDB {
   async getContextSubtree(nodeUri: string) {
     const res = await this.client.execute({
       sql: `WITH RECURSIVE subtree AS (
-              SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
+              SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
               FROM ${CONTEXT_TABLE} WHERE uri = ?
               UNION ALL
-              SELECT c.uri, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, s.depth + 1
+              SELECT c.uri, c.project, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, s.depth + 1
               FROM ${CONTEXT_TABLE} c JOIN subtree s ON c.parent_uri = s.uri
             )
             SELECT * FROM subtree ORDER BY depth ASC`,
@@ -350,10 +375,10 @@ export class TursoVectorDB {
   async getContextPath(nodeUri: string) {
     const res = await this.client.execute({
       sql: `WITH RECURSIVE ancestors AS (
-              SELECT uri, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
+              SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
               FROM ${CONTEXT_TABLE} WHERE uri = ?
               UNION ALL
-              SELECT c.uri, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, a.depth - 1
+              SELECT c.uri, c.project, c.parent_uri, c.name, c.abstract, c.overview, c.content, c.metadata, c.created_at, c.updated_at, a.depth - 1
               FROM ${CONTEXT_TABLE} c JOIN ancestors a ON a.parent_uri = c.uri
             )
             SELECT * FROM ancestors ORDER BY depth ASC`,

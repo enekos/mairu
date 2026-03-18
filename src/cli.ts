@@ -21,12 +21,13 @@ const memCmd = program.command("memory").description("Manage memories");
 memCmd
   .command("store <content>")
   .description("Intelligently store a memory (LLM decides create/update/skip)")
+  .option("-P, --project <project>", "Project namespace")
   .option("-c, --category <cat>", "Category", "observation")
   .option("-o, --owner <owner>", "Owner: user | agent | system", "agent")
   .option("-i, --importance <n>", "Importance 1-10", "5")
   .action(async (content, opts) => {
     try {
-      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), {}, true);
+      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), opts.project, {}, true);
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -34,12 +35,13 @@ memCmd
 memCmd
   .command("add <content>")
   .description("Force-create a new memory (skips LLM dedup check)")
+  .option("-P, --project <project>", "Project namespace")
   .option("-c, --category <cat>", "Category", "observation")
   .option("-o, --owner <owner>", "Owner: user | agent | system", "agent")
   .option("-i, --importance <n>", "Importance 1-10", "1")
   .action(async (content, opts) => {
     try {
-      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), {}, false);
+      const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), opts.project, {}, false);
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -47,6 +49,7 @@ memCmd
 memCmd
   .command("search <query>")
   .description("Search memories with hybrid vector + keyword re-ranking")
+  .option("-P, --project <project>", "Filter by project")
   .option("-k, --topK <n>", "Results to return", "10")
   .option("-t, --threshold <n>", "Max cosine distance (0-2)")
   .option("--owner <owner>", "Filter by owner")
@@ -58,6 +61,7 @@ memCmd
       const results = await cm.searchMemories(query, {
         topK: parseInt(opts.topK),
         threshold: opts.threshold !== undefined ? parseFloat(opts.threshold) : undefined,
+        project: opts.project,
         owner: opts.owner,
         category: opts.category,
         minImportance: opts.minImportance !== undefined ? parseInt(opts.minImportance) : undefined,
@@ -70,12 +74,14 @@ memCmd
 memCmd
   .command("update <id>")
   .description("Update a memory's content or importance")
+  .option("-P, --project <project>", "New project assignment")
   .option("--content <text>", "New content")
   .option("-i, --importance <n>", "New importance 1-10")
   .action(async (id, opts) => {
     try {
       const result = await cm.updateMemory(id, {
         content: opts.content,
+        project: opts.project,
         importance: opts.importance !== undefined ? parseInt(opts.importance) : undefined,
       });
       console.log(JSON.stringify(result, null, 2));
@@ -85,10 +91,11 @@ memCmd
 memCmd
   .command("list")
   .description("List all memories (most recently updated first)")
+  .option("-P, --project <project>", "Filter by project")
   .option("-l, --limit <n>", "Max results", "100")
   .action(async (opts) => {
     try {
-      console.log(JSON.stringify(await cm.listMemories(parseInt(opts.limit)), null, 2));
+      console.log(JSON.stringify(await cm.listMemories({ project: opts.project }, parseInt(opts.limit)), null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
@@ -110,15 +117,17 @@ const skillCmd = program.command("skill").description("Manage skills");
 skillCmd
   .command("add <name> <description>")
   .description("Add a new skill")
-  .action(async (name, description) => {
+  .option("-P, --project <project>", "Project namespace")
+  .action(async (name, description, opts) => {
     try {
-      console.log(JSON.stringify(await cm.addSkill(name, description), null, 2));
+      console.log(JSON.stringify(await cm.addSkill(name, description, opts.project), null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
 skillCmd
   .command("search <query>")
   .description("Search skills with hybrid vector + keyword re-ranking")
+  .option("-P, --project <project>", "Filter by project")
   .option("-k, --topK <n>", "Results to return", "10")
   .option("-t, --threshold <n>", "Max cosine distance (0-2)")
   .option("--maxAgeDays <n>", "Max age in days")
@@ -136,10 +145,11 @@ skillCmd
 skillCmd
   .command("list")
   .description("List all skills")
+  .option("-P, --project <project>", "Filter by project")
   .option("-l, --limit <n>", "Max results", "100")
   .action(async (opts) => {
     try {
-      console.log(JSON.stringify(await cm.listSkills(parseInt(opts.limit)), null, 2));
+      console.log(JSON.stringify(await cm.listSkills({ project: opts.project }, parseInt(opts.limit)), null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
@@ -161,12 +171,13 @@ const nodeCmd = program.command("node").description("Manage hierarchical context
 nodeCmd
   .command("store <uri> <name> <abstract>")
   .description("Intelligently store a context node (LLM decides create/update/skip)")
+  .option("-P, --project <project>", "Project namespace")
   .option("-o, --overview <text>", "L1 overview content")
   .option("-c, --content <text>", "L2 detailed content")
   .option("-p, --parent <uri>", "Parent node URI")
   .action(async (uri, name, abstract, opts) => {
     try {
-      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, {}, true);
+      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, opts.project, {}, true);
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -174,12 +185,13 @@ nodeCmd
 nodeCmd
   .command("add <uri> <name> <abstract>")
   .description("Force-create a context node (skips LLM dedup check)")
+  .option("-P, --project <project>", "Project namespace")
   .option("-o, --overview <text>", "L1 overview content")
   .option("-c, --content <text>", "L2 detailed content")
   .option("-p, --parent <uri>", "Parent node URI")
   .action(async (uri, name, abstract, opts) => {
     try {
-      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, {}, false);
+      const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, opts.project, {}, false);
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -187,6 +199,7 @@ nodeCmd
 nodeCmd
   .command("search <query>")
   .description("Search context nodes (searches name, abstract, overview, content)")
+  .option("-P, --project <project>", "Filter by project")
   .option("-k, --topK <n>", "Results to return", "10")
   .option("-t, --threshold <n>", "Max cosine distance (0-2)")
   .option("--parentUri <uri>", "Filter by parent URI")
@@ -206,6 +219,7 @@ nodeCmd
 nodeCmd
   .command("update <uri>")
   .description("Update a context node")
+  .option("-P, --project <project>", "New project assignment")
   .option("--abstract <text>", "New abstract")
   .option("--overview <text>", "New overview")
   .option("--content <text>", "New content")
@@ -223,11 +237,12 @@ nodeCmd
 nodeCmd
   .command("list")
   .description("List context nodes")
+  .option("-P, --project <project>", "Filter by project")
   .option("-p, --parent <uri>", "Filter by parent URI")
   .option("-l, --limit <n>", "Max results", "100")
   .action(async (opts) => {
     try {
-      console.log(JSON.stringify(await cm.listContextNodes(opts.parent, parseInt(opts.limit)), null, 2));
+      console.log(JSON.stringify(await cm.listContextNodes(opts.parent, { project: opts.project }, parseInt(opts.limit)), null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
@@ -290,6 +305,7 @@ function prompt(rl: readline.Interface, question: string): Promise<string> {
 program
   .command("ingest [file]")
   .description("Parse an MD file or free text via LLM into context nodes, review, then persist")
+  .option("-P, --project <project>", "Project namespace for ingested nodes")
   .option("--text <text>", "Free text to ingest (alternative to file argument)")
   .option("--base-uri <uri>", "Base URI namespace for generated nodes", "contextfs://ingested")
   .option("-y, --yes", "Skip interactive review and persist all proposed nodes")
@@ -375,7 +391,7 @@ program
 
       const results = await Promise.all(
         approved.map((n) =>
-          cm.addContextNode(n.uri, n.name, n.abstract, n.overview, n.content, n.parent_uri, {}, useRouter)
+          cm.addContextNode(n.uri, n.name, n.abstract, n.overview, n.content, n.parent_uri, opts.project, {}, useRouter)
             .then((result) => ({ n, result }))
         )
       );

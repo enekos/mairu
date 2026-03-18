@@ -1,4 +1,5 @@
 export interface AgentSkill {
+  project?: string;
   id: string;
   name: string;
   description: string;
@@ -30,6 +31,7 @@ export type MemoryCategory =
 export type MemoryOwner = "user" | "agent" | "system";
 
 export interface AgentMemory {
+  project?: string;
   id: string;
   content: string;
   category: MemoryCategory;
@@ -42,6 +44,7 @@ export interface AgentMemory {
 
 // OpenContextFS File System Paradigm Context Node
 export interface AgentContextNode {
+  project?: string;
   uri: string;           // Unique resource identifier (e.g., contextfs://project/backend/auth)
   parent_uri: string | null;
   name: string;
@@ -54,6 +57,7 @@ export interface AgentContextNode {
 }
 
 export interface MemorySearchOptions {
+  project?: string;
   topK?: number;
   threshold?: number;
   owner?: MemoryOwner;
@@ -64,6 +68,7 @@ export interface MemorySearchOptions {
 }
 
 export interface SkillSearchOptions {
+  project?: string;
   topK?: number;
   threshold?: number;
   maxAgeDays?: number;
@@ -71,6 +76,7 @@ export interface SkillSearchOptions {
 }
 
 export interface ContextSearchOptions {
+  project?: string;
   topK?: number;
   threshold?: number;
   parentUri?: string;

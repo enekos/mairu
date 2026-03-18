@@ -34,10 +34,11 @@ export class ContextManager {
   // Skills
   // ---------------------------------------------------------------------------
 
-  async addSkill(name: string, description: string, metadata: Record<string, any> = {}) {
+  async addSkill(name: string, description: string, project?: string, metadata: Record<string, any> = {}) {
     const embedding = await Embedder.getEmbedding(`${name}: ${description}`);
     const skill = {
       id: `skill_${randomUUID().replace(/-/g, "")}`,
+      project,
       name,
       description,
       metadata,
@@ -48,11 +49,11 @@ export class ContextManager {
     return skill;
   }
 
-  async updateSkill(id: string, updates: { name?: string; description?: string; metadata?: Record<string, any> }) {
+  async updateSkill(id: string, updates: { name?: string; description?: string; project?: string; metadata?: Record<string, any> }) {
     let embedding: number[] | undefined;
     if (updates.name !== undefined || updates.description !== undefined) {
       // Re-embed with updated name/description (need current values if partial)
-      const current = await this.db.listSkills(1000).then((rows) => rows.find((r: any) => r.id === id));
+      const current = await this.db.listSkills({}, 1000).then((rows) => rows.find((r: any) => r.id === id));
       const name = updates.name ?? (current as any)?.name ?? "";
       const description = updates.description ?? (current as any)?.description ?? "";
       embedding = await Embedder.getEmbedding(`${name}: ${description}`);
@@ -82,8 +83,8 @@ export class ContextManager {
     return results.slice(0, topK);
   }
 
-  async listSkills(limit = 100) {
-    return this.db.listSkills(limit);
+  async listSkills(options?: SkillSearchOptions, limit = 100) {
+    return this.db.listSkills(options, limit);
   }
 
   async deleteSkill(id: string) {
@@ -103,6 +104,7 @@ export class ContextManager {
     category: MemoryCategory,
     owner: MemoryOwner,
     importance = 1,
+    project?: string,
     metadata: Record<string, any> = {},
     useRouter = true
   ): Promise<any | SkippedWrite | UpdatedWrite> {
@@ -110,7 +112,7 @@ export class ContextManager {
 
     if (useRouter) {
       // Fetch top similar candidates for the LLM to consider
-      const candidates = await this.db.searchMemories(embedding, { topK: 5 });
+      const candidates = await this.db.searchMemories(embedding, { topK: 5, project });
       const ranked = hybridRerank(candidates, content, ["content"], DEFAULT_MEMORY_WEIGHTS);
 
       const routerCandidates: RouterCandidate[] = ranked.slice(0, 5).map((r) => ({
@@ -139,6 +141,7 @@ export class ContextManager {
     // Create
     const memory = {
       id: `mem_${randomUUID().replace(/-/g, "")}`,
+      project,
       content,
       category,
       owner,
@@ -153,7 +156,7 @@ export class ContextManager {
 
   async updateMemory(
     id: string,
-    updates: { content?: string; importance?: number; metadata?: Record<string, any> }
+    updates: { content?: string; importance?: number; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
     if (updates.content !== undefined) {
@@ -184,8 +187,8 @@ export class ContextManager {
     return results.slice(0, topK);
   }
 
-  async listMemories(limit = 100) {
-    return this.db.listMemories(limit);
+  async listMemories(options?: MemorySearchOptions, limit = 100) {
+    return this.db.listMemories(options, limit);
   }
 
   async deleteMemory(id: string) {
@@ -206,13 +209,14 @@ export class ContextManager {
     overview?: string,
     content?: string,
     parentUri: string | null = null,
+    project?: string,
     metadata: Record<string, any> = {},
     useRouter = true
   ): Promise<AgentContextNode | SkippedWrite | UpdatedWrite> {
     const embedding = await Embedder.getEmbedding(`${name}: ${abstract}`);
 
     if (useRouter) {
-      const candidates = await this.db.searchContextNodes(embedding, { topK: 5 });
+      const candidates = await this.db.searchContextNodes(embedding, { topK: 5, project });
       const ranked = hybridRerank(candidates, `${name}: ${abstract}`, ["name", "abstract"], DEFAULT_CONTEXT_WEIGHTS);
 
       const routerCandidates: RouterCandidate[] = ranked.slice(0, 5).map((r) => ({
@@ -241,6 +245,7 @@ export class ContextManager {
     // Create
     const node = {
       uri,
+      project,
       parent_uri: parentUri,
       name,
       abstract,
@@ -256,7 +261,7 @@ export class ContextManager {
 
   async updateContextNode(
     uri: string,
-    updates: { abstract?: string; overview?: string; content?: string; metadata?: Record<string, any> }
+    updates: { abstract?: string; overview?: string; content?: string; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
     if (updates.abstract !== undefined) {
@@ -288,8 +293,8 @@ export class ContextManager {
     return results.slice(0, topK);
   }
 
-  async listContextNodes(parentUri?: string, limit = 100) {
-    return this.db.listContextNodes(parentUri, limit);
+  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100) {
+    return this.db.listContextNodes(parentUri, options, limit);
   }
 
   async deleteContextNode(uri: string) {
