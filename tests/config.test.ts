@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { assertEmbeddingDimension, getEmbeddingConfig } from "../src/embeddingConfig";
+import { assertEmbeddingDimension, config } from "../src/config";
 
 describe("assertEmbeddingDimension", () => {
-  const dimension = getEmbeddingConfig().dimension;
+  const dimension = config.embedding.dimension;
 
   it("does not throw for correctly sized vector", () => {
     const vector = Array(dimension).fill(0);
@@ -24,14 +24,14 @@ describe("assertEmbeddingDimension", () => {
   });
 });
 
-describe("getEmbeddingConfig", () => {
+describe("config.embedding", () => {
   it("returns model, dimension, and allowZeroEmbeddings", () => {
-    const config = getEmbeddingConfig();
-    expect(config).toHaveProperty("model");
-    expect(config).toHaveProperty("dimension");
-    expect(config).toHaveProperty("allowZeroEmbeddings");
-    expect(typeof config.model).toBe("string");
-    expect(typeof config.dimension).toBe("number");
-    expect(typeof config.allowZeroEmbeddings).toBe("boolean");
+    const embedConfig = config.embedding;
+    expect(embedConfig).toHaveProperty("model");
+    expect(embedConfig).toHaveProperty("dimension");
+    expect(embedConfig).toHaveProperty("allowZeroEmbeddings");
+    expect(typeof embedConfig.model).toBe("string");
+    expect(typeof embedConfig.dimension).toBe("number");
+    expect(typeof embedConfig.allowZeroEmbeddings).toBe("boolean");
   });
 });

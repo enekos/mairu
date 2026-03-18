@@ -9,13 +9,14 @@ import { GoogleGenAI } from "@google/genai";
 import * as dotenv from "dotenv";
 import * as path from "path";
 import { extractJsonObject } from "./jsonUtils";
+import { config } from "./config";
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
-const LLM_MODEL = process.env.LLM_MODEL || "gemini-2.0-flash-lite";
+const LLM_MODEL = config.llmModel;
 
-const ai = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+const ai = config.geminiApiKey
+  ? new GoogleGenAI({ apiKey: config.geminiApiKey })
   : null;
 
 export type RouterAction =

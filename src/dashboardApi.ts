@@ -3,11 +3,12 @@ import * as path from "path";
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { URL } from "url";
 import { createContextManager } from "./client";
+import { config } from "./config";
 
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
 const cm = createContextManager();
-const port = Number(process.env.DASHBOARD_API_PORT || 8787);
+const port = config.dashboardApiPort;
 
 function sendJson(res: ServerResponse<IncomingMessage>, statusCode: number, body: unknown) {
   res.writeHead(statusCode, {

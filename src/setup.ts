@@ -1,10 +1,11 @@
 import * as dotenv from "dotenv";
 import { TursoVectorDB } from "./TursoVectorDB";
+import { config } from "./config";
 
 dotenv.config({ path: require("path").resolve(__dirname, "..", ".env") });
 
-const url = process.env.TURSO_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
+const url = config.tursoUrl;
+const authToken = config.tursoAuthToken;
 
 if (!url) {
   console.error("Please set TURSO_URL and TURSO_AUTH_TOKEN in your .env file");

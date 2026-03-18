@@ -1,13 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import * as dotenv from "dotenv";
-import { assertEmbeddingDimension, getEmbeddingConfig } from "./embeddingConfig";
+import { assertEmbeddingDimension, config } from "./config";
 
 dotenv.config({ path: require("path").resolve(__dirname, "..", ".env") });
 
-const embeddingConfig = getEmbeddingConfig();
-
-const ai = process.env.GEMINI_API_KEY
-  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+const ai = config.geminiApiKey
+  ? new GoogleGenAI({ apiKey: config.geminiApiKey })
   : null;
 
 const MAX_RETRIES = 3;
@@ -16,17 +14,17 @@ const RETRY_DELAY_MS = 1000;
 export class Embedder {
   static async getEmbedding(text: string, attempt = 1): Promise<number[]> {
     if (!ai) {
-      if (!embeddingConfig.allowZeroEmbeddings) {
+      if (!config.embedding.allowZeroEmbeddings) {
         throw new Error(
           "GEMINI_API_KEY is not set and ALLOW_ZERO_EMBEDDINGS=false. Set a key or explicitly enable zero embeddings."
         );
       }
-      return Array(embeddingConfig.dimension).fill(0);
+      return Array(config.embedding.dimension).fill(0);
     }
 
     try {
       const response = await ai.models.embedContent({
-        model: embeddingConfig.model,
+        model: config.embedding.model,
         contents: text,
       });
       if (

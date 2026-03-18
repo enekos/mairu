@@ -7,15 +7,15 @@ import {
   SkillSearchOptions,
   ContextSearchOptions,
 } from "./types";
-import { assertEmbeddingDimension, getEmbeddingConfig } from "./embeddingConfig";
+import { assertEmbeddingDimension, config } from "./config";
 
-const EMBEDDING_DIM = getEmbeddingConfig().dimension;
+const EMBEDDING_DIM = config.embedding.dimension;
 const SKILLS_TABLE = "agent_skills";
 const MEMORIES_TABLE = "agent_memories";
 const CONTEXT_TABLE = "agent_context_nodes";
 
 // Multiplier for how many vector candidates to fetch before application-side re-ranking
-const CANDIDATE_MULTIPLIER = Number(process.env.CANDIDATE_MULTIPLIER || "4");
+const CANDIDATE_MULTIPLIER = config.candidateMultiplier;
 
 export class TursoVectorDB {
   private client: Client;
