@@ -96,6 +96,41 @@
   let addingContext = false;
   let lastWriteResult: any = null;
 
+  // Edit states
+  let editingId: string | null = null;
+  let editingType: "skill" | "memory" | "context" | null = null;
+  let editForm: any = {};
+
+  function startEdit(type: "skill" | "memory" | "context", item: any) {
+    editingType = type;
+    editingId = type === "context" ? item.uri : item.id;
+    editForm = { ...item };
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    editingType = null;
+    editForm = {};
+  }
+
+  async function saveEdit() {
+    loading = true; error = ""; lastWriteResult = null;
+    try {
+      const endpoint = editingType === "skill" ? "skills" : editingType === "memory" ? "memories" : "context";
+      const res = await fetch(`${API_BASE}/api/${endpoint}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) throw new Error(`Failed to update ${editingType}`);
+      const result = await res.json();
+      lastWriteResult = result;
+      cancelEdit();
+      await load();
+    } catch (e: any) { error = e.message; }
+    finally { loading = false; }
+  }
+
   // ── Data loading ────────────────────────────────────────────────────────────
 
   async function load() {
@@ -417,26 +452,42 @@
             <tbody>
               {#each displaySkills as row}
                 <tr>
-                  <td>
-                    <div class="name-cell">
-                      <strong>{row.name}</strong>
-                      <span class="desc">{row.description}</span>
-                      <button class="copy-btn" on:click={() => copy(row.id)} title="Copy ID">⎘ {row.id?.slice(0,8)}</button>
-                    </div>
-                  </td>
-                  {#if hasSearchResults}
-                    <td>
-                      <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
-                        {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
-                      </span>
-                      <div class="score-detail">
-                        vec {((row._vector_score ?? 0)*100).toFixed(0)}
-                        kw {((row._keyword_score ?? 0)*100).toFixed(0)}
+                  {#if editingId === row.id && editingType === "skill"}
+                    <td colspan={hasSearchResults ? 4 : 3}>
+                      <div class="edit-form-inline">
+                        <input type="text" bind:value={editForm.name} placeholder="Name" class="edit-input" />
+                        <textarea bind:value={editForm.description} placeholder="Description" rows="2" class="edit-textarea"></textarea>
+                        <div class="edit-actions">
+                          <button class="btn-primary" on:click={saveEdit} disabled={loading}>Save</button>
+                          <button class="btn-cancel" on:click={cancelEdit} disabled={loading}>Cancel</button>
+                        </div>
                       </div>
                     </td>
+                  {:else}
+                    <td>
+                      <div class="name-cell">
+                        <strong>{row.name}</strong>
+                        <span class="desc">{row.description}</span>
+                        <button class="copy-btn" on:click={() => copy(row.id)} title="Copy ID">⎘ {row.id?.slice(0,8)}</button>
+                      </div>
+                    </td>
+                    {#if hasSearchResults}
+                      <td>
+                        <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
+                          {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
+                        </span>
+                        <div class="score-detail">
+                          vec {((row._vector_score ?? 0)*100).toFixed(0)}
+                          kw {((row._keyword_score ?? 0)*100).toFixed(0)}
+                        </div>
+                      </td>
+                    {/if}
+                    <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
+                    <td class="row-actions">
+                      <button class="btn-edit" on:click={() => startEdit("skill", row)} title="Edit">✎</button>
+                      <button class="btn-del" on:click={() => del("skills", "id", row.id)} title="Delete">✕</button>
+                    </td>
                   {/if}
-                  <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
-                  <td><button class="btn-del" on:click={() => del("skills", "id", row.id)}>✕</button></td>
                 </tr>
               {/each}
             </tbody>
@@ -504,33 +555,70 @@
             <tbody>
               {#each displayMemories as row}
                 <tr>
-                  <td>
-                    <div class="content-cell">
-                      {row.content}
-                      <button class="copy-btn" on:click={() => copy(row.id)} title="Copy ID">⎘ {row.id?.slice(0,8)}</button>
-                    </div>
-                  </td>
-                  <td>
-                    <span class="cat-badge" style="background:{categoryColors[row.category] || '#64748b'}">{row.category}</span>
-                    <div class="owner-text">{row.owner}</div>
-                  </td>
-                  <td>
-                    <span class="imp-badge {impColor(row.importance)}">{row.importance}</span>
-                  </td>
-                  {#if hasSearchResults}
-                    <td>
-                      <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
-                        {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
-                      </span>
-                      <div class="score-detail">
-                        vec {((row._vector_score ?? 0)*100).toFixed(0)}
-                        kw {((row._keyword_score ?? 0)*100).toFixed(0)}
-                        imp {((row._importance_score ?? 0)*100).toFixed(0)}
+                  {#if editingId === row.id && editingType === "memory"}
+                    <td colspan={hasSearchResults ? 6 : 5}>
+                      <div class="edit-form-inline">
+                        <textarea bind:value={editForm.content} placeholder="Content" rows="3" class="edit-textarea"></textarea>
+                        <div class="edit-row">
+                          <label>
+                            Category:
+                            <select bind:value={editForm.category}>
+                              {#each ["observation","reflection","profile","preferences","entities","events","cases","patterns","decision","constraint","architecture"] as cat}
+                                <option value={cat}>{cat}</option>
+                              {/each}
+                            </select>
+                          </label>
+                          <label>
+                            Owner:
+                            <select bind:value={editForm.owner}>
+                              <option value="agent">agent</option>
+                              <option value="user">user</option>
+                              <option value="system">system</option>
+                            </select>
+                          </label>
+                          <label>
+                            Importance:
+                            <input type="number" min="1" max="10" bind:value={editForm.importance} style="width:60px" />
+                          </label>
+                        </div>
+                        <div class="edit-actions">
+                          <button class="btn-primary" on:click={saveEdit} disabled={loading}>Save</button>
+                          <button class="btn-cancel" on:click={cancelEdit} disabled={loading}>Cancel</button>
+                        </div>
                       </div>
                     </td>
+                  {:else}
+                    <td>
+                      <div class="content-cell">
+                        {row.content}
+                        <button class="copy-btn" on:click={() => copy(row.id)} title="Copy ID">⎘ {row.id?.slice(0,8)}</button>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="cat-badge" style="background:{categoryColors[row.category] || '#64748b'}">{row.category}</span>
+                      <div class="owner-text">{row.owner}</div>
+                    </td>
+                    <td>
+                      <span class="imp-badge {impColor(row.importance)}">{row.importance}</span>
+                    </td>
+                    {#if hasSearchResults}
+                      <td>
+                        <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
+                          {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
+                        </span>
+                        <div class="score-detail">
+                          vec {((row._vector_score ?? 0)*100).toFixed(0)}
+                          kw {((row._keyword_score ?? 0)*100).toFixed(0)}
+                          imp {((row._importance_score ?? 0)*100).toFixed(0)}
+                        </div>
+                      </td>
+                    {/if}
+                    <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
+                    <td class="row-actions">
+                      <button class="btn-edit" on:click={() => startEdit("memory", row)} title="Edit">✎</button>
+                      <button class="btn-del" on:click={() => del("memories", "id", row.id)} title="Delete">✕</button>
+                    </td>
                   {/if}
-                  <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
-                  <td><button class="btn-del" on:click={() => del("memories", "id", row.id)}>✕</button></td>
                 </tr>
               {/each}
             </tbody>
@@ -581,29 +669,47 @@
             <tbody>
               {#each displayContext as row}
                 <tr>
-                  <td>
-                    <div class="uri-cell">
-                      <button class="uri-text" on:click={() => copy(row.uri)} title="Copy URI">{row.uri}</button>
-                      <span class="node-name">{row.name}</span>
-                      {#if row.parent_uri}
-                        <span class="parent-uri">↳ {row.parent_uri}</span>
-                      {/if}
-                    </div>
-                  </td>
-                  <td class="abstract-cell">{row.abstract}</td>
-                  {#if hasSearchResults}
-                    <td>
-                      <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
-                        {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
-                      </span>
-                      <div class="score-detail">
-                        vec {((row._vector_score ?? 0)*100).toFixed(0)}
-                        kw {((row._keyword_score ?? 0)*100).toFixed(0)}
+                  {#if editingId === row.uri && editingType === "context"}
+                    <td colspan={hasSearchResults ? 5 : 4}>
+                      <div class="edit-form-inline">
+                        <input type="text" bind:value={editForm.name} placeholder="Name" class="edit-input" />
+                        <textarea bind:value={editForm.abstract} placeholder="Abstract" rows="2" class="edit-textarea"></textarea>
+                        <textarea bind:value={editForm.overview} placeholder="Overview" rows="2" class="edit-textarea"></textarea>
+                        <textarea bind:value={editForm.content} placeholder="Content" rows="3" class="edit-textarea"></textarea>
+                        <div class="edit-actions">
+                          <button class="btn-primary" on:click={saveEdit} disabled={loading}>Save</button>
+                          <button class="btn-cancel" on:click={cancelEdit} disabled={loading}>Cancel</button>
+                        </div>
                       </div>
                     </td>
+                  {:else}
+                    <td>
+                      <div class="uri-cell">
+                        <button class="uri-text" on:click={() => copy(row.uri)} title="Copy URI">{row.uri}</button>
+                        <span class="node-name">{row.name}</span>
+                        {#if row.parent_uri}
+                          <span class="parent-uri">↳ {row.parent_uri}</span>
+                        {/if}
+                      </div>
+                    </td>
+                    <td class="abstract-cell">{row.abstract}</td>
+                    {#if hasSearchResults}
+                      <td>
+                        <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">
+                          {((row._hybrid_score ?? 0) * 100).toFixed(0)}%
+                        </span>
+                        <div class="score-detail">
+                          vec {((row._vector_score ?? 0)*100).toFixed(0)}
+                          kw {((row._keyword_score ?? 0)*100).toFixed(0)}
+                        </div>
+                      </td>
+                    {/if}
+                    <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
+                    <td class="row-actions">
+                      <button class="btn-edit" on:click={() => startEdit("context", row)} title="Edit">✎</button>
+                      <button class="btn-del" on:click={() => del("context", "uri", row.uri)} title="Delete">✕</button>
+                    </td>
                   {/if}
-                  <td class="date-cell">{fmtDate(row.updated_at || row.created_at)}</td>
-                  <td><button class="btn-del" on:click={() => del("context", "uri", row.uri)}>✕</button></td>
                 </tr>
               {/each}
             </tbody>

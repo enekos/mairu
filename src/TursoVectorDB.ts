@@ -295,12 +295,13 @@ export class TursoVectorDB {
 
   async updateContextNode(
     uri: string,
-    updates: { abstract?: string; overview?: string; content?: string; metadata?: Record<string, any> },
+    updates: { name?: string; abstract?: string; overview?: string; content?: string; metadata?: Record<string, any> },
     embedding?: number[]
   ) {
     const sets: string[] = ["updated_at = ?"];
     const args: any[] = [this.now()];
 
+    if (updates.name !== undefined) { sets.push("name = ?"); args.push(updates.name); }
     if (updates.abstract !== undefined) { sets.push("abstract = ?"); args.push(updates.abstract); }
     if (updates.overview !== undefined) { sets.push("overview = ?"); args.push(updates.overview); }
     if (updates.content !== undefined) { sets.push("content = ?"); args.push(updates.content); }

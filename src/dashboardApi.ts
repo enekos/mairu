@@ -170,7 +170,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
       }
       if (req.method === "PUT") {
         const body = await readBody(req);
-        const result = await cm.updateContextNode(body.uri, { abstract: body.abstract, overview: body.overview, content: body.content, metadata: body.metadata });
+        const result = await cm.updateContextNode(body.uri, { name: body.name, abstract: body.abstract, overview: body.overview, content: body.content, metadata: body.metadata });
         sendJson(res, 200, result);
         return;
       }

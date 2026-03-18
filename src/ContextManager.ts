@@ -51,11 +51,14 @@ export class ContextManager {
 
   async updateSkill(id: string, updates: { name?: string; description?: string; project?: string; metadata?: Record<string, any> }) {
     let embedding: number[] | undefined;
-    if (updates.name !== undefined || updates.description !== undefined) {
-      // Re-embed with updated name/description (need current values if partial)
-      const current = await this.db.listSkills({}, 1000).then((rows) => rows.find((r: any) => r.id === id));
-      const name = updates.name ?? (current as any)?.name ?? "";
-      const description = updates.description ?? (current as any)?.description ?? "";
+    const current = await this.db.listSkills({}, 1000).then((rows) => rows.find((r: any) => r.id === id)) as any;
+    
+    if (current && (
+      (updates.name !== undefined && updates.name !== current.name) || 
+      (updates.description !== undefined && updates.description !== current.description)
+    )) {
+      const name = updates.name ?? current.name ?? "";
+      const description = updates.description ?? current.description ?? "";
       embedding = await Embedder.getEmbedding(`${name}: ${description}`);
     }
     await this.db.updateSkill(id, updates, embedding);
@@ -159,7 +162,9 @@ export class ContextManager {
     updates: { content?: string; importance?: number; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    if (updates.content !== undefined) {
+    const current = await this.db.listMemories({}, 1000).then((rows) => rows.find((r: any) => r.id === id)) as any;
+    
+    if (current && updates.content !== undefined && updates.content !== current.content) {
       embedding = await Embedder.getEmbedding(updates.content);
     }
     await this.db.updateMemory(id, updates, embedding);
@@ -261,11 +266,18 @@ export class ContextManager {
 
   async updateContextNode(
     uri: string,
-    updates: { abstract?: string; overview?: string; content?: string; project?: string; metadata?: Record<string, any> }
+    updates: { name?: string; abstract?: string; overview?: string; content?: string; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    if (updates.abstract !== undefined) {
-      embedding = await Embedder.getEmbedding(updates.abstract);
+    const current = await this.db.listContextNodes(undefined, {}, 1000).then((rows) => rows.find((r: any) => r.uri === uri)) as any;
+    
+    if (current && (
+      (updates.name !== undefined && updates.name !== current.name) || 
+      (updates.abstract !== undefined && updates.abstract !== current.abstract)
+    )) {
+      const name = updates.name ?? current.name ?? "";
+      const abstract = updates.abstract ?? current.abstract ?? "";
+      embedding = await Embedder.getEmbedding(`${name}: ${abstract}`);
     }
     await this.db.updateContextNode(uri, updates, embedding);
     return { uri, updated: true };

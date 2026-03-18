@@ -94,7 +94,7 @@ DASHBOARD_API_PORT=8787
 
 # Agent Integration Instructions
 
-To integrate OpenContextFS into Claude or Opencode using the CLI, refer to this section. Since there is no MCP, you must use the terminal (`bash` tool) to invoke `context-cli`.
+To integrate OpenContextFS into Claude or Opencode using the CLI, refer to this section. You must use the terminal (`bash` tool) to invoke `context-cli`.
 
 **IMPORTANT**: Always use the `-P, --project <project>` flag when managing or searching memories/context so that information is correctly isolated by project.
 

@@ -5,7 +5,6 @@ Centralized context and memory storage for coding agents with:
 - vector embeddings on Turso/LibSQL
 - hybrid retrieval (vector + keyword + optional recency/importance)
 - a CLI for shell automation
-- an MCP server for tool-enabled agent clients
 - a simple dashboard
 - a retrieval evaluation harness (`Recall@K`, `MRR`, latency)
 
@@ -92,32 +91,6 @@ bun src/cli.ts skill search "postgres optimization" --topK 5
 # context nodes
 bun src/cli.ts node add "contextfs://project/backend" "Backend" "Core backend architecture"
 bun src/cli.ts node search "auth architecture" --topK 5
-```
-
-## MCP Server
-
-Run:
-
-```bash
-bun dist/mcp.js
-```
-
-Claude Desktop config example:
-
-```json
-{
-  "mcpServers": {
-    "turso-context-db": {
-      "command": "bun",
-      "args": ["/absolute/path/to/contextfs/dist/mcp.js"],
-      "env": {
-        "TURSO_URL": "libsql://...",
-        "TURSO_AUTH_TOKEN": "...",
-        "GEMINI_API_KEY": "..."
-      }
-    }
-  }
-}
 ```
 
 ## Retrieval Evaluation Harness

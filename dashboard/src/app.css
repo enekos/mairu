@@ -206,6 +206,51 @@ tbody td { padding: 10px 12px; vertical-align: top; }
 }
 .btn-del:hover { background: #450a0a; color: #fca5a5; }
 
+.btn-edit {
+  background: none; border: none; color: #475569; cursor: pointer;
+  font-size: 14px; padding: 4px 8px; border-radius: 6px;
+}
+.btn-edit:hover { background: #1e3a8a; color: #93c5fd; }
+
+.row-actions {
+  display: flex; gap: 4px; flex-wrap: nowrap;
+}
+
+.edit-form-inline {
+  display: flex; flex-direction: column; gap: 8px;
+  background: #0f172a; padding: 12px; border-radius: 8px;
+  border: 1px solid #1e293b; width: 100%;
+}
+
+.edit-row {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+}
+
+.edit-row label {
+  display: flex; align-items: center; gap: 6px; font-size: 13px; color: #94a3b8;
+}
+
+.edit-row select, .edit-row input {
+  background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+  border-radius: 4px; padding: 4px 6px; font-size: 13px;
+}
+
+.edit-input, .edit-textarea {
+  width: 100%; background: #020617; border: 1px solid #334155;
+  color: #e2e8f0; border-radius: 6px; padding: 8px; font-family: inherit; font-size: 13px;
+  resize: vertical;
+}
+
+.edit-actions {
+  display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px;
+}
+
+.btn-cancel {
+  background: #334155; color: #f1f5f9; border: none; border-radius: 6px;
+  padding: 6px 12px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.btn-cancel:hover { background: #475569; }
+
 .empty { color: #475569; font-size: 14px; padding: 40px 0; text-align: center; }
 
 /* Search Lab */
