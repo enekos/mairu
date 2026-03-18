@@ -5,10 +5,11 @@
   import MemoriesTab from "./components/MemoriesTab.svelte";
   import ContextTab from "./components/ContextTab.svelte";
   import SearchLabTab from "./components/SearchLabTab.svelte";
+  import VibeTab from "./components/VibeTab.svelte";
 
   const API_BASE = import.meta.env.VITE_DASHBOARD_API_BASE || "http://localhost:8787";
 
-  type Tab = "overview" | "skills" | "memories" | "context" | "search";
+  type Tab = "overview" | "skills" | "memories" | "context" | "search" | "vibe";
 
   let loading = false;
   let searching = false;
@@ -143,6 +144,9 @@
       <button class:active={activeTab === "search"} on:click={() => setActiveTab("search")}>
         Search Lab
       </button>
+      <button class:active={activeTab === "vibe"} on:click={() => setActiveTab("vibe")}>
+        Vibe
+      </button>
     </nav>
 
     <div class="header-actions">
@@ -240,6 +244,8 @@
       />
     {:else if activeTab === "search"}
       <SearchLabTab {API_BASE} />
+    {:else if activeTab === "vibe"}
+      <VibeTab {API_BASE} />
     {/if}
   </div>
 </main>

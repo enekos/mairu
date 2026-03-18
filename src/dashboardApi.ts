@@ -2,6 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from "http";
 import { URL } from "url";
 import { createContextManager } from "./client";
 import { config } from "./config";
+import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./vibeEngine";
 
 const cm = createContextManager();
 const port = config.dashboardApiPort;
@@ -187,6 +188,44 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         sendJson(res, 200, { ok: true });
         return;
       }
+    }
+
+    // Vibe Query
+    if (pathname === "/api/vibe/query" && req.method === "POST") {
+      const body = await readBody(req);
+      const prompt = validateString(body.prompt, "prompt");
+      const result = await executeVibeQuery(cm, prompt, body.project, body.topK ?? 5);
+      sendJson(res, 200, result);
+      return;
+    }
+
+    // Vibe Mutation — plan
+    if (pathname === "/api/vibe/mutation/plan" && req.method === "POST") {
+      const body = await readBody(req);
+      const prompt = validateString(body.prompt, "prompt");
+      const plan = await planVibeMutation(cm, prompt, body.project, body.topK ?? 10);
+      sendJson(res, 200, plan);
+      return;
+    }
+
+    // Vibe Mutation — execute approved operations
+    if (pathname === "/api/vibe/mutation/execute" && req.method === "POST") {
+      const body = await readBody(req);
+      if (!Array.isArray(body.operations)) {
+        sendJson(res, 400, { error: "operations array required" });
+        return;
+      }
+      const results: Array<{ op: string; result?: string; error?: string }> = [];
+      for (const op of body.operations as VibeMutationOp[]) {
+        try {
+          const result = await executeMutationOp(cm, op, body.project);
+          results.push({ op: op.op, result });
+        } catch (err) {
+          results.push({ op: op.op, error: err instanceof Error ? err.message : String(err) });
+        }
+      }
+      sendJson(res, 200, { results });
+      return;
     }
 
     sendJson(res, 404, { error: "Not found" });

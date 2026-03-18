@@ -32,6 +32,7 @@
     "eval:retrieval": "bun src/evaluate.ts",
     "dashboard:api": "bun src/dashboardApi.ts",
     "dashboard:dev": "bun --cwd dashboard run dev",
+    "dashboard": "bun run --parallel dashboard:api dashboard:dev",
     "dashboard:build": "bun --cwd dashboard run build",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
