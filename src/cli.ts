@@ -289,7 +289,7 @@ nodeCmd
   .action(async (uri) => {
     try {
       const subtree = await cm.getContextSubtree(uri);
-      const node = subtree.find((r: any) => r.uri === uri);
+      const node = subtree.find((r: { uri: unknown }) => r.uri === uri);
       console.log(node ? JSON.stringify(node, null, 2) : "Not found.");
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -317,8 +317,8 @@ program
       if (file) {
         try {
           text = fs.readFileSync(file, "utf-8");
-        } catch (err: any) {
-          console.error(err.code === "ENOENT" ? `File not found: ${file}` : `Cannot read file: ${err.message}`);
+        } catch (err: unknown) {
+          console.error((err as NodeJS.ErrnoException).code === "ENOENT" ? `File not found: ${file}` : `Cannot read file: ${err instanceof Error ? err.message : String(err)}`);
           process.exit(1);
         }
         console.log(`\nRead ${text!.length} characters from ${file}`);

@@ -1,4 +1,5 @@
 import { ContextManager } from "../src/ContextManager";
+import { MemoryCategory, MemoryOwner } from "../src/types";
 import * as dotenv from "dotenv";
 dotenv.config({ path: require("path").resolve(__dirname, ".env") });
 
@@ -18,16 +19,16 @@ async function safeAddNode(
 ) {
   try {
     await contextManager.addContextNode(uri, name, abstract, overview, content, parent);
-  } catch (e: any) {
-    if (!e.message?.includes("UNIQUE")) console.error(e);
+  } catch (e: unknown) {
+    if (e instanceof Error && !e.message?.includes("UNIQUE")) console.error(e);
   }
 }
 
-async function safeAddMemory(content: string, type: string, source: string, importance: number) {
+async function safeAddMemory(content: string, type: MemoryCategory, source: MemoryOwner, importance: number) {
   try {
-    await contextManager.addMemory(content, type as any, source as any, importance);
-  } catch (e: any) {
-    if (!e.message?.includes("UNIQUE")) console.error(e);
+    await contextManager.addMemory(content, type, source, importance);
+  } catch (e: unknown) {
+    if (e instanceof Error && !e.message?.includes("UNIQUE")) console.error(e);
   }
 }
 

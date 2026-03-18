@@ -33,10 +33,10 @@ async function generateWithRetry(model: string, contents: string, attempt = 1): 
   if (!ai) throw new Error("GoogleGenAI not initialized");
   try {
     return await ai.models.generateContent({ model, contents });
-  } catch (error: any) {
-    if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+  } catch (error: unknown) {
+    if (attempt < MAX_RETRIES && ((error as {status?: number})?.status === 429 || ((error as {status?: number})?.status ?? 0) >= 500 || (error as {message?: string})?.message?.includes("fetch failed"))) {
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      console.warn(`[ingestor] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      console.warn(`[ingestor] API error (${error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error)}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return generateWithRetry(model, contents, attempt + 1);
     }
@@ -112,11 +112,16 @@ Example shape: [{"uri":"...","name":"...","abstract":"...","overview":"...","con
 
   // Validate and normalise each node
   const nodes: ProposedContextNode[] = parsed
-    .filter((n) => typeof n.uri === "string" && typeof n.name === "string" && typeof n.abstract === "string")
+    .filter((n): n is Record<string, unknown> => 
+      typeof n === "object" && n !== null && 
+      typeof (n as Record<string, unknown>).uri === "string" && 
+      typeof (n as Record<string, unknown>).name === "string" && 
+      typeof (n as Record<string, unknown>).abstract === "string"
+    )
     .map((n) => ({
-      uri: n.uri,
-      name: n.name,
-      abstract: n.abstract,
+      uri: n.uri as string,
+      name: n.name as string,
+      abstract: n.abstract as string,
       overview: typeof n.overview === "string" && n.overview.trim() ? n.overview : undefined,
       content: typeof n.content === "string" && n.content.trim() ? n.content : undefined,
       parent_uri: typeof n.parent_uri === "string" ? n.parent_uri : null,

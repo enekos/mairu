@@ -20,7 +20,7 @@ function sendJson(res: ServerResponse<IncomingMessage>, statusCode: number, body
 }
 
 
-function validateString(val: any, name: string): string {
+function validateString(val: unknown, name: string): string {
   if (typeof val !== "string" || !val.trim()) {
     throw new Error(`Invalid or missing ${name}`);
   }
@@ -193,9 +193,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
     }
 
     sendJson(res, 404, { error: "Not found" });
-  } catch (error: any) {
-    console.error("[dashboardApi] error:", error?.message);
-    sendJson(res, 500, { error: error?.message || "Internal server error" });
+  } catch (error: unknown) {
+    console.error("[dashboardApi] error:", error instanceof Error ? error.message : String(error));
+    sendJson(res, 500, { error: error instanceof Error ? error.message : String(error) || "Internal server error" });
   }
 }
 

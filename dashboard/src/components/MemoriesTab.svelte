@@ -1,21 +1,21 @@
 <script lang="ts">
   import { fmtDate, scoreColor, copy, impColor, categoryColors } from "../lib/utils";
 
-  export let displayMemories: any[];
+  export let displayMemories: Record<string, unknown>[];
   export let hasSearchResults: boolean;
   export let searchQuery: string;
   export let API_BASE: string;
   export let load: () => Promise<void>;
   export let setLoading: (loading: boolean) => void;
   export let setError: (error: string) => void;
-  export let setLastWriteResult: (res: any) => void;
+  export let setLastWriteResult: (res: unknown) => void;
   export let loading: boolean;
 
   let newMemory = { content: "", category: "observation", owner: "agent", importance: 5, useRouter: true };
   let addingMemory = false;
 
   let editingId: string | null = null;
-  let editForm: any = {};
+  let editForm: Record<string, unknown> = {};
 
   async function createMemory() {
     addingMemory = true; setLastWriteResult(null);
@@ -30,11 +30,11 @@
       setLastWriteResult(result);
       newMemory = { content: "", category: "observation", owner: "agent", importance: 5, useRouter: true };
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { addingMemory = false; }
   }
 
-  function startEdit(item: any) {
+  function startEdit(item: unknown) {
     editingId = item.id;
     editForm = { ...item };
   }
@@ -57,7 +57,7 @@
       setLastWriteResult(result);
       cancelEdit();
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 
@@ -68,7 +68,7 @@
       const res = await fetch(`${API_BASE}/api/memories?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 </script>

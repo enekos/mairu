@@ -3,6 +3,7 @@ import { TursoVectorDB } from "./TursoVectorDB";
 import { Embedder } from "./embedder";
 import {
   AgentContextNode,
+  AgentMemory,
   ContextSearchOptions,
   MemoryCategory,
   MemoryOwner,
@@ -51,7 +52,7 @@ export class ContextManager {
 
   async updateSkill(id: string, updates: { name?: string; description?: string; project?: string; metadata?: Record<string, any> }) {
     let embedding: number[] | undefined;
-    const current = await this.db.getSkill(id) as any;
+    const current = await this.db.getSkill(id);
     
     if (current && (
       (updates.name !== undefined && updates.name !== current.name) || 
@@ -110,7 +111,7 @@ export class ContextManager {
     project?: string,
     metadata: Record<string, any> = {},
     useRouter = true
-  ): Promise<any | SkippedWrite | UpdatedWrite> {
+  ): Promise<AgentMemory | SkippedWrite | UpdatedWrite> {
     const embedding = await Embedder.getEmbedding(content);
 
     if (useRouter) {
@@ -162,7 +163,7 @@ export class ContextManager {
     updates: { content?: string; importance?: number; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    const current = await this.db.getMemory(id) as any;
+    const current = await this.db.getMemory(id);
     
     if (current && updates.content !== undefined && updates.content !== current.content) {
       embedding = await Embedder.getEmbedding(updates.content);
@@ -269,7 +270,7 @@ export class ContextManager {
     updates: { name?: string; abstract?: string; overview?: string; content?: string; project?: string; metadata?: Record<string, any> }
   ) {
     let embedding: number[] | undefined;
-    const current = await this.db.getContextNode(uri) as any;
+    const current = await this.db.getContextNode(uri);
     
     if (current && (
       (updates.name !== undefined && updates.name !== current.name) || 

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { fmtDate, categoryColors } from "../lib/utils";
 
-  export let skills: any[];
-  export let memories: any[];
-  export let contextNodes: any[];
+  export let skills: Record<string, unknown>[];
+  export let memories: Record<string, unknown>[];
+  export let contextNodes: Record<string, unknown>[];
   export let setActiveTab: (tab: string) => void;
 </script>
 

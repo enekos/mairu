@@ -1,21 +1,21 @@
 <script lang="ts">
   import { fmtDate, scoreColor, copy } from "../lib/utils";
 
-  export let displaySkills: any[];
+  export let displaySkills: Record<string, unknown>[];
   export let hasSearchResults: boolean;
   export let searchQuery: string;
   export let API_BASE: string;
   export let load: () => Promise<void>;
   export let setLoading: (loading: boolean) => void;
   export let setError: (error: string) => void;
-  export let setLastWriteResult: (res: any) => void;
+  export let setLastWriteResult: (res: unknown) => void;
   export let loading: boolean;
 
   let newSkill = { name: "", description: "" };
   let addingSkill = false;
 
   let editingId: string | null = null;
-  let editForm: any = {};
+  let editForm: Record<string, unknown> = {};
 
   async function createSkill() {
     addingSkill = true; setLastWriteResult(null);
@@ -28,11 +28,11 @@
       if (!res.ok) throw new Error("Failed to create skill");
       newSkill = { name: "", description: "" };
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { addingSkill = false; }
   }
 
-  function startEdit(item: any) {
+  function startEdit(item: unknown) {
     editingId = item.id;
     editForm = { ...item };
   }
@@ -55,7 +55,7 @@
       setLastWriteResult(result);
       cancelEdit();
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 
@@ -66,7 +66,7 @@
       const res = await fetch(`${API_BASE}/api/skills?id=${encodeURIComponent(id)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 </script>

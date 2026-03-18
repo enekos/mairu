@@ -7,7 +7,7 @@
   let labType: "all" | "skills" | "memories" | "context" = "all";
   let labTopK = 10;
   let labSearching = false;
-  let labResults: any[] = [];
+  let labResults: Record<string, unknown>[] = [];
   let labError = "";
   let labSearched = false;
 
@@ -21,15 +21,15 @@
       if (!res.ok) throw new Error(`Search API ${res.status}`);
       const data = await res.json();
       // Flatten all results into a single ranked list
-      const flat: any[] = [];
-      (data.skills ?? []).forEach((r: any) => flat.push({ ...r, _type: "skill" }));
-      (data.memories ?? []).forEach((r: any) => flat.push({ ...r, _type: "memory" }));
-      (data.contextNodes ?? []).forEach((r: any) => flat.push({ ...r, _type: "context" }));
+      const flat: Record<string, unknown>[] = [];
+      (data.skills ?? []).forEach((r: unknown) => flat.push({ ...r, _type: "skill" }));
+      (data.memories ?? []).forEach((r: unknown) => flat.push({ ...r, _type: "memory" }));
+      (data.contextNodes ?? []).forEach((r: unknown) => flat.push({ ...r, _type: "context" }));
       flat.sort((a, b) => (b._hybrid_score ?? 0) - (a._hybrid_score ?? 0));
       labResults = flat;
       labSearched = true;
-    } catch (e: any) {
-      labError = e.message;
+    } catch (e) {
+      labError = e instanceof Error ? e.message : String(e);
     } finally {
       labSearching = false;
     }

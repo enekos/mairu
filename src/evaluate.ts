@@ -33,15 +33,15 @@ async function run() {
     const start = Date.now();
     let rows: Array<Record<string, unknown>>;
     if (entry.domain === "memory") {
-      rows = (await contextManager.searchMemories(entry.query, effectiveTopK)) as Array<
+      rows = (await contextManager.searchMemories(entry.query, effectiveTopK)) as unknown as Array<
         Record<string, unknown>
       >;
     } else if (entry.domain === "skill") {
-      rows = (await contextManager.searchSkills(entry.query, effectiveTopK)) as Array<
+      rows = (await contextManager.searchSkills(entry.query, effectiveTopK)) as unknown as Array<
         Record<string, unknown>
       >;
     } else {
-      rows = (await contextManager.searchContext(entry.query, effectiveTopK)) as Array<
+      rows = (await contextManager.searchContext(entry.query, effectiveTopK)) as unknown as Array<
         Record<string, unknown>
       >;
     }

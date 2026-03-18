@@ -89,7 +89,6 @@ export function normalizeWeights(w: HybridWeights): HybridWeights {
 }
 
 export interface ScoredRow {
-  [key: string]: any;
   _vector_score: number;
   _keyword_score: number;
   _recency_score: number;
@@ -105,12 +104,12 @@ export interface ScoredRow {
  * @param weights   Hybrid scoring weights (will be normalized)
  * @param importanceField  Optional row field containing a 1-10 importance score
  */
-export function hybridRerank<T extends Record<string, any>>(
+export function hybridRerank<T extends { distance?: number; created_at?: string }>(
   results: T[],
   query: string,
-  textFields: string[],
+  textFields: (keyof T)[],
   weights: HybridWeights,
-  importanceField?: string
+  importanceField?: keyof T
 ): (T & ScoredRow)[] {
   const w = normalizeWeights(weights);
 

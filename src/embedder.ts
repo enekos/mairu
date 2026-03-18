@@ -39,10 +39,10 @@ export class Embedder {
       const values = response.embeddings[0].values;
       assertEmbeddingDimension(values, "Embedder.getEmbedding");
       return values;
-    } catch (error: any) {
-      if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+    } catch (error: unknown) {
+      if (attempt < MAX_RETRIES && ((error as {status?: number})?.status === 429 || ((error as {status?: number})?.status ?? 0) >= 500 || (error as {message?: string})?.message?.includes("fetch failed"))) {
         const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-        console.warn(`[Embedder] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+        console.warn(`[Embedder] API error (${error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error)}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.getEmbedding(text, attempt + 1);
       }

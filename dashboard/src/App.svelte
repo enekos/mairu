@@ -13,15 +13,15 @@
   let loading = false;
   let searching = false;
   let error = "";
-  let skills: any[] = [];
-  let memories: any[] = [];
-  let contextNodes: any[] = [];
+  let skills: Record<string, unknown>[] = [];
+  let memories: Record<string, unknown>[] = [];
+  let contextNodes: Record<string, unknown>[] = [];
   let activeTab: Tab = "overview";
 
   // Search state
   let searchQuery = "";
   let searchMode: "filter" | "vector" = "filter";
-  let searchResults: { skills?: any[]; memories?: any[]; contextNodes?: any[] } = {};
+  let searchResults: { skills?: unknown[]; memories?: unknown[]; contextNodes?: unknown[] } = {};
   let hasSearchResults = false;
   let searchDebounce: ReturnType<typeof setTimeout>;
 
@@ -54,7 +54,7 @@
       )
     : contextNodes;
 
-  let lastWriteResult: any = null;
+  let lastWriteResult: unknown = null;
 
   async function load() {
     loading = true; error = "";
@@ -65,8 +65,8 @@
       skills = d.skills ?? [];
       memories = d.memories ?? [];
       contextNodes = d.contextNodes ?? [];
-    } catch (e: any) {
-      error = e.message;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
     } finally {
       loading = false;
     }
@@ -94,8 +94,8 @@
       if (!res.ok) throw new Error(`Search API ${res.status}`);
       searchResults = await res.json();
       hasSearchResults = true;
-    } catch (e: any) {
-      error = e.message;
+    } catch (e) {
+      error = e instanceof Error ? e.message : String(e);
     } finally {
       searching = false;
     }
@@ -114,7 +114,7 @@
 
   function setLoading(l: boolean) { loading = l; }
   function setError(e: string) { error = e; }
-  function setLastWriteResult(r: any) { lastWriteResult = r; }
+  function setLastWriteResult(r: unknown) { lastWriteResult = r; }
 
   load();
 </script>

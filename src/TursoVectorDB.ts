@@ -1,4 +1,4 @@
-import { createClient, Client } from "@libsql/client";
+import { createClient, Client, InValue } from "@libsql/client";
 import {
   AgentSkill,
   AgentMemory,
@@ -123,7 +123,7 @@ export class TursoVectorDB {
 
   async updateSkill(id: string, updates: { name?: string; description?: string; metadata?: Record<string, any> }, embedding?: number[]) {
     const sets: string[] = ["updated_at = ?"];
-    const args: any[] = [this.now()];
+    const args: InValue[] = [this.now()];
 
     if (updates.name !== undefined) { sets.push("name = ?"); args.push(updates.name); }
     if (updates.description !== undefined) { sets.push("description = ?"); args.push(updates.description); }
@@ -141,7 +141,7 @@ export class TursoVectorDB {
    * Fetch broad vector candidates. Application code does the final re-ranking.
    * Returns rows with a `distance` field (cosine distance, lower = more similar).
    */
-  async searchSkills(queryEmbedding: number[], options: SkillSearchOptions = {}) {
+  async searchSkills(queryEmbedding: number[], options: SkillSearchOptions = {}): Promise<(AgentSkill & { distance: number })[]> {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
@@ -160,23 +160,23 @@ export class TursoVectorDB {
         limit,
       ],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as (AgentSkill & { distance: number })[];
   }
 
-  async listSkills(options?: SkillSearchOptions, limit = 100, offset = 0) {
+  async listSkills(options?: SkillSearchOptions, limit = 100, offset = 0): Promise<AgentSkill[]> {
     const res = await this.client.execute({
       sql: `SELECT id, project, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE}
             WHERE (? IS NULL OR project = ?)
             ORDER BY updated_at DESC LIMIT ? OFFSET ?`,
       args: [options?.project ?? null, options?.project ?? null, limit, offset],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as AgentSkill[];
   }
 
-  async getSkill(id: string) {
+  async getSkill(id: string): Promise<AgentSkill | null> {
     const res = await this.client.execute({ sql: `SELECT id, project, name, description, metadata, created_at, updated_at FROM ${SKILLS_TABLE} WHERE id = ?`, args: [id] });
     if (res.rows.length === 0) return null;
-    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) } as unknown as AgentSkill;
   }
 
   async deleteSkill(id: string) {
@@ -213,7 +213,7 @@ export class TursoVectorDB {
     embedding?: number[]
   ) {
     const sets: string[] = ["updated_at = ?"];
-    const args: any[] = [this.now()];
+    const args: InValue[] = [this.now()];
 
     if (updates.content !== undefined) { sets.push("content = ?"); args.push(updates.content); }
     if (updates.importance !== undefined) { sets.push("importance = ?"); args.push(updates.importance); }
@@ -227,7 +227,7 @@ export class TursoVectorDB {
     });
   }
 
-  async searchMemories(queryEmbedding: number[], options: MemorySearchOptions = {}) {
+  async searchMemories(queryEmbedding: number[], options: MemorySearchOptions = {}): Promise<(AgentMemory & { distance: number })[]> {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
@@ -251,23 +251,23 @@ export class TursoVectorDB {
         limit,
       ],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as (AgentMemory & { distance: number })[];
   }
 
-  async listMemories(options?: MemorySearchOptions, limit = 100, offset = 0) {
+  async listMemories(options?: MemorySearchOptions, limit = 100, offset = 0): Promise<AgentMemory[]> {
     const res = await this.client.execute({
       sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE}
             WHERE (? IS NULL OR project = ?)
             ORDER BY updated_at DESC LIMIT ?`,
       args: [options?.project ?? null, options?.project ?? null, limit, offset],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as AgentMemory[];
   }
 
-  async getMemory(id: string) {
+  async getMemory(id: string): Promise<AgentMemory | null> {
     const res = await this.client.execute({ sql: `SELECT id, project, content, category, owner, importance, metadata, created_at, updated_at FROM ${MEMORIES_TABLE} WHERE id = ?`, args: [id] });
     if (res.rows.length === 0) return null;
-    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) } as unknown as AgentMemory;
   }
 
   async deleteMemory(id: string) {
@@ -305,7 +305,7 @@ export class TursoVectorDB {
     embedding?: number[]
   ) {
     const sets: string[] = ["updated_at = ?"];
-    const args: any[] = [this.now()];
+    const args: InValue[] = [this.now()];
 
     if (updates.name !== undefined) { sets.push("name = ?"); args.push(updates.name); }
     if (updates.abstract !== undefined) { sets.push("abstract = ?"); args.push(updates.abstract); }
@@ -321,7 +321,7 @@ export class TursoVectorDB {
     });
   }
 
-  async searchContextNodes(queryEmbedding: number[], options: ContextSearchOptions = {}) {
+  async searchContextNodes(queryEmbedding: number[], options: ContextSearchOptions = {}): Promise<(AgentContextNode & { distance: number })[]> {
     const topK = options.topK ?? 10;
     const limit = topK * CANDIDATE_MULTIPLIER;
     const res = await this.client.execute({
@@ -341,10 +341,10 @@ export class TursoVectorDB {
         limit,
       ],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as (AgentContextNode & { distance: number })[];
   }
 
-  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100, offset = 0) {
+  async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100, offset = 0): Promise<AgentContextNode[]> {
     const res = parentUri
       ? await this.client.execute({
           sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE parent_uri = ? AND (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
@@ -354,20 +354,20 @@ export class TursoVectorDB {
           sql: `SELECT uri, project, parent_uri, name, abstract, overview, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE (? IS NULL OR project = ?) ORDER BY updated_at DESC LIMIT ?`,
           args: [options?.project ?? null, options?.project ?? null, limit, offset],
         });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as AgentContextNode[];
   }
 
-  async getContextNode(uri: string) {
+  async getContextNode(uri: string): Promise<AgentContextNode | null> {
     const res = await this.client.execute({ sql: `SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at FROM ${CONTEXT_TABLE} WHERE uri = ?`, args: [uri] });
     if (res.rows.length === 0) return null;
-    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) };
+    return { ...res.rows[0], metadata: this.parseMeta(res.rows[0].metadata) } as unknown as AgentContextNode;
   }
 
   async deleteContextNode(uri: string) {
     await this.client.execute({ sql: `DELETE FROM ${CONTEXT_TABLE} WHERE uri = ?`, args: [uri] });
   }
 
-  async getContextSubtree(nodeUri: string) {
+  async getContextSubtree(nodeUri: string): Promise<(AgentContextNode & { depth: number })[]> {
     const res = await this.client.execute({
       sql: `WITH RECURSIVE subtree AS (
               SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
@@ -379,10 +379,10 @@ export class TursoVectorDB {
             SELECT * FROM subtree ORDER BY depth ASC`,
       args: [nodeUri],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as (AgentContextNode & { depth: number })[];
   }
 
-  async getContextPath(nodeUri: string) {
+  async getContextPath(nodeUri: string): Promise<(AgentContextNode & { depth: number })[]> {
     const res = await this.client.execute({
       sql: `WITH RECURSIVE ancestors AS (
               SELECT uri, project, parent_uri, name, abstract, overview, content, metadata, created_at, updated_at, 0 as depth
@@ -394,6 +394,6 @@ export class TursoVectorDB {
             SELECT * FROM ancestors ORDER BY depth ASC`,
       args: [nodeUri],
     });
-    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) }));
+    return res.rows.map((r) => ({ ...r, metadata: this.parseMeta(r.metadata) })) as unknown as (AgentContextNode & { depth: number })[];
   }
 }

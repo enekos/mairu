@@ -1,21 +1,21 @@
 <script lang="ts">
   import { fmtDate, scoreColor, copy } from "../lib/utils";
 
-  export let displayContext: any[];
+  export let displayContext: Record<string, unknown>[];
   export let hasSearchResults: boolean;
   export let searchQuery: string;
   export let API_BASE: string;
   export let load: () => Promise<void>;
   export let setLoading: (loading: boolean) => void;
   export let setError: (error: string) => void;
-  export let setLastWriteResult: (res: any) => void;
+  export let setLastWriteResult: (res: unknown) => void;
   export let loading: boolean;
 
   let newContext = { uri: "", parent_uri: "", name: "", abstract: "", overview: "", useRouter: true };
   let addingContext = false;
 
   let editingId: string | null = null;
-  let editForm: any = {};
+  let editForm: Record<string, unknown> = {};
 
   async function createContext() {
     addingContext = true; setLastWriteResult(null);
@@ -30,11 +30,11 @@
       setLastWriteResult(result);
       newContext = { uri: "", parent_uri: "", name: "", abstract: "", overview: "", useRouter: true };
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { addingContext = false; }
   }
 
-  function startEdit(item: any) {
+  function startEdit(item: unknown) {
     editingId = item.uri;
     editForm = { ...item };
   }
@@ -57,7 +57,7 @@
       setLastWriteResult(result);
       cancelEdit();
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 
@@ -68,7 +68,7 @@
       const res = await fetch(`${API_BASE}/api/context?uri=${encodeURIComponent(uri)}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
       await load();
-    } catch (e: any) { setError(e.message); }
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }
   }
 </script>

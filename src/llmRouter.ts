@@ -38,10 +38,10 @@ async function generateWithRetry(model: string, contents: string, attempt = 1): 
   if (!ai) throw new Error("GoogleGenAI not initialized");
   try {
     return await ai.models.generateContent({ model, contents });
-  } catch (error: any) {
-    if (attempt < MAX_RETRIES && (error?.status === 429 || error?.status >= 500 || error?.message?.includes("fetch failed"))) {
+  } catch (error: unknown) {
+    if (attempt < MAX_RETRIES && ((error as {status?: number})?.status === 429 || ((error as {status?: number})?.status ?? 0) >= 500 || (error as {message?: string})?.message?.includes("fetch failed"))) {
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt - 1);
-      console.warn(`[llmRouter] API error (${error.message}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      console.warn(`[llmRouter] API error (${error instanceof Error ? error instanceof Error ? error.message : String(error) : String(error)}), retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
       await new Promise((resolve) => setTimeout(resolve, delay));
       return generateWithRetry(model, contents, attempt + 1);
     }

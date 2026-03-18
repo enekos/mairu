@@ -14,7 +14,7 @@ export function extractJsonObject(text: string): Record<string, any> | null {
   }
 }
 
-export function extractJsonArray(text: string): any[] | null {
+export function extractJsonArray(text: string): unknown[] | null {
   const match = stripFences(text).match(/\[[\s\S]*\]/);
   if (!match) return null;
   try {
