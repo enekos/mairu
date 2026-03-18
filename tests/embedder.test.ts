@@ -25,7 +25,15 @@ describe("Embedder", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    vi.resetModules();
+    if (typeof vi.resetModules === "function") {
+      vi.resetModules();
+    } else {
+      for (const key in require.cache) {
+        if (key.includes("/src/")) {
+          delete require.cache[key];
+        }
+      }
+    }
     vi.clearAllMocks();
     process.env = { ...originalEnv };
     delete process.env.EMBEDDING_MODEL;

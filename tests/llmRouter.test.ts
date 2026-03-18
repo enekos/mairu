@@ -22,14 +22,21 @@ vi.mock("@google/genai", () => {
 });
 
 // Mock `console.warn`
-const mockWarn = vi.fn();
-vi.stubGlobal("console", { ...console, warn: mockWarn });
+const mockWarn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
 describe("llmRouter", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    vi.resetModules();
+    if (typeof vi.resetModules === "function") {
+      vi.resetModules();
+    } else {
+      for (const key in require.cache) {
+        if (key.includes("/src/")) {
+          delete require.cache[key];
+        }
+      }
+    }
     vi.clearAllMocks();
     process.env = { ...originalEnv };
   });
