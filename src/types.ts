@@ -27,6 +27,10 @@ export interface ElasticSearchTuning {
   highlight?: boolean;
   /** Custom field boost overrides, e.g. { "name": 5, "content": 1 } */
   fieldBoosts?: Record<string, number>;
+  /** Override recency scale (e.g. "30d") */
+  recencyScale?: string;
+  /** Override recency decay factor (e.g. 0.5) */
+  recencyDecay?: number;
 }
 
 export type MemoryCategory =
@@ -68,6 +72,15 @@ export interface AgentContextNode {
   metadata?: Record<string, any>;
   created_at: string;
   updated_at?: string;
+  is_deleted?: boolean;
+  deleted_at?: string;
+  version_history?: Array<{
+    updated_at: string;
+    name: string;
+    abstract: string;
+    overview?: string;
+    content?: string;
+  }>;
 }
 
 export interface MemorySearchOptions extends ElasticSearchTuning {

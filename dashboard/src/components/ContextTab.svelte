@@ -11,8 +11,11 @@
   export let setLastWriteResult: (res: unknown) => void;
   export let loading: boolean;
 
+  import ContextGraph from "./ContextGraph.svelte";
+
   let newContext = { uri: "", parent_uri: "", name: "", abstract: "", overview: "", useRouter: true };
   let addingContext = false;
+  let viewMode: "list" | "graph" = "list";
 
   let editingId: string | null = null;
   let editForm: Record<string, unknown> = {};
@@ -73,11 +76,20 @@
   }
 </script>
 
-<section class="add-panel">
-  <button class="toggle-add" on:click={() => addingContext = !addingContext}>
-    {addingContext ? "▲ Close" : "+ Add Context Node"}
-  </button>
-  {#if addingContext}
+<section class="add-panel" style="display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <button class="toggle-add" on:click={() => addingContext = !addingContext}>
+      {addingContext ? "▲ Close" : "+ Add Context Node"}
+    </button>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <button class="btn-primary" on:click={() => viewMode = 'list'} disabled={viewMode === 'list'}>List</button>
+    <button class="btn-primary" on:click={() => viewMode = 'graph'} disabled={viewMode === 'graph'}>Graph</button>
+  </div>
+</section>
+
+{#if addingContext}
+  <section class="add-panel" style="margin-top: 0; padding-top: 0; border-top: none;">
     <form on:submit|preventDefault={createContext} class="add-form">
       <div class="form-row">
         <input type="text" placeholder="URI e.g. contextfs://project/backend/auth" bind:value={newContext.uri} required style="flex:2" />
@@ -94,13 +106,14 @@
         <button type="submit" class="btn-primary" disabled={loading}>Save node</button>
       </div>
     </form>
-  {/if}
-</section>
+  </section>
+{/if}
 
-<section class="table-section">
-  {#if displayContext.length === 0}
-    <p class="empty">No context nodes{searchQuery ? " matching your query" : ""}.</p>
-  {:else}
+{#if viewMode === 'list'}
+  <section class="table-section">
+    {#if displayContext.length === 0}
+      <p class="empty">No context nodes{searchQuery ? " matching your query" : ""}.</p>
+    {:else}
     <table>
       <thead>
         <tr>
@@ -160,4 +173,7 @@
       </tbody>
     </table>
   {/if}
-</section>
+  </section>
+{:else}
+  <ContextGraph nodesData={displayContext} />
+{/if}

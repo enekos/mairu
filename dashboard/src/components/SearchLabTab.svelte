@@ -17,6 +17,12 @@
   let phraseBoost = 2.0;
   let minScore = 0;
   let highlight = false;
+  let weightVector = 2.0;
+  let weightKeyword = 1.0;
+  let weightRecency = 0.5;
+  let weightImportance = 1.0;
+  let recencyScale = "30d";
+  let recencyDecay = 0.5;
   let latencyMs = 0;
 
   async function runLabSearch() {
@@ -34,6 +40,14 @@
       if (phraseBoost !== 2.0) params.set("phraseBoost", String(phraseBoost));
       if (minScore > 0) params.set("minScore", String(minScore));
       if (highlight) params.set("highlight", "true");
+
+      if (weightVector !== 2.0) params.set("weightVector", String(weightVector));
+      if (weightKeyword !== 1.0) params.set("weightKeyword", String(weightKeyword));
+      if (weightRecency !== 0.5) params.set("weightRecency", String(weightRecency));
+      if (weightImportance !== 1.0) params.set("weightImportance", String(weightImportance));
+      
+      if (recencyScale !== "30d") params.set("recencyScale", recencyScale);
+      if (recencyDecay !== 0.5) params.set("recencyDecay", String(recencyDecay));
 
       const res = await fetch(`${API_BASE}/api/search?${params}`);
       if (!res.ok) throw new Error(`Search API ${res.status}`);
@@ -126,6 +140,26 @@
           <span class="lab-adv-label">Highlights</span>
           <span class="lab-adv-hint">Return matched terms wrapped in &lt;mark&gt; tags</span>
         </label>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Vector Weight</span>
+          <input class="lab-adv-input" type="number" min="0" max="10" step="0.1" bind:value={weightVector} />
+          <span class="lab-adv-hint">Importance of kNN semantic match</span>
+        </label>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Keyword Weight</span>
+          <input class="lab-adv-input" type="number" min="0" max="10" step="0.1" bind:value={weightKeyword} />
+          <span class="lab-adv-hint">Importance of BM25 full-text match</span>
+        </label>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Recency Weight</span>
+          <input class="lab-adv-input" type="number" min="0" max="10" step="0.1" bind:value={weightRecency} />
+          <span class="lab-adv-hint">Importance of recency decay boost</span>
+        </label>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Importance Weight</span>
+          <input class="lab-adv-input" type="number" min="0" max="10" step="0.1" bind:value={weightImportance} />
+          <span class="lab-adv-hint">Importance of user/agent importance rating</span>
+        </label>
       </div>
     {/if}
   </div>
@@ -214,7 +248,17 @@
                         <span class="lab-score-sub-label">{s.label}</span>
                         <div class="lab-bar-wrap lab-bar-wrap-sm">
                           <div class="lab-bar lab-bar-sm" style="width:{(row[s.key] * 100).toFixed(1)}%;background:{s.color}"></div>
-                        </div>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Recency Decay</span>
+          <input class="lab-adv-input" type="number" min="0" max="1" step="0.05" bind:value={recencyDecay} />
+          <span class="lab-adv-hint">Decay factor at scale distance</span>
+        </label>
+        <label class="lab-adv-field">
+          <span class="lab-adv-label">Recency Scale</span>
+          <input class="lab-adv-input" type="text" bind:value={recencyScale} />
+          <span class="lab-adv-hint">e.g., 7d, 30d</span>
+        </label>
+      </div>
                         <span class="lab-score-sub-val" style="color:{s.color}">{(row[s.key] * 100).toFixed(1)}%</span>
                       </div>
                     {/if}

@@ -91,6 +91,22 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
       const ms = parsed.searchParams.get("minScore");
       if (ms) tuning.minScore = Number(ms);
       if (parsed.searchParams.get("highlight") === "true") tuning.highlight = true;
+      const recencyScale = parsed.searchParams.get("recencyScale");
+      if (recencyScale) tuning.recencyScale = recencyScale;
+      const recencyDecay = parsed.searchParams.get("recencyDecay");
+      if (recencyDecay) tuning.recencyDecay = Number(recencyDecay);
+
+      const wv = parsed.searchParams.get("weightVector");
+      const wk = parsed.searchParams.get("weightKeyword");
+      const wr = parsed.searchParams.get("weightRecency");
+      const wi = parsed.searchParams.get("weightImportance");
+      if (wv || wk || wr || wi) {
+        tuning.weights = {};
+        if (wv) tuning.weights.vector = Number(wv);
+        if (wk) tuning.weights.keyword = Number(wk);
+        if (wr) tuning.weights.recency = Number(wr);
+        if (wi) tuning.weights.importance = Number(wi);
+      }
 
       const opts = { topK, ...tuning };
 

@@ -424,7 +424,7 @@ export class ElasticDB {
     }
     if (w.recency > 0) {
       functions.push({
-        exp: { created_at: { origin: "now", scale: config.elastic.recencyScale, decay: config.elastic.recencyDecay } },
+        exp: { created_at: { origin: "now", scale: options.recencyScale || config.elastic.recencyScale, decay: options.recencyDecay || config.elastic.recencyDecay } },
         weight: w.recency * 10,
       });
     }
@@ -602,7 +602,7 @@ export class ElasticDB {
     const functions: any[] = [];
     if (w.recency > 0) {
       functions.push({
-        exp: { created_at: { origin: "now", scale: config.elastic.recencyScale, decay: config.elastic.recencyDecay } },
+        exp: { created_at: { origin: "now", scale: options.recencyScale || config.elastic.recencyScale, decay: options.recencyDecay || config.elastic.recencyDecay } },
         weight: w.recency * 10,
       });
     }
