@@ -1,0 +1,128 @@
+{
+  "name": "contextfs-cursor-extension",
+  "displayName": "ContextFS",
+  "description": "Native Cursor extension panel for context-cli queries.",
+  "version": "0.0.1",
+  "publisher": "contextfs",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:contextfs.queriesView",
+    "onCommand:contextfs.refresh",
+    "onCommand:contextfs.setProject",
+    "onCommand:contextfs.runMemorySearch",
+    "onCommand:contextfs.runNodeSearch",
+    "onCommand:contextfs.runSkillSearch",
+    "onCommand:contextfs.runVibeQuery",
+    "onCommand:contextfs.runVibeMutationPlan"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "contextfs",
+          "title": "ContextFS",
+          "icon": "resources/contextfs.svg"
+        }
+      ]
+    },
+    "views": {
+      "contextfs": [
+        {
+          "id": "contextfs.queriesView",
+          "name": "Queries"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "contextfs.refresh",
+        "title": "ContextFS: Refresh"
+      },
+      {
+        "command": "contextfs.setProject",
+        "title": "ContextFS: Set Project"
+      },
+      {
+        "command": "contextfs.runMemorySearch",
+        "title": "ContextFS: Memory Search"
+      },
+      {
+        "command": "contextfs.runNodeSearch",
+        "title": "ContextFS: Node Search"
+      },
+      {
+        "command": "contextfs.runSkillSearch",
+        "title": "ContextFS: Skill Search"
+      },
+      {
+        "command": "contextfs.runVibeQuery",
+        "title": "ContextFS: Vibe Query"
+      },
+      {
+        "command": "contextfs.runVibeMutationPlan",
+        "title": "ContextFS: Vibe Mutation Plan (Preview)"
+      },
+      {
+        "command": "contextfs.copyLastCommand",
+        "title": "ContextFS: Copy Last Command"
+      }
+    ],
+    "configuration": {
+      "title": "ContextFS",
+      "properties": {
+        "contextfs.cliPath": {
+          "type": "string",
+          "default": "context-cli",
+          "description": "Executable used to run ContextFS CLI commands."
+        },
+        "contextfs.defaultTopK": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Default topK used by search-oriented ContextFS commands."
+        },
+        "contextfs.commandTimeoutMs": {
+          "type": "number",
+          "default": 30000,
+          "minimum": 1000,
+          "maximum": 300000,
+          "description": "Timeout in milliseconds for each CLI command."
+        }
+      }
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "contextfs.refresh",
+          "when": "view == contextfs.queriesView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "contextfs.setProject",
+          "when": "view == contextfs.queriesView",
+          "group": "navigation@2"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p ./tsconfig.json",
+    "watch": "tsc -w -p ./tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc -p ./tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  }
+}
