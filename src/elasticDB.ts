@@ -170,6 +170,9 @@ export class ElasticDB {
       metadata: { type: "object", dynamic: true },
       created_at: { type: "date" },
       updated_at: { type: "date" },
+      is_deleted: { type: "boolean" },
+      deleted_at: { type: "date" },
+      version_history: { type: "object", dynamic: true, enabled: false }, // Store full objects but do not index their internal fields for search
     });
   }
 
@@ -561,7 +564,48 @@ export class ElasticDB {
       assertEmbeddingDimension(embedding, "ElasticDB.updateContextNode");
       doc.embedding = embedding;
     }
-    await this.client.update({ index: CONTEXT_INDEX, id: uri, doc, refresh: true });
+    
+    const existingNode = await this.getContextNode(uri);
+    
+    if (existingNode) {
+      const historyEntry = {
+        updated_at: existingNode.updated_at || existingNode.created_at,
+        name: existingNode.name,
+        abstract: existingNode.abstract,
+        overview: existingNode.overview || null,
+        content: existingNode.content || null,
+      };
+      
+      let source = `
+        ctx._source.updated_at = params.doc.updated_at;
+        if (params.doc.name != null) ctx._source.name = params.doc.name;
+        if (params.doc.abstract != null) ctx._source.abstract = params.doc.abstract;
+        if (params.doc.overview != null) ctx._source.overview = params.doc.overview;
+        if (params.doc.content != null) ctx._source.content = params.doc.content;
+        if (params.doc.metadata != null) ctx._source.metadata = params.doc.metadata;
+        if (params.doc.embedding != null) ctx._source.embedding = params.doc.embedding;
+        
+        if (ctx._source.version_history == null) {
+          ctx._source.version_history = [];
+        }
+        ctx._source.version_history.add(params.historyEntry);
+        if (ctx._source.version_history.size() > 10) {
+          ctx._source.version_history.remove(0);
+        }
+      `;
+      
+      await this.client.update({
+        index: CONTEXT_INDEX,
+        id: uri,
+        script: {
+          source,
+          params: { doc, historyEntry }
+        },
+        refresh: true,
+      });
+    } else {
+      await this.client.update({ index: CONTEXT_INDEX, id: uri, doc, refresh: true });
+    }
   }
 
   async searchContextNodes(queryEmbedding: number[], queryText: string, options: ContextSearchOptions = {}): Promise<(AgentContextNode & { _score: number; _highlight?: Record<string, string[]> })[]> {
@@ -581,6 +625,7 @@ export class ElasticDB {
     if (options.project) filters.push({ term: { project: options.project } });
     if (options.parentUri) filters.push({ term: { parent_uri: options.parentUri } });
     if (options.maxAgeDays) filters.push({ range: { created_at: { gte: `now-${options.maxAgeDays}d` } } });
+    if (!options.includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
 
     const nameBoost = fb.name ?? 3;
     const abstractBoost = fb.abstract ?? 2;
@@ -641,11 +686,12 @@ export class ElasticDB {
     return this.mapHits<AgentContextNode>(res, options.highlight);
   }
 
-  async searchContextNodesByVector(queryEmbedding: number[], options: { topK?: number; project?: string } = {}): Promise<(AgentContextNode & { _score: number })[]> {
+  async searchContextNodesByVector(queryEmbedding: number[], options: { topK?: number; project?: string; includeDeleted?: boolean } = {}): Promise<(AgentContextNode & { _score: number })[]> {
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchContextNodesByVector");
     const topK = options.topK ?? 10;
     const filters: any[] = [];
     if (options.project) filters.push({ term: { project: options.project } });
+    if (!options.includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
 
     const res = await this.client.search({
       index: CONTEXT_INDEX,
@@ -666,6 +712,7 @@ export class ElasticDB {
     const filters: any[] = [];
     if (options?.project) filters.push({ term: { project: options.project } });
     if (parentUri) filters.push({ term: { parent_uri: parentUri } });
+    if (!options?.includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
 
     const res = await this.client.search({
       index: CONTEXT_INDEX,
@@ -689,18 +736,62 @@ export class ElasticDB {
   }
 
   async deleteContextNode(uri: string) {
-    await this.client.deleteByQuery({
+    const ts = new Date().toISOString();
+    
+    // Soft delete descendants
+    await this.client.updateByQuery({
       index: CONTEXT_INDEX,
       query: { term: { ancestors: uri } },
+      script: {
+        source: "ctx._source.is_deleted = true; ctx._source.deleted_at = params.ts;",
+        params: { ts }
+      },
       refresh: true,
     }).catch(() => {});
 
-    await this.client.delete({ index: CONTEXT_INDEX, id: uri, refresh: true }).catch((e: any) => {
+    // Soft delete the node itself
+    await this.client.update({
+      index: CONTEXT_INDEX,
+      id: uri,
+      doc: {
+        is_deleted: true,
+        deleted_at: ts
+      },
+      refresh: true,
+    }).catch((e: any) => {
       if (e.meta?.statusCode !== 404) throw e;
     });
   }
 
-  async getContextSubtree(nodeUri: string): Promise<(AgentContextNode & { depth: number })[]> {
+  async restoreContextNode(uri: string) {
+    // Restore descendants
+    await this.client.updateByQuery({
+      index: CONTEXT_INDEX,
+      query: { term: { ancestors: uri } },
+      script: {
+        source: "ctx._source.is_deleted = false; ctx._source.deleted_at = null;"
+      },
+      refresh: true,
+    }).catch(() => {});
+
+    // Restore the node itself
+    await this.client.update({
+      index: CONTEXT_INDEX,
+      id: uri,
+      doc: {
+        is_deleted: false,
+        deleted_at: null
+      },
+      refresh: true,
+    }).catch((e: any) => {
+      if (e.meta?.statusCode !== 404) throw e;
+    });
+  }
+
+  async getContextSubtree(nodeUri: string, includeDeleted = false): Promise<(AgentContextNode & { depth: number })[]> {
+    const filters: any[] = [];
+    if (!includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
+
     const res = await this.client.search({
       index: CONTEXT_INDEX,
       size: 1000,
@@ -711,6 +802,7 @@ export class ElasticDB {
             { term: { ancestors: nodeUri } },
           ],
           minimum_should_match: 1,
+          filter: filters,
         },
       },
       _source: { excludes: ["embedding"] },
@@ -730,14 +822,18 @@ export class ElasticDB {
       .sort((a, b) => a.depth - b.depth);
   }
 
-  async getContextPath(nodeUri: string): Promise<(AgentContextNode & { depth: number })[]> {
+  async getContextPath(nodeUri: string, includeDeleted = false): Promise<(AgentContextNode & { depth: number })[]> {
     const node = await this.getContextNodeWithAncestors(nodeUri);
     if (!node) return [];
 
     const ancestorUris: string[] = (node as any).ancestors || [];
     if (ancestorUris.length === 0) {
+      if (!includeDeleted && node.is_deleted) return [];
       return [{ ...node, depth: 0 }];
     }
+
+    const filters: any[] = [];
+    if (!includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
 
     const res = await this.client.search({
       index: CONTEXT_INDEX,
@@ -748,6 +844,7 @@ export class ElasticDB {
             { terms: { uri: [...ancestorUris, nodeUri] } },
           ],
           minimum_should_match: 1,
+          filter: filters,
         },
       },
       _source: { excludes: ["embedding"] },

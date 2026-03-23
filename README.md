@@ -91,13 +91,27 @@ context-cli skill search "postgres optimization" -k 5 -P my-project
 # context nodes
 context-cli node store "contextfs://project/backend" "Backend" "Core backend architecture" -P my-project
 context-cli node search "auth architecture" -k 5 -P my-project
+context-cli node restore "contextfs://project/backend" # Restore a soft-deleted node
 
 # optional free-text query planner (fallback when direct searches are insufficient)
 context-cli vibe-query "how does authentication work?" -P my-project -k 5
 
 # free-text mutation (LLM plans + interactive approval)
 context-cli vibe-mutation "remember we switched to gRPC for internal calls" -P my-project
+
+# start a background AST ingestion daemon on the current directory
+context-cli daemon . -P my-project
 ```
+
+## Features Deep Dive
+
+### Automated AST Codebase Ingestion (Daemon)
+`contextfs` ships with a background daemon powered by `ts-morph` and `chokidar`. It observes a local codebase directory and automatically extracts class signatures, function definitions, and module exports. This ensures your hierarchical context tree is always synchronized with the real code state without manual ingestion. It skips `node_modules` and build directories automatically.
+
+### Context Versioning & Rollback
+To protect against hallucinated updates from AI agents (via `vibe-mutation` or direct node updates), `context nodes` feature soft-deletes and version history.
+- Soft Deletes: Calling `context-cli node delete` soft-deletes the node and all its descendants. They will not appear in search results. You can easily recover them via `context-cli node restore`.
+- Versioning: Every update operation archives the previous state (`name`, `abstract`, `overview`, `content`) into a `version_history` array (up to 10 versions), directly inside the Elasticsearch document.
 
 ## Retrieval Evaluation Harness
 

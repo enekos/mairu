@@ -5,6 +5,7 @@ import { AgentContextNode, SkippedWrite, UpdatedWrite } from "./types";
 import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./vibeEngine";
 import * as fs from "fs";
 import * as readline from "readline";
+import { CodebaseDaemon } from "./daemon";
 
 const cm = createContextManager();
 const program = new Command();
@@ -286,6 +287,16 @@ nodeCmd
     try {
       await cm.deleteContextNode(uri);
       console.log(`Deleted context node: ${uri}`);
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+nodeCmd
+  .command("restore <uri>")
+  .description("Restore a soft-deleted context node (cascades to descendants)")
+  .action(async (uri) => {
+    try {
+      await cm.restoreContextNode(uri);
+      console.log(`Restored context node: ${uri}`);
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
@@ -594,6 +605,35 @@ program
 
       console.log("\nDone.");
     } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daemon
+// ─────────────────────────────────────────────────────────────────────────────
+
+program
+  .command("daemon <dir>")
+  .description("Start a background daemon watching a directory to extract AST context nodes automatically")
+  .requiredOption("-P, --project <project>", "Project namespace")
+  .action(async (dir, opts) => {
+    try {
+      const daemon = new CodebaseDaemon(cm, opts.project, dir);
+      await daemon.start();
+      
+      process.on("SIGINT", async () => {
+        console.log("Shutting down daemon...");
+        await daemon.stop();
+        process.exit(0);
+      });
+      process.on("SIGTERM", async () => {
+        console.log("Shutting down daemon...");
+        await daemon.stop();
+        process.exit(0);
+      });
+    } catch (e) {
+      console.error("Daemon error:", e);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);

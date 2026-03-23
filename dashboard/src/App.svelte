@@ -126,9 +126,7 @@
 <main>
   <header>
     <div class="header-brand">
-      <span class="logo">&#11041;</span>
       <span class="brand-name">contextfs</span>
-      <span class="brand-version">v2</span>
     </div>
 
     <nav class="tabs">
@@ -179,9 +177,6 @@
           <span class="search-badge">vector</span>
         {/if}
       {/if}
-      <button class="btn-refresh" on:click={load} disabled={loading}>
-        {loading ? "..." : "&#8635;"}
-      </button>
     </div>
   </header>
 

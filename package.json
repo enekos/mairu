@@ -37,6 +37,7 @@
     "dashboard:dev": "bun run --cwd dashboard dev",
     "dashboard": "bun run --parallel dashboard:api dashboard:dev",
     "dashboard:build": "bun run --cwd dashboard build",
+    "sync:notion": "bun src/notionSync.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
@@ -58,8 +59,10 @@
   "dependencies": {
     "@elastic/elasticsearch": "^8.17.0",
     "@google/genai": "^1.45.0",
+    "chokidar": "^5.0.0",
     "commander": "^14.0.3",
-    "dotenv": "^17.3.1"
+    "dotenv": "^17.3.1",
+    "ts-morph": "^27.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

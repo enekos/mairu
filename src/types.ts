@@ -109,6 +109,7 @@ export interface ContextSearchOptions extends ElasticSearchTuning {
   parentUri?: string;
   maxAgeDays?: number;
   weights?: HybridSearchWeights;
+  includeDeleted?: boolean;
 }
 
 /** Result type when LLM router decides to skip a write */

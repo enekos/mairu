@@ -71,7 +71,7 @@ context-cli memory search "jwt validation middleware" -k 10 -P <project_name> --
 context-cli memory store "API errors use { code, message, details } shape." -c convention -o agent -i 7 -P <project_name>
 ```
 
-### 5) Context nodes (hierarchical knowledge)
+### 5) Context nodes (hierarchical knowledge) & AST Daemon
 
 Use URI-addressed nodes for structured architecture docs.
 
@@ -81,6 +81,18 @@ context-cli node store "contextfs://<project_name>/backend/auth" "Auth Module" "
 
 # List a subtree
 context-cli node ls "contextfs://<project_name>/backend" -P <project_name>
+```
+
+#### Context Rollback
+If a `vibe-mutation` or manual update hallucinates an operation and corrupts an existing node, you can restore its soft-deleted state:
+```bash
+context-cli node restore "contextfs://<project_name>/backend/auth"
+```
+
+#### AST Codebase Ingestion Daemon
+If you are working on a massive codebase and the context tree is outdated, you can boot the background AST daemon. It watches for file changes and auto-ingests class signatures and function definitions into the context nodes tree.
+```bash
+context-cli daemon . -P <project_name> &
 ```
 
 ## Agent operating rules

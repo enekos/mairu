@@ -255,6 +255,10 @@ export class ContextManager {
     return this.db.deleteContextNode(uri);
   }
 
+  async restoreContextNode(uri: string) {
+    return this.db.restoreContextNode(uri);
+  }
+
   async getContextSubtree(nodeUri: string) {
     return this.db.getContextSubtree(nodeUri);
   }
