@@ -106,6 +106,37 @@ All text fields use a custom `content_analyzer` (English stemming + stopword rem
 | `src/cli.ts` | CLI entry point |
 | `src/dashboardApi.ts` | REST API for dashboard |
 | `src/evaluate.ts` | Evaluation harness entry point |
+| `src/daemon.ts` | File watcher daemon: parallel processing, persistent cache, NL content assembly |
+| `src/languageDescriber.ts` | Pluggable interface for language-specific AST extraction + shared types/utilities |
+| `src/typescriptDescriber.ts` | TypeScript/JS implementation of LanguageDescriber (ts-morph based) |
+| `src/nlDescriber.ts` | AST-to-English engine: converts function bodies to numbered NL descriptions |
+| `src/nlEnricher.ts` | Post-enrichment pass: injects cross-function context into NL descriptions |
+
+### AST Ingestion (Daemon)
+
+The daemon watches a directory for TS/JS file changes and produces human-readable natural language descriptions of code via pure AST heuristics (no LLM calls).
+
+**Architecture:** Single-pass AST walker behind a pluggable `LanguageDescriber` interface extracts symbols + edges + NL descriptions. A post-enrichment pass stitches cross-function references.
+
+**Content field layout for file context nodes:**
+
+| Field | Content |
+|---|---|
+| `abstract` | NL file summary — concise description of exported symbols and file purpose |
+| `overview` | Compact graph notation — machine-readable symbol/edge listing for programmatic use |
+| `content` | Full NL AST — statement-level English descriptions of every function/method body |
+
+**NL generation** uses AST pattern matching to translate code constructs to English:
+- Conditions: `x === null` → "`x` is null", `!x` → "`x` is falsy", `typeof x === "string"` → "`x` is a string"
+- Control flow: if/else, for/while loops, try/catch, switch, throw — all described in plain English
+- Cross-references: call edges enriched with callee context (e.g., "calls `validate` (which checks if input is falsy)")
+
+**Performance features:**
+- **Parallel processing** — configurable concurrency pool (default 8) for initial scan and batch changes
+- **Persistent hash cache** — `.contextfs-cache.json` persists fingerprint/content/payload hashes so daemon restarts skip unchanged files
+- **Triple-layer dedup** — file stat fingerprint → content SHA1 → payload SHA1 prevents unnecessary re-indexing
+
+**Pluggable interface** — `LanguageDescriber` is designed for future language support. Currently only TypeScript/JS (via ts-morph). To add a new language, implement the interface with `languageId`, `extensions`, and `extractFileGraph()`.
 
 ### Hierarchical Context (Tree Queries)
 
