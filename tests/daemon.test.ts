@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe("CodebaseDaemon", () => {
-  it("stores compact logic graph with module-internal symbols and call edges", async () => {
+  it("stores NL content with abstract summary, compact overview, and NL body", async () => {
     const tempDir = makeTempDir();
     const nestedDir = path.join(tempDir, "src", "domain");
     fs.mkdirSync(nestedDir, { recursive: true });
@@ -71,23 +71,34 @@ describe("CodebaseDaemon", () => {
     expect(name).toBe("feature.ts");
     expect(parentUri).toBe("contextfs://proj/src/domain");
     expect(project).toBe("proj");
-    expect(metadata).toEqual({ type: "file", path: filePath });
 
-    expect(abstractText).toBe("");
-    expect(overviewText).toBe("");
-    expect(content).toContain("File: src/domain/feature.ts");
-    expect(content).toContain("Language: ts");
-    expect(content).toContain("LogicGraph: v1");
-    expect(content).toContain("Symbols:");
-    expect(content).toContain("- fn fn:greet");
-    expect(content).toContain("- fn fn:normalize");
-    expect(content).toContain("- mtd mtd:UserService.run");
-    expect(content).toContain("Edges:");
-    expect(content).toContain("- call fn:greet -> fn:normalize");
-    expect(content).toContain("- call mtd:UserService.run -> mtd:UserService.bump");
-    expect(content).toContain("- call mtd:UserService.run -> fn:greet");
-    expect(content).toContain("- import file -> module:./slug");
-    expect(content).not.toContain("return slugify");
+    // abstract = NL file summary (no longer empty)
+    expect(abstractText).toBeTruthy();
+    expect(abstractText).toMatch(/greet|UserService|normalize/i);
+
+    // overview = compact graph notation (was previously in content)
+    expect(overviewText).toContain("File: src/domain/feature.ts");
+    expect(overviewText).toContain("Language: ts");
+    expect(overviewText).toContain("LogicGraph: v1");
+    expect(overviewText).toContain("Symbols:");
+    expect(overviewText).toContain("- fn fn:greet");
+    expect(overviewText).toContain("- fn fn:normalize");
+    expect(overviewText).toContain("- mtd mtd:UserService.run");
+    expect(overviewText).toContain("Edges:");
+    expect(overviewText).toContain("- call fn:greet -> fn:normalize");
+    expect(overviewText).toContain("- call mtd:UserService.run -> mtd:UserService.bump");
+    expect(overviewText).toContain("- import file -> module:./slug");
+
+    // content = NL descriptions (no longer compact notation)
+    expect(content).toMatch(/greet/i);
+    expect(content).toMatch(/normalize/i);
+    expect(content).toMatch(/UserService/i);
+    expect(content).not.toContain("- fn fn:greet"); // compact notation is in overview now
+
+    // metadata now always includes logic_graph
+    expect(metadata.type).toBe("file");
+    expect(metadata.path).toBe(filePath);
+    expect(metadata.logic_graph).toBeDefined();
   });
 
   it("falls back to default abstract and overview when no declarations exist", async () => {
@@ -104,16 +115,25 @@ describe("CodebaseDaemon", () => {
     await (daemon as any).processFile(filePath);
 
     expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(1);
-    const [, , abstractText, overviewText, content] = manager.upsertFileContextNode.mock.calls[0];
+    const [, , abstractText, overviewText, content, , , metadata] = manager.upsertFileContextNode.mock.calls[0];
 
-    expect(abstractText).toBe("");
-    expect(overviewText).toBe("");
-    expect(content).toContain("File: helpers.ts");
-    expect(content).toContain("Language: ts");
-    expect(content).toContain("Symbols:");
-    expect(content).toContain("- (none)");
-    expect(content).toContain("Edges:");
-    expect(content).not.toContain("empty module");
+    // abstract = NL file summary (fallback for empty file)
+    expect(abstractText).toBeTruthy();
+    expect(abstractText).toMatch(/empty|declaration/i);
+
+    // overview = compact graph with (none)
+    expect(overviewText).toContain("File: helpers.ts");
+    expect(overviewText).toContain("Language: ts");
+    expect(overviewText).toContain("Symbols:");
+    expect(overviewText).toContain("- (none)");
+    expect(overviewText).toContain("Edges:");
+
+    // content = minimal NL (empty or near-empty since no symbols)
+    expect(content).toBeDefined();
+
+    // metadata includes logic_graph
+    expect(metadata.type).toBe("file");
+    expect(metadata.logic_graph).toBeDefined();
   });
 
   it("skips files larger than the configured size limit", async () => {
@@ -194,7 +214,7 @@ describe("CodebaseDaemon", () => {
     expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(1);
   });
 
-  it("skips context upsert when compact payload does not change", async () => {
+  it("re-upserts when NL content changes even if compact graph is identical", async () => {
     const tempDir = makeTempDir();
     const filePath = path.join(tempDir, "math.ts");
     fs.writeFileSync(
@@ -223,7 +243,8 @@ describe("CodebaseDaemon", () => {
     );
     await (daemon as any).processFile(filePath);
 
-    expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(1);
+    // With NL content, the body descriptions differ, so both upserts happen
+    expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(2);
   });
 
   it("enforces compact payload bounds with truncation markers", async () => {
@@ -241,10 +262,65 @@ describe("CodebaseDaemon", () => {
     await (daemon as any).processFile(filePath);
 
     expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(1);
-    const [, , , , content, , , metadata] = manager.upsertFileContextNode.mock.calls[0];
-    expect(metadata).toEqual({ type: "file", path: filePath });
-    expect(content).toContain("GraphStats:");
-    expect(content).toContain("Truncated:");
-    expect(content.length).toBeLessThanOrEqual(16_100);
+    const [, , abstractText, overviewText, content, , , metadata] = manager.upsertFileContextNode.mock.calls[0];
+
+    // metadata includes logic_graph
+    expect(metadata.type).toBe("file");
+    expect(metadata.path).toBe(filePath);
+    expect(metadata.logic_graph).toBeDefined();
+
+    // overview = compact graph with truncation info
+    expect(overviewText).toContain("GraphStats:");
+    expect(overviewText).toContain("Truncated:");
+
+    // overview should be bounded
+    expect(overviewText.length).toBeLessThanOrEqual(16_100);
+
+    // abstract should be a NL summary
+    expect(abstractText).toBeTruthy();
+
+    // content = NL descriptions, may have truncation marker
+    expect(content).toBeDefined();
+  });
+
+  it("produces NL content with abstract summary, compact overview, and NL body", async () => {
+    const tempDir = makeTempDir();
+    const filePath = path.join(tempDir, "service.ts");
+    const code = source([
+      "export function validate(input: string) {",
+      "  if (!input) {",
+      "    throw new Error('Required');",
+      "  }",
+      "  return input.trim();",
+      "}",
+      "",
+      "export function process(data: string) {",
+      "  const clean = validate(data);",
+      "  return clean.toUpperCase();",
+      "}",
+    ]);
+    fs.writeFileSync(filePath, code, "utf8");
+
+    const manager = createManagerStub();
+    const daemon = new CodebaseDaemon(manager as any, "proj", tempDir);
+    await (daemon as any).processFile(filePath);
+
+    expect(manager.upsertFileContextNode).toHaveBeenCalledTimes(1);
+    const [, , abstractText, overviewText, content] = manager.upsertFileContextNode.mock.calls[0];
+
+    // abstract = NL file summary
+    expect(abstractText).toBeTruthy();
+    expect(abstractText).toMatch(/validate|process/i);
+
+    // overview = compact graph notation
+    expect(overviewText).toContain("Symbols:");
+    expect(overviewText).toContain("Edges:");
+    expect(overviewText).toContain("fn fn:validate");
+
+    // content = NL descriptions
+    expect(content).toMatch(/validate/i);
+    expect(content).toMatch(/[Tt]hrows|[Rr]eturns/);
+    expect(content).toMatch(/process/i);
+    expect(content).toMatch(/[Cc]all.*validate/);
   });
 });

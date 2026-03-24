@@ -4,6 +4,7 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import { createHash } from "crypto";
 import { TypeScriptDescriber } from "./typescriptDescriber";
+import { enrichDescriptions } from "./nlEnricher";
 import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./languageDescriber";
 
 export interface DaemonOptions {
@@ -17,9 +18,9 @@ const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cj
 const IGNORED_PATH_SEGMENTS = new Set(["node_modules", "dist", "build"]);
 
 interface SourceSummary {
-  abstractText: string;
-  overviewText: string;
-  compactContent: string;
+  abstractText: string;   // NL file summary
+  overviewText: string;   // compact graph (was previously compactContent)
+  nlContent: string;      // full NL descriptions
   logicGraphMetadata: Record<string, unknown>;
 }
 
@@ -183,10 +184,10 @@ export class CodebaseDaemon {
       imports: result.imports,
     };
     const selectedGraph = this.selectGraphForSerialization(rawGraph);
-    const compactContent = this.buildCompactContent(filePath, selectedGraph);
-    const baseName = path.basename(filePath);
-    const abstractText = this.buildAbstractText(baseName, selectedGraph);
-    const overviewText = this.buildOverviewText(selectedGraph);
+    const enrichedDescriptions = enrichDescriptions(result.symbolDescriptions, result.edges);
+    const abstractText = result.fileSummary;
+    const overviewText = this.buildCompactContent(filePath, selectedGraph);
+    const nlContent = this.buildNLContent(enrichedDescriptions, selectedGraph);
     const logicGraphMetadata = {
       version: LOGIC_GRAPH_VERSION,
       totals: {
@@ -201,47 +202,139 @@ export class CodebaseDaemon {
       edges: selectedGraph.edges,
       imports: rawGraph.imports,
     };
-    return { abstractText, overviewText, compactContent, logicGraphMetadata };
+    return { abstractText, overviewText, nlContent, logicGraphMetadata };
   }
 
-  private buildAbstractText(baseName: string, graph: SelectedLogicGraph): string {
-    if (graph.totalSymbols === 0) {
-      return `File ${baseName} containing source code.`;
-    }
-    return [
-      `Logic graph with ${graph.totalSymbols} symbols and ${graph.totalEdges} edges.`,
-      `${graph.exportedCount} exported symbols, ${graph.internalCount} internal symbols.`,
-      graph.truncatedSymbols > 0 || graph.truncatedEdges > 0
-        ? `Serialized with truncation (${graph.truncatedSymbols} symbols, ${graph.truncatedEdges} edges omitted).`
-        : "Serialized without truncation.",
-    ].join(" ");
-  }
-
-  private buildOverviewText(graph: SelectedLogicGraph): string {
-    if (graph.totalSymbols === 0) {
-      return "No declarations discovered for logic graph extraction.";
+  private buildNLContent(descriptions: Map<string, string>, graph: SelectedLogicGraph): string {
+    // Group symbols by kind: classes first, then functions, then vars/iface/enum/type
+    const kindGroupOrder: LogicSymbolKind[] = ["cls", "fn", "mtd", "var", "iface", "enum", "type"];
+    const grouped = new Map<LogicSymbolKind, LogicSymbol[]>();
+    for (const symbol of graph.symbols) {
+      const existing = grouped.get(symbol.kind) ?? [];
+      existing.push(symbol);
+      grouped.set(symbol.kind, existing);
     }
 
-    const highlightedCalls = graph.edges
-      .filter((edge) => edge.kind === "call")
-      .slice(0, MAX_OVERVIEW_EDGE_LINES)
-      .map((edge) => `- ${edge.from} -> ${edge.to}`);
-
-    const lines = [
-      `Logic graph v${LOGIC_GRAPH_VERSION}`,
-      `Symbols: ${graph.totalSymbols} total (${graph.exportedCount} exported, ${graph.internalCount} internal)`,
-      `Edges: ${graph.totalEdges} total`,
-    ];
-
-    if (highlightedCalls.length > 0) {
-      lines.push("Top call edges:", ...highlightedCalls);
+    // Rank symbols by score for truncation ordering (least important last)
+    const outgoingCounts = new Map<string, number>();
+    for (const edge of graph.edges) {
+      outgoingCounts.set(edge.from, (outgoingCounts.get(edge.from) ?? 0) + 1);
+    }
+    const symbolScores = new Map<string, number>();
+    for (const symbol of graph.symbols) {
+      symbolScores.set(symbol.id, this.symbolScore(symbol, outgoingCounts));
     }
 
-    if (graph.truncatedSymbols > 0 || graph.truncatedEdges > 0) {
-      lines.push(`Truncated: ${graph.truncatedSymbols} symbols, ${graph.truncatedEdges} edges`);
+    // Build sections
+    type Section = { symbolId: string; score: number; text: string };
+    const sections: Section[] = [];
+
+    // Collect class methods by parentId for nesting
+    const methodsByClass = new Map<string, LogicSymbol[]>();
+    for (const mtd of grouped.get("mtd") ?? []) {
+      if (mtd.parentId) {
+        const existing = methodsByClass.get(mtd.parentId) ?? [];
+        existing.push(mtd);
+        methodsByClass.set(mtd.parentId, existing);
+      }
     }
 
-    return lines.join("\n");
+    const kindLabel: Record<LogicSymbolKind, string> = {
+      cls: "Class",
+      fn: "Function",
+      mtd: "Method",
+      var: "Variable",
+      iface: "Interface",
+      enum: "Enum",
+      type: "Type",
+    };
+
+    for (const kind of kindGroupOrder) {
+      const symbols = grouped.get(kind) ?? [];
+      for (const symbol of symbols) {
+        // Skip methods here — they're nested under their class
+        if (kind === "mtd") continue;
+
+        const desc = descriptions.get(symbol.id);
+        const tags: string[] = [];
+        if (symbol.exported) tags.push("exported");
+        if (symbol.control.async) tags.push("async");
+        const tagStr = tags.length > 0 ? ` (${tags.join(", ")})` : "";
+
+        if (kind === "cls") {
+          // Class section with nested methods
+          const lines: string[] = [];
+          lines.push(`## ${kindLabel[kind]}: ${symbol.name}${tagStr}`);
+          if (desc) lines.push(desc);
+
+          const methods = methodsByClass.get(symbol.id) ?? [];
+          for (const mtd of methods) {
+            const mtdDesc = descriptions.get(mtd.id);
+            const mtdTags: string[] = [];
+            if (mtd.exported) mtdTags.push("exported");
+            if (mtd.control.async) mtdTags.push("async");
+            const mtdTagStr = mtdTags.length > 0 ? ` (${mtdTags.join(", ")})` : "";
+            const paramStr = mtd.params.length > 0 ? `Parameters: ${mtd.params.join(", ")}` : "";
+
+            lines.push("");
+            lines.push(`### Method: ${mtd.name}${mtdTagStr}`);
+            if (paramStr) lines.push(paramStr);
+            if (mtdDesc) {
+              lines.push("");
+              lines.push(mtdDesc);
+            }
+          }
+
+          // Use the max score among the class + its methods
+          let maxScore = symbolScores.get(symbol.id) ?? 0;
+          for (const mtd of methods) {
+            const mtdScore = symbolScores.get(mtd.id) ?? 0;
+            if (mtdScore > maxScore) maxScore = mtdScore;
+          }
+
+          sections.push({ symbolId: symbol.id, score: maxScore, text: lines.join("\n") });
+        } else if (kind === "fn") {
+          const lines: string[] = [];
+          const paramStr = symbol.params.length > 0 ? `Parameters: ${symbol.params.join(", ")}` : "";
+          lines.push(`## ${kindLabel[kind]}: ${symbol.name}${tagStr}`);
+          if (paramStr) lines.push(paramStr);
+          if (desc) {
+            lines.push("");
+            lines.push(desc);
+          }
+          sections.push({ symbolId: symbol.id, score: symbolScores.get(symbol.id) ?? 0, text: lines.join("\n") });
+        } else {
+          // var, iface, enum, type — one-line mention
+          const line = `- ${kindLabel[kind]}: ${symbol.name}${tagStr}${desc ? ` — ${desc}` : ""}`;
+          sections.push({ symbolId: symbol.id, score: symbolScores.get(symbol.id) ?? 0, text: line });
+        }
+      }
+    }
+
+    // Assemble and apply truncation
+    let totalLength = 0;
+    const included: string[] = [];
+    let omitted = 0;
+
+    // Sort sections by score descending so we keep the most important
+    const sortedSections = [...sections].sort((a, b) => b.score - a.score);
+
+    for (const section of sortedSections) {
+      const sectionLength = section.text.length + 2; // +2 for "\n\n" separator
+      if (totalLength + sectionLength > MAX_CONTENT_CHARS && included.length > 0) {
+        omitted++;
+        continue;
+      }
+      included.push(section.text);
+      totalLength += sectionLength;
+    }
+
+    let result = included.join("\n\n");
+    if (omitted > 0) {
+      result += `\n\n...TRUNCATED: ${omitted} symbols omitted`;
+    }
+
+    return result;
   }
 
   private buildCompactContent(filePath: string, graph: SelectedLogicGraph): string {
@@ -473,13 +566,16 @@ export class CodebaseDaemon {
     const parentUri = this.fileToParentUri(absPath);
     const summary = this.summarizeSourceFile(absPath, rawContent);
     const name = path.basename(absPath);
-    const content = summary.compactContent;
+    const abstractText = summary.abstractText;
+    const overviewText = summary.overviewText;
+    const content = summary.nlContent;
     const metadata = {
       type: "file",
       path: absPath,
+      logic_graph: summary.logicGraphMetadata,
     };
     const nextNodePayloadHash = this.hashText(
-      `\n\n${content}\n${JSON.stringify(metadata)}`
+      `${abstractText}\n${overviewText}\n${content}\n${JSON.stringify(metadata)}`
     );
 
     if (this.nodePayloadHashes.get(absPath) === nextNodePayloadHash) {
@@ -493,8 +589,8 @@ export class CodebaseDaemon {
     await this.manager.upsertFileContextNode(
       uri,
       name,
-      "",
-      "",
+      abstractText,
+      overviewText,
       content,
       parentUri,
       this.project,
