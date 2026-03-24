@@ -146,7 +146,7 @@ describe("CodebaseDaemon", () => {
     expect(manager.upsertFileContextNode).not.toHaveBeenCalled();
   });
 
-  it("removes deleted files from ts-morph project cache", async () => {
+  it("removes deleted files and clears internal caches", async () => {
     const tempDir = makeTempDir();
     const filePath = path.join(tempDir, "module.ts");
     const code = source([
@@ -160,13 +160,15 @@ describe("CodebaseDaemon", () => {
     const daemon = new CodebaseDaemon(manager as any, "proj", tempDir);
 
     await (daemon as any).processFile(filePath);
-    expect((daemon as any).tsProject.getSourceFile(filePath)).toBeDefined();
+    expect((daemon as any).fileContentHashes.has(path.resolve(filePath))).toBe(true);
 
     fs.unlinkSync(filePath);
     await (daemon as any).handleFileDelete(filePath);
 
     expect(manager.deleteContextNode).toHaveBeenCalledTimes(1);
-    expect((daemon as any).tsProject.getSourceFile(filePath)).toBeUndefined();
+    expect((daemon as any).fileContentHashes.has(path.resolve(filePath))).toBe(false);
+    expect((daemon as any).fileFingerprints.has(path.resolve(filePath))).toBe(false);
+    expect((daemon as any).nodePayloadHashes.has(path.resolve(filePath))).toBe(false);
   });
 
   it("skips mtime-only changes when file content is unchanged", async () => {

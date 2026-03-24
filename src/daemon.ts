@@ -1,29 +1,18 @@
-import {
-  CallExpression,
-  FunctionDeclaration,
-  MethodDeclaration,
-  Node,
-  Project,
-  SourceFile,
-  SyntaxKind,
-} from "ts-morph";
 import { ContextManager } from "./contextManager";
 import * as path from "path";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import { createHash } from "crypto";
-
-type ContentFormat = "compact" | "full";
+import { TypeScriptDescriber } from "./typescriptDescriber";
+import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./languageDescriber";
 
 export interface DaemonOptions {
   maxFileSizeBytes?: number;
   processingDebounceMs?: number;
-  contentFormat?: ContentFormat;
 }
 
 const DEFAULT_MAX_FILE_SIZE_BYTES = 512 * 1024; // 512 KB
 const DEFAULT_PROCESSING_DEBOUNCE_MS = 200;
-const DEFAULT_CONTENT_FORMAT: ContentFormat = "compact";
 const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const IGNORED_PATH_SEGMENTS = new Set(["node_modules", "dist", "build"]);
 
@@ -32,39 +21,6 @@ interface SourceSummary {
   overviewText: string;
   compactContent: string;
   logicGraphMetadata: Record<string, unknown>;
-}
-
-type LogicSymbolKind = "cls" | "fn" | "mtd" | "var" | "iface" | "enum" | "type";
-type LogicEdgeKind = "call" | "import" | "read" | "write" | "extends" | "implements";
-type ComplexityBucket = "low" | "medium" | "high";
-
-interface LogicSymbol {
-  id: string;
-  kind: LogicSymbolKind;
-  name: string;
-  exported: boolean;
-  parentId: string | null;
-  params: string[];
-  complexity: ComplexityBucket;
-  control: {
-    async: boolean;
-    branch: boolean;
-    await: boolean;
-    throw: boolean;
-  };
-  line: number;
-}
-
-interface LogicEdge {
-  kind: LogicEdgeKind;
-  from: string;
-  to: string;
-}
-
-interface RawLogicGraph {
-  symbols: LogicSymbol[];
-  edges: LogicEdge[];
-  imports: string[];
 }
 
 interface SelectedLogicGraph {
@@ -76,12 +32,6 @@ interface SelectedLogicGraph {
   truncatedEdges: number;
   exportedCount: number;
   internalCount: number;
-}
-
-interface CallableSymbolRef {
-  symbolId: string;
-  className: string | null;
-  node: FunctionDeclaration | MethodDeclaration;
 }
 
 const LOGIC_GRAPH_VERSION = 1;
@@ -105,14 +55,13 @@ export class CodebaseDaemon {
   private manager: ContextManager;
   private project: string;
   private watchDir: string;
-  private tsProject: Project;
+  private readonly describer: TypeScriptDescriber;
   private watcher: chokidar.FSWatcher | null = null;
   private isProcessing = false;
   private pendingFiles: Set<string> = new Set();
   private processTimer: NodeJS.Timeout | null = null;
   private readonly maxFileSizeBytes: number;
   private readonly processingDebounceMs: number;
-  private readonly contentFormat: ContentFormat;
   private readonly fileFingerprints: Map<string, string> = new Map();
   private readonly fileContentHashes: Map<string, string> = new Map();
   private readonly nodePayloadHashes: Map<string, string> = new Map();
@@ -123,19 +72,13 @@ export class CodebaseDaemon {
     this.watchDir = path.resolve(watchDir);
     this.maxFileSizeBytes = options.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
     this.processingDebounceMs = options.processingDebounceMs ?? DEFAULT_PROCESSING_DEBOUNCE_MS;
-    this.contentFormat = options.contentFormat ?? DEFAULT_CONTENT_FORMAT;
-    this.tsProject = new Project({
-      compilerOptions: {
-        allowJs: true,
-      },
-    });
+    this.describer = new TypeScriptDescriber();
   }
 
   public async start() {
     console.log(`[Daemon] Starting codebase monitor for project '${this.project}' in ${this.watchDir}`);
-    
+
     // Initial scan
-    this.tsProject.addSourceFilesAtPaths(this.getSourceGlobs());
     await this.processAllFiles();
 
     // Watch for changes
@@ -153,7 +96,7 @@ export class CodebaseDaemon {
       .on("add", (p) => this.queueFile(p))
       .on("change", (p) => this.queueFile(p))
       .on("unlink", (p) => this.handleFileDelete(p));
-      
+
     console.log(`[Daemon] Watching for changes...`);
   }
 
@@ -172,13 +115,25 @@ export class CodebaseDaemon {
     console.log(`[Daemon] Stopped watching ${this.watchDir}`);
   }
 
-  private getSourceGlobs(): string[] {
-    return [
-      `${this.watchDir}/**/*.{ts,tsx,js,jsx,mjs,cjs}`,
-      `!${this.watchDir}/**/node_modules/**`,
-      `!${this.watchDir}/**/dist/**`,
-      `!${this.watchDir}/**/build/**`,
-    ];
+  private discoverSourceFiles(dir: string): string[] {
+    const results: string[] = [];
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return results;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (!IGNORED_PATH_SEGMENTS.has(entry.name) && !entry.name.startsWith(".")) {
+          results.push(...this.discoverSourceFiles(fullPath));
+        }
+      } else if (SUPPORTED_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) {
+        results.push(fullPath);
+      }
+    }
+    return results;
   }
 
   private shouldProcessFile(filePath: string): boolean {
@@ -220,21 +175,17 @@ export class CodebaseDaemon {
     }, this.processingDebounceMs);
   }
 
-  private clearSourceFileFromProject(filePath: string) {
-    const sourceFile = this.tsProject.getSourceFile(filePath);
-    if (!sourceFile) return;
-    try {
-      this.tsProject.removeSourceFile(sourceFile);
-    } catch (err) {
-      console.warn(`[Daemon] Failed to remove source from cache: ${filePath}`, err);
-    }
-  }
-
-  private summarizeSourceFile(filePath: string, sourceFile: SourceFile): SourceSummary {
-    const rawGraph = this.extractRawLogicGraph(sourceFile);
+  private summarizeSourceFile(filePath: string, sourceText: string): SourceSummary {
+    const result = this.describer.extractFileGraph(filePath, sourceText);
+    const rawGraph = {
+      symbols: result.symbols,
+      edges: result.edges,
+      imports: result.imports,
+    };
     const selectedGraph = this.selectGraphForSerialization(rawGraph);
     const compactContent = this.buildCompactContent(filePath, selectedGraph);
-    const abstractText = this.buildAbstractText(sourceFile, selectedGraph);
+    const baseName = path.basename(filePath);
+    const abstractText = this.buildAbstractText(baseName, selectedGraph);
     const overviewText = this.buildOverviewText(selectedGraph);
     const logicGraphMetadata = {
       version: LOGIC_GRAPH_VERSION,
@@ -253,9 +204,9 @@ export class CodebaseDaemon {
     return { abstractText, overviewText, compactContent, logicGraphMetadata };
   }
 
-  private buildAbstractText(sourceFile: SourceFile, graph: SelectedLogicGraph): string {
+  private buildAbstractText(baseName: string, graph: SelectedLogicGraph): string {
     if (graph.totalSymbols === 0) {
-      return `File ${sourceFile.getBaseName()} containing source code.`;
+      return `File ${baseName} containing source code.`;
     }
     return [
       `Logic graph with ${graph.totalSymbols} symbols and ${graph.totalEdges} edges.`,
@@ -348,304 +299,7 @@ export class CodebaseDaemon {
     return `${serialized.slice(0, MAX_CONTENT_CHARS)}\n...TRUNCATED_BY_MAX_CONTENT_CHARS`;
   }
 
-  private extractRawLogicGraph(sourceFile: SourceFile): RawLogicGraph {
-    const symbols: LogicSymbol[] = [];
-    const edgesMap = new Map<string, LogicEdge>();
-    const nameToSymbolIds = new Map<string, string[]>();
-    const symbolById = new Map<string, LogicSymbol>();
-    const methodByClassAndName = new Map<string, string>();
-    const methodIdsByName = new Map<string, string[]>();
-    const callableSymbols: CallableSymbolRef[] = [];
-    const moduleVariableByName = new Map<string, string>();
-
-    const pushSymbol = (symbol: LogicSymbol) => {
-      symbols.push(symbol);
-      symbolById.set(symbol.id, symbol);
-      const existing = nameToSymbolIds.get(symbol.name) ?? [];
-      existing.push(symbol.id);
-      nameToSymbolIds.set(symbol.name, existing);
-    };
-
-    const addEdge = (edge: LogicEdge) => {
-      const key = `${edge.kind}|${edge.from}|${edge.to}`;
-      if (!edgesMap.has(key)) {
-        edgesMap.set(key, edge);
-      }
-    };
-
-    for (const importDecl of sourceFile.getImportDeclarations()) {
-      const moduleName = importDecl.getModuleSpecifierValue().trim();
-      if (!moduleName) continue;
-      addEdge({ kind: "import", from: "file", to: `module:${moduleName}` });
-    }
-
-    for (const cls of sourceFile.getClasses()) {
-      const className = cls.getName() ?? `anonymous_class_${cls.getStartLineNumber()}`;
-      const classId = `cls:${className}`;
-      pushSymbol(this.makeSymbol(classId, "cls", className, cls.isExported(), null, [], cls));
-
-      const extendsNode = cls.getExtends();
-      if (extendsNode) {
-        addEdge({
-          kind: "extends",
-          from: classId,
-          to: `type:${extendsNode.getExpression().getText().trim()}`,
-        });
-      }
-      for (const implemented of cls.getImplements()) {
-        addEdge({
-          kind: "implements",
-          from: classId,
-          to: `type:${implemented.getText().trim()}`,
-        });
-      }
-
-      for (const method of cls.getMethods()) {
-        const methodName = method.getName();
-        const methodId = `mtd:${className}.${methodName}`;
-        pushSymbol(
-          this.makeSymbol(
-            methodId,
-            "mtd",
-            methodName,
-            cls.isExported(),
-            classId,
-            method.getParameters().map((param) => param.getName()),
-            method
-          )
-        );
-        methodByClassAndName.set(`${className}.${methodName}`, methodId);
-        const existingMethodIds = methodIdsByName.get(methodName) ?? [];
-        existingMethodIds.push(methodId);
-        methodIdsByName.set(methodName, existingMethodIds);
-        callableSymbols.push({ symbolId: methodId, className, node: method });
-      }
-    }
-
-    for (const fn of sourceFile.getFunctions()) {
-      const fnName = fn.getName() ?? `anonymous_fn_${fn.getStartLineNumber()}`;
-      const fnId = `fn:${fnName}`;
-      pushSymbol(
-        this.makeSymbol(
-          fnId,
-          "fn",
-          fnName,
-          fn.isExported(),
-          null,
-          fn.getParameters().map((param) => param.getName()),
-          fn
-        )
-      );
-      callableSymbols.push({ symbolId: fnId, className: null, node: fn });
-    }
-
-    for (const decl of sourceFile.getVariableDeclarations()) {
-      const variableStmt = decl.getVariableStatement();
-      if (!variableStmt) continue;
-      if (variableStmt.getParent() !== sourceFile) continue;
-
-      const variableName = decl.getName();
-      const symbolId = `var:${variableName}`;
-      pushSymbol(this.makeSymbol(symbolId, "var", variableName, variableStmt.isExported(), null, [], decl));
-      moduleVariableByName.set(variableName, symbolId);
-    }
-
-    for (const iface of sourceFile.getInterfaces()) {
-      const name = iface.getName();
-      const symbolId = `iface:${name}`;
-      pushSymbol(this.makeSymbol(symbolId, "iface", name, iface.isExported(), null, [], iface));
-    }
-
-    for (const enumDecl of sourceFile.getEnums()) {
-      const name = enumDecl.getName();
-      const symbolId = `enum:${name}`;
-      pushSymbol(this.makeSymbol(symbolId, "enum", name, enumDecl.isExported(), null, [], enumDecl));
-    }
-
-    for (const typeAlias of sourceFile.getTypeAliases()) {
-      const name = typeAlias.getName();
-      const symbolId = `type:${name}`;
-      pushSymbol(this.makeSymbol(symbolId, "type", name, typeAlias.isExported(), null, [], typeAlias));
-    }
-
-    for (const callable of callableSymbols) {
-      for (const callExpr of callable.node.getDescendantsOfKind(SyntaxKind.CallExpression)) {
-        const targetId = this.resolveCallTarget(
-          callExpr,
-          callable.className,
-          methodByClassAndName,
-          methodIdsByName,
-          nameToSymbolIds,
-          symbolById
-        );
-        if (!targetId) continue;
-        addEdge({ kind: "call", from: callable.symbolId, to: targetId });
-      }
-
-      for (const identifier of callable.node.getDescendantsOfKind(SyntaxKind.Identifier)) {
-        const identifierName = identifier.getText();
-        const variableId = moduleVariableByName.get(identifierName);
-        if (!variableId) continue;
-        if (this.isDeclarationIdentifier(identifier)) continue;
-
-        const isWrite = this.isWriteIdentifier(identifier);
-        addEdge({
-          kind: isWrite ? "write" : "read",
-          from: callable.symbolId,
-          to: variableId,
-        });
-      }
-    }
-
-    const imports = Array.from(
-      new Set(
-        sourceFile.getImportDeclarations()
-          .map((decl) => decl.getModuleSpecifierValue().trim())
-          .filter((value) => value.length > 0)
-      )
-    ).sort((a, b) => a.localeCompare(b));
-
-    return {
-      symbols: this.sortSymbols(symbols),
-      edges: this.sortEdges(Array.from(edgesMap.values())),
-      imports,
-    };
-  }
-
-  private makeSymbol(
-    id: string,
-    kind: LogicSymbolKind,
-    name: string,
-    exported: boolean,
-    parentId: string | null,
-    params: string[],
-    node: Node
-  ): LogicSymbol {
-    const functionLikeNode = this.asFunctionLikeNode(node);
-    const control = {
-      async: this.isAsyncFunctionLike(functionLikeNode),
-      branch: !!functionLikeNode && this.hasBranching(functionLikeNode),
-      await: !!functionLikeNode && functionLikeNode.getDescendantsOfKind(SyntaxKind.AwaitExpression).length > 0,
-      throw: !!functionLikeNode && functionLikeNode.getDescendantsOfKind(SyntaxKind.ThrowStatement).length > 0,
-    };
-
-    return {
-      id,
-      kind,
-      name,
-      exported,
-      parentId,
-      params: [...params].sort((a, b) => a.localeCompare(b)),
-      complexity: this.computeComplexityBucket(functionLikeNode),
-      control,
-      line: node.getStartLineNumber(),
-    };
-  }
-
-  private asFunctionLikeNode(node: Node): FunctionDeclaration | MethodDeclaration | null {
-    if (Node.isFunctionDeclaration(node)) return node;
-    if (Node.isMethodDeclaration(node)) return node;
-    return null;
-  }
-
-  private isAsyncFunctionLike(node: FunctionDeclaration | MethodDeclaration | null): boolean {
-    if (!node) return false;
-    return node.isAsync();
-  }
-
-  private hasBranching(node: FunctionDeclaration | MethodDeclaration): boolean {
-    return node.getDescendantsOfKind(SyntaxKind.IfStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.SwitchStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.ConditionalExpression).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.ForStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.ForOfStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.ForInStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.WhileStatement).length > 0
-      || node.getDescendantsOfKind(SyntaxKind.DoStatement).length > 0;
-  }
-
-  private computeComplexityBucket(node: FunctionDeclaration | MethodDeclaration | null): ComplexityBucket {
-    if (!node) return "low";
-    const statements = node.getDescendants().filter((descendant) => Node.isStatement(descendant)).length;
-    if (statements >= 18) return "high";
-    if (statements >= 6) return "medium";
-    return "low";
-  }
-
-  private resolveCallTarget(
-    callExpr: CallExpression,
-    callerClassName: string | null,
-    methodByClassAndName: Map<string, string>,
-    methodIdsByName: Map<string, string[]>,
-    nameToSymbolIds: Map<string, string[]>,
-    symbolById: Map<string, LogicSymbol>
-  ): string | null {
-    const callTarget = callExpr.getExpression();
-    if (Node.isIdentifier(callTarget)) {
-      const symbolIds = nameToSymbolIds.get(callTarget.getText()) ?? [];
-      return this.pickBestCallableSymbolId(symbolIds, symbolById);
-    }
-
-    if (Node.isPropertyAccessExpression(callTarget)) {
-      const methodName = callTarget.getName();
-      const expressionText = callTarget.getExpression().getText();
-      if (expressionText === "this" && callerClassName) {
-        const ownMethod = methodByClassAndName.get(`${callerClassName}.${methodName}`);
-        if (ownMethod) return ownMethod;
-      }
-      const candidateMethodIds = methodIdsByName.get(methodName) ?? [];
-      if (candidateMethodIds.length === 1) return candidateMethodIds[0];
-    }
-
-    return null;
-  }
-
-  private pickBestCallableSymbolId(symbolIds: string[], symbolById: Map<string, LogicSymbol>): string | null {
-    const ranked = symbolIds
-      .map((symbolId) => symbolById.get(symbolId))
-      .filter((symbol): symbol is LogicSymbol => !!symbol)
-      .filter((symbol) => symbol.kind === "fn" || symbol.kind === "mtd")
-      .sort((a, b) => {
-        const kindWeight = (symbol: LogicSymbol) => (symbol.kind === "fn" ? 0 : 1);
-        const weightDiff = kindWeight(a) - kindWeight(b);
-        if (weightDiff !== 0) return weightDiff;
-        return a.id.localeCompare(b.id);
-      });
-    return ranked[0]?.id ?? null;
-  }
-
-  private isDeclarationIdentifier(identifier: Node): boolean {
-    const parent = identifier.getParent();
-    if (!parent) return false;
-    if (Node.isVariableDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isParameterDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isFunctionDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isMethodDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isClassDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isInterfaceDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isTypeAliasDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    if (Node.isEnumDeclaration(parent) && parent.getNameNode() === identifier) return true;
-    return false;
-  }
-
-  private isWriteIdentifier(identifier: Node): boolean {
-    const parent = identifier.getParent();
-    if (!parent) return false;
-
-    if (Node.isBinaryExpression(parent) && parent.getLeft() === identifier) {
-      const operatorText = parent.getOperatorToken().getText();
-      return operatorText.endsWith("=");
-    }
-
-    if ((Node.isPrefixUnaryExpression(parent) || Node.isPostfixUnaryExpression(parent)) && parent.getOperand() === identifier) {
-      const operatorText = parent.getOperatorToken();
-      return operatorText === SyntaxKind.PlusPlusToken || operatorText === SyntaxKind.MinusMinusToken;
-    }
-
-    return false;
-  }
-
-  private selectGraphForSerialization(graph: RawLogicGraph): SelectedLogicGraph {
+  private selectGraphForSerialization(graph: { symbols: LogicSymbol[]; edges: LogicEdge[]; imports: string[] }): SelectedLogicGraph {
     const outgoingCounts = new Map<string, number>();
     for (const edge of graph.edges) {
       outgoingCounts.set(edge.from, (outgoingCounts.get(edge.from) ?? 0) + 1);
@@ -761,9 +415,9 @@ export class CodebaseDaemon {
 
   private async processAllFiles() {
     console.log("[Daemon] Running initial full codebase scan...");
-    const files = this.tsProject.getSourceFiles().filter((f) => this.shouldProcessFile(f.getFilePath()));
-    for (const file of files) {
-      await this.processFile(file.getFilePath());
+    const files = this.discoverSourceFiles(this.watchDir).filter((f) => this.shouldProcessFile(f));
+    for (const filePath of files) {
+      await this.processFile(filePath);
     }
     console.log(`[Daemon] Initial scan complete (${files.length} files).`);
   }
@@ -775,7 +429,6 @@ export class CodebaseDaemon {
     this.fileFingerprints.delete(absPath);
     this.fileContentHashes.delete(absPath);
     this.nodePayloadHashes.delete(absPath);
-    this.clearSourceFileFromProject(absPath);
 
     console.log(`[Daemon] File deleted, removing context node: ${uri}`);
     try {
@@ -792,7 +445,6 @@ export class CodebaseDaemon {
     if (!stats || !stats.isFile()) return;
 
     if (stats.size > this.maxFileSizeBytes) {
-      this.clearSourceFileFromProject(absPath);
       console.warn(`[Daemon] Skipping large file (${stats.size} bytes): ${absPath}`);
       return;
     }
@@ -817,38 +469,17 @@ export class CodebaseDaemon {
       return;
     }
 
-    let sourceFile = this.tsProject.getSourceFile(absPath);
-    try {
-      if (sourceFile) {
-        await sourceFile.refreshFromFileSystem();
-      } else {
-        sourceFile = this.tsProject.addSourceFileAtPathIfExists(absPath);
-      }
-    } catch (err) {
-      console.warn(`[Daemon] Failed to parse file ${absPath}`, err);
-      this.clearSourceFileFromProject(absPath);
-      return;
-    }
-
-    if (!sourceFile) return;
-
     const uri = this.fileToUri(absPath);
     const parentUri = this.fileToParentUri(absPath);
-    const summary = this.summarizeSourceFile(absPath, sourceFile);
+    const summary = this.summarizeSourceFile(absPath, rawContent);
     const name = path.basename(absPath);
-    const compactMode = this.contentFormat !== "full";
-    const abstractText = compactMode ? "" : summary.abstractText;
-    const overviewText = compactMode ? "" : summary.overviewText;
-    const content = this.contentFormat === "full"
-      ? rawContent
-      : summary.compactContent;
+    const content = summary.compactContent;
     const metadata = {
       type: "file",
       path: absPath,
-      ...(compactMode ? {} : { logic_graph: summary.logicGraphMetadata }),
     };
     const nextNodePayloadHash = this.hashText(
-      `${abstractText}\n${overviewText}\n${content}\n${JSON.stringify(metadata)}`
+      `\n\n${content}\n${JSON.stringify(metadata)}`
     );
 
     if (this.nodePayloadHashes.get(absPath) === nextNodePayloadHash) {
@@ -862,8 +493,8 @@ export class CodebaseDaemon {
     await this.manager.upsertFileContextNode(
       uri,
       name,
-      abstractText,
-      overviewText,
+      "",
+      "",
       content,
       parentUri,
       this.project,
