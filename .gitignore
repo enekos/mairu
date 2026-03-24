@@ -23,3 +23,7 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Daemon persistent cache
+.contextfs-cache.json
+.contextfs-cache.json.tmp

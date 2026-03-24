@@ -37,6 +37,9 @@ interface SelectedLogicGraph {
   internalCount: number;
 }
 
+const CACHE_FILENAME = ".contextfs-cache.json";
+const CACHE_VERSION = 1;
+
 const LOGIC_GRAPH_VERSION = 1;
 const MAX_SERIALIZED_SYMBOLS = 80;
 const MAX_SERIALIZED_EDGES = 220;
@@ -80,8 +83,47 @@ export class CodebaseDaemon {
     this.describer = new TypeScriptDescriber();
   }
 
+  public loadCache(): void {
+    const cachePath = path.join(this.watchDir, CACHE_FILENAME);
+    try {
+      const raw = fs.readFileSync(cachePath, "utf8");
+      const data = JSON.parse(raw);
+      if (data.version !== CACHE_VERSION) {
+        console.log("[Daemon] Cache version mismatch, ignoring");
+        return;
+      }
+      for (const [absPath, entry] of Object.entries(data.files as Record<string, any>)) {
+        this.fileFingerprints.set(absPath, entry.fingerprint);
+        this.fileContentHashes.set(absPath, entry.contentHash);
+        this.nodePayloadHashes.set(absPath, entry.payloadHash);
+      }
+      console.log(`[Daemon] Loaded cache with ${Object.keys(data.files).length} entries`);
+    } catch {
+      // No cache or corrupt — start fresh
+    }
+  }
+
+  public saveCache(): void {
+    const cachePath = path.join(this.watchDir, CACHE_FILENAME);
+    const tmpPath = cachePath + ".tmp";
+    const files: Record<string, any> = {};
+    for (const [absPath, fingerprint] of this.fileFingerprints) {
+      files[absPath] = {
+        fingerprint,
+        contentHash: this.fileContentHashes.get(absPath) ?? "",
+        payloadHash: this.nodePayloadHashes.get(absPath) ?? "",
+      };
+    }
+    const data = JSON.stringify({ version: CACHE_VERSION, files }, null, 2);
+    fs.writeFileSync(tmpPath, data, "utf8");
+    fs.renameSync(tmpPath, cachePath);
+  }
+
   public async start() {
     console.log(`[Daemon] Starting codebase monitor for project '${this.project}' in ${this.watchDir}`);
+
+    // Load persistent cache before initial scan
+    this.loadCache();
 
     // Initial scan
     await this.processAllFiles();
@@ -513,6 +555,7 @@ export class CodebaseDaemon {
       const filesToProcess = Array.from(this.pendingFiles);
       this.pendingFiles.clear();
       await this.runWithConcurrency(filesToProcess, this.concurrency, (f) => this.processFile(f));
+      this.saveCache();
     } catch (e) {
       console.error("[Daemon] Error processing files:", e);
     } finally {
@@ -528,6 +571,7 @@ export class CodebaseDaemon {
     const files = this.discoverSourceFiles(this.watchDir).filter((f) => this.shouldProcessFile(f));
     await this.runWithConcurrency(files, this.concurrency, (f) => this.processFile(f));
     console.log(`[Daemon] Initial scan complete (${files.length} files).`);
+    this.saveCache();
   }
 
   private async handleFileDelete(filePath: string) {
