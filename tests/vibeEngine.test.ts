@@ -46,7 +46,7 @@ describe("vibeEngine", () => {
   describe("planVibeSearch", () => {
     it("throws if GEMINI_API_KEY is not set", async () => {
       delete process.env.GEMINI_API_KEY;
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
 
       await expect(planVibeSearch("test prompt")).rejects.toThrow(
         "GEMINI_API_KEY is not set"
@@ -65,7 +65,7 @@ describe("vibeEngine", () => {
         }),
       });
 
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
       const result = await planVibeSearch("how does auth work?");
 
       expect(result.reasoning).toBe("Searching memories and nodes for auth info");
@@ -78,7 +78,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       mockGenerateContent.mockResolvedValue({ text: "not json at all" });
 
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
       const result = await planVibeSearch("test prompt");
 
       expect(result.reasoning).toBe("Falling back to direct search");
@@ -100,7 +100,7 @@ describe("vibeEngine", () => {
         }),
       });
 
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
       const result = await planVibeSearch("test");
 
       expect(result.queries).toHaveLength(2);
@@ -114,7 +114,7 @@ describe("vibeEngine", () => {
         text: JSON.stringify({ reasoning: "ok", queries: [{ store: "memory", query: "test" }] }),
       });
 
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
       await planVibeSearch("test", "my-project");
 
       const prompt = mockGenerateContent.mock.calls[0][0].contents;
@@ -132,7 +132,7 @@ describe("vibeEngine", () => {
         }),
       });
 
-      const { planVibeSearch } = await import("../src/vibeEngine");
+      const { planVibeSearch } = await import("../src/llm/vibeEngine");
       const result = await planVibeSearch("test");
 
       expect(mockGenerateContent).toHaveBeenCalledTimes(2);
@@ -164,7 +164,7 @@ describe("vibeEngine", () => {
         searchContext: vi.fn().mockResolvedValue([{ uri: "ctx://auth", name: "Auth", abstract: "auth node" }]),
       };
 
-      const { executeVibeQuery } = await import("../src/vibeEngine");
+      const { executeVibeQuery } = await import("../src/llm/vibeEngine");
       const result = await executeVibeQuery(mockCm as any, "how does auth work?", "proj", 3);
 
       expect(result.reasoning).toBe("multi-store search");
@@ -188,7 +188,7 @@ describe("vibeEngine", () => {
         searchMemories: vi.fn().mockResolvedValue([]),
       };
 
-      const { executeVibeQuery } = await import("../src/vibeEngine");
+      const { executeVibeQuery } = await import("../src/llm/vibeEngine");
       const result = await executeVibeQuery(mockCm as any, "nothing");
 
       expect(result.results).toHaveLength(1);
@@ -203,7 +203,7 @@ describe("vibeEngine", () => {
   describe("planVibeMutation", () => {
     it("throws if GEMINI_API_KEY is not set", async () => {
       delete process.env.GEMINI_API_KEY;
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
 
       await expect(planVibeMutation({} as any, "test")).rejects.toThrow(
         "GEMINI_API_KEY is not set"
@@ -238,7 +238,7 @@ describe("vibeEngine", () => {
         searchMemories: vi.fn().mockResolvedValue([]),
       };
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       const result = await planVibeMutation(mockCm as any, "remember we use vitest");
 
       expect(result.reasoning).toBe("Adding a new memory about testing");
@@ -270,7 +270,7 @@ describe("vibeEngine", () => {
         searchContext: vi.fn().mockResolvedValue([]),
       };
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       const result = await planVibeMutation(mockCm as any, "test");
 
       expect(result.operations).toHaveLength(2);
@@ -294,7 +294,7 @@ describe("vibeEngine", () => {
         searchContext: vi.fn().mockResolvedValue([]),
       };
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       await expect(planVibeMutation(mockCm as any, "test")).rejects.toThrow(
         /LLM returned unparseable mutation plan/
       );
@@ -321,7 +321,7 @@ describe("vibeEngine", () => {
 
       const mockCm = { searchMemories: vi.fn().mockResolvedValue([]) };
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       const result = await planVibeMutation(mockCm as any, "test");
 
       expect(result.reasoning).toBe("compact retry succeeded");
@@ -342,7 +342,7 @@ describe("vibeEngine", () => {
       const mockCm = { searchMemories: vi.fn().mockResolvedValue([]) };
       const veryLargePrompt = `BEGIN\n${"x".repeat(40000)}\nEND`;
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       await planVibeMutation(mockCm as any, veryLargePrompt);
 
       const mutationPrompt = mockGenerateContent.mock.calls[1][0].contents as string;
@@ -372,7 +372,7 @@ describe("vibeEngine", () => {
         ]),
       };
 
-      const { planVibeMutation } = await import("../src/vibeEngine");
+      const { planVibeMutation } = await import("../src/llm/vibeEngine");
       await planVibeMutation(mockCm as any, "auth");
 
       // The mutation prompt should only contain mem1 once despite 2 search queries returning it
@@ -393,7 +393,7 @@ describe("vibeEngine", () => {
         addMemory: vi.fn().mockResolvedValue({ id: "mem_ai" }),
       };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       await executeMutationOp(mockCm as any, {
         op: "create_memory",
         description: "create with ai fields",
@@ -430,7 +430,7 @@ describe("vibeEngine", () => {
         addMemory: vi.fn().mockResolvedValue({ id: "mem_new123" }),
       };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "create_memory",
         description: "test",
@@ -458,7 +458,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { updateMemory: vi.fn().mockResolvedValue({}) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "update_memory",
         target: "mem_abc",
@@ -474,7 +474,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { updateContextNode: vi.fn().mockResolvedValue({}) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "update_node",
         target: "ctx://existing",
@@ -498,7 +498,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { deleteMemory: vi.fn().mockResolvedValue(undefined) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "delete_memory",
         target: "mem_del",
@@ -515,7 +515,7 @@ describe("vibeEngine", () => {
         addSkill: vi.fn().mockResolvedValue({ id: "skill_new" }),
       };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "create_skill",
         description: "add skill",
@@ -534,7 +534,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { updateSkill: vi.fn().mockResolvedValue({}) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "update_skill",
         target: "skill_1",
@@ -549,7 +549,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { deleteSkill: vi.fn().mockResolvedValue(undefined) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "delete_skill",
         target: "skill_del",
@@ -566,7 +566,7 @@ describe("vibeEngine", () => {
         addContextNode: vi.fn().mockResolvedValue({ uri: "ctx://new" }),
       };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "create_node",
         description: "add node",
@@ -596,7 +596,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { updateContextNode: vi.fn().mockResolvedValue({}) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "update_node",
         target: "ctx://existing",
@@ -611,7 +611,7 @@ describe("vibeEngine", () => {
       process.env.GEMINI_API_KEY = "fake-key";
       const mockCm = { deleteContextNode: vi.fn().mockResolvedValue(undefined) };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp(mockCm as any, {
         op: "delete_node",
         target: "ctx://del",
@@ -628,7 +628,7 @@ describe("vibeEngine", () => {
         addMemory: vi.fn().mockResolvedValue({ id: "mem_defaults" }),
       };
 
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       await executeMutationOp(mockCm as any, {
         op: "create_memory",
         description: "minimal create",
@@ -654,7 +654,7 @@ describe("vibeEngine", () => {
 
     it("returns message for unknown op type", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
-      const { executeMutationOp } = await import("../src/vibeEngine");
+      const { executeMutationOp } = await import("../src/llm/vibeEngine");
       const result = await executeMutationOp({} as any, {
         op: "unknown_op" as any,
         description: "test",

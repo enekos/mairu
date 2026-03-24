@@ -6,8 +6,8 @@
  * Inspired by SimpleMem's online synthesis and A-Mem's agent-based management.
  */
 import { GoogleGenAI } from "@google/genai";
-import { extractJsonObject } from "./jsonUtils";
-import { config } from "./config";
+import { extractJsonObject } from "../core/jsonUtils";
+import { config } from "../core/config";
 
 const LLM_MODEL = config.llmModel;
 

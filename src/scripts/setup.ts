@@ -1,5 +1,5 @@
-import { ElasticDB } from "./elasticDB";
-import { config } from "./config";
+import { ElasticDB } from "../storage/elasticDB";
+import { config } from "../core/config";
 
 const node = config.elasticUrl;
 

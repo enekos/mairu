@@ -1,5 +1,5 @@
-import { createContextManager } from "./client";
-import { AgentContextNode } from "./types";
+import { createContextManager } from "../storage/client";
+import { AgentContextNode } from "../core/types";
 
 const contextManager = createContextManager();
 

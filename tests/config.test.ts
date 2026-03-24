@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertEmbeddingDimension, config } from "../src/config";
+import { assertEmbeddingDimension, config } from "../src/core/config";
 
 describe("assertEmbeddingDimension", () => {
   const dimension = config.embedding.dimension;

@@ -6,8 +6,8 @@ import {
   MemorySearchOptions,
   SkillSearchOptions,
   ContextSearchOptions,
-} from "./types";
-import { assertEmbeddingDimension, config } from "./config";
+} from "../core/types";
+import { assertEmbeddingDimension, config } from "../core/config";
 import {
   DEFAULT_MEMORY_WEIGHTS,
   DEFAULT_SKILL_WEIGHTS,

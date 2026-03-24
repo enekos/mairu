@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TypeScriptDescriber } from "../src/typescriptDescriber";
+import { TypeScriptDescriber } from "../src/ast/typescriptDescriber";
 
 describe("TypeScriptDescriber", () => {
   const describer = new TypeScriptDescriber();

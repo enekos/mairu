@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parsePositiveInt, parseBoolean } from "../src/configParsing";
+import { parsePositiveInt, parseBoolean } from "../src/core/configParsing";
 
 describe("parsePositiveInt", () => {
   it("returns undefined for undefined", () => {

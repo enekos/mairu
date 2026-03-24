@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { createContextManager } from "./client";
-import { AgentContextNode, SkippedWrite, UpdatedWrite } from "./types";
-import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./vibeEngine";
+import { createContextManager } from "./storage/client";
+import { AgentContextNode, SkippedWrite, UpdatedWrite } from "./core/types";
+import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./llm/vibeEngine";
 import * as fs from "fs";
 import * as readline from "readline";
 import { CodebaseDaemon } from "./daemon";

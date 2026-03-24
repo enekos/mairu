@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { assertEmbeddingDimension, config } from "./config";
+import { assertEmbeddingDimension, config } from "../core/config";
 
 const ai = config.geminiApiKey
   ? new GoogleGenAI({ apiKey: config.geminiApiKey })

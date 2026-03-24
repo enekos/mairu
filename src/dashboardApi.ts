@@ -1,8 +1,8 @@
 import { createServer, IncomingMessage, ServerResponse } from "http";
 import { URL } from "url";
-import { createContextManager } from "./client";
-import { config } from "./config";
-import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./vibeEngine";
+import { createContextManager } from "./storage/client";
+import { config } from "./core/config";
+import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./llm/vibeEngine";
 
 const cm = createContextManager();
 const port = config.dashboardApiPort;

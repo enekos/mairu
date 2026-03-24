@@ -1,5 +1,5 @@
 import { ContextManager } from "./contextManager";
-import { config } from "./config";
+import { config } from "../core/config";
 
 export function createContextManager(): ContextManager {
   const node = config.elasticUrl;

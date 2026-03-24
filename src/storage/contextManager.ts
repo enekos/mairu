@@ -12,9 +12,9 @@ import {
   SkillSearchOptions,
   SkippedWrite,
   UpdatedWrite,
-} from "./types";
-import { decideMemoryAction, decideContextAction, RouterCandidate } from "./llmRouter";
-import { parseTextIntoContextNodes, ProposedContextNode } from "./ingestor";
+} from "../core/types";
+import { decideMemoryAction, decideContextAction, RouterCandidate } from "../llm/llmRouter";
+import { parseTextIntoContextNodes, ProposedContextNode } from "../llm/ingestor";
 
 export type { ProposedContextNode };
 

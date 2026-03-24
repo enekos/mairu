@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { enrichDescriptions } from "../src/nlEnricher";
-import type { LogicEdge } from "../src/languageDescriber";
+import { enrichDescriptions } from "../src/ast/nlEnricher";
+import type { LogicEdge } from "../src/ast/languageDescriber";
 
 describe("enrichDescriptions", () => {
   it("enriches call references with callee context", () => {

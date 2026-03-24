@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LanguageDescriber, FileGraphResult } from "../src/languageDescriber";
-import { TypeScriptDescriber } from "../src/typescriptDescriber";
+import type { LanguageDescriber, FileGraphResult } from "../src/ast/languageDescriber";
+import { TypeScriptDescriber } from "../src/ast/typescriptDescriber";
 
 describe("LanguageDescriber interface", () => {
   it("TypeScriptDescriber implements LanguageDescriber", () => {

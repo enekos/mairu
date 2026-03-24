@@ -3,9 +3,9 @@
  * Bypasses the LLM deduplication router and uses explicit IDs for deterministic eval runs.
  */
 
-import { ElasticDB } from "./elasticDB";
-import { Embedder } from "./embedder";
-import type { MemoryCategory, MemoryOwner } from "./types";
+import { ElasticDB } from "../storage/elasticDB";
+import { Embedder } from "../storage/embedder";
+import type { MemoryCategory, MemoryOwner } from "../core/types";
 
 export interface MemoryFixture {
   id: string;

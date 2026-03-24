@@ -8,7 +8,7 @@ import {
   summarize,
   computeRecallMetrics,
   type PerCaseResult,
-} from "../src/evalUtils";
+} from "../src/eval/evalUtils";
 
 // ---------------------------------------------------------------------------
 // Helpers

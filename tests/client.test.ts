@@ -8,7 +8,7 @@ vi.mock("dotenv", () => {
 });
 
 // Mock ContextManager
-vi.mock("../src/ContextManager", () => {
+vi.mock("../src/storage/contextManager", () => {
   return {
     ContextManager: vi.fn().mockImplementation((node, auth) => {
       return { node, auth };
@@ -42,7 +42,7 @@ describe("client", () => {
     delete process.env.ELASTIC_USERNAME;
     delete process.env.ELASTIC_PASSWORD;
 
-    const { createContextManager } = await import("../src/client");
+    const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
     expect(manager.node).toBe("http://localhost:9200");
@@ -54,7 +54,7 @@ describe("client", () => {
     process.env.ELASTIC_USERNAME = "elastic";
     process.env.ELASTIC_PASSWORD = "changeme";
 
-    const { createContextManager } = await import("../src/client");
+    const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
     expect(manager.node).toBe("http://localhost:9200");
@@ -66,7 +66,7 @@ describe("client", () => {
     delete process.env.ELASTIC_USERNAME;
     delete process.env.ELASTIC_PASSWORD;
 
-    const { createContextManager } = await import("../src/client");
+    const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
     expect(manager.node).toBe("http://custom:9200");

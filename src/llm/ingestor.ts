@@ -4,8 +4,8 @@
  * suitable for storage in the contextfs hierarchy.
  */
 import { GoogleGenAI } from "@google/genai";
-import { extractJsonArray } from "./jsonUtils";
-import { config } from "./config";
+import { extractJsonArray } from "../core/jsonUtils";
+import { config } from "../core/config";
 
 const LLM_MODEL = config.llmModel;
 

@@ -1,12 +1,12 @@
-import { ContextManager } from "./contextManager";
+import { ContextManager } from "./storage/contextManager";
 import * as path from "path";
 import * as chokidar from "chokidar";
 import * as fs from "fs";
 import { createHash } from "crypto";
-import { TypeScriptDescriber } from "./typescriptDescriber";
-import { enrichDescriptions } from "./nlEnricher";
-import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./languageDescriber";
-import { compareSymbols, sortSymbols, sortEdges } from "./languageDescriber";
+import { TypeScriptDescriber } from "./ast/typescriptDescriber";
+import { enrichDescriptions } from "./ast/nlEnricher";
+import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./ast/languageDescriber";
+import { compareSymbols, sortSymbols, sortEdges } from "./ast/languageDescriber";
 
 export interface DaemonOptions {
   maxFileSizeBytes?: number;

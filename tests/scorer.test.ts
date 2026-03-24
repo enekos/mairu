@@ -5,7 +5,7 @@ import {
   DEFAULT_SKILL_WEIGHTS,
   DEFAULT_CONTEXT_WEIGHTS,
   type HybridWeights,
-} from "../src/scorer";
+} from "../src/storage/scorer";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // normalizeWeights

@@ -48,7 +48,7 @@ describe("llmRouter", () => {
   describe("decideMemoryAction", () => {
     it("returns 'create' if AI is not initialized", async () => {
       delete process.env.GEMINI_API_KEY;
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.9 }]);
       expect(result).toEqual({ action: "create" });
@@ -56,7 +56,7 @@ describe("llmRouter", () => {
 
     it("returns 'create' if no candidates meet SIMILARITY_GATE", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.5 }]);
       expect(result).toEqual({ action: "create" });
@@ -68,7 +68,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"update","targetId":"123","mergedContent":"new and old"}',
       });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "123", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "update", targetId: "123", mergedContent: "new and old" });
@@ -78,7 +78,7 @@ describe("llmRouter", () => {
     it("returns 'create' on invalid JSON", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
       mockGenerateContent.mockResolvedValue({ text: "not json at all" });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -89,7 +89,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"update","targetId":"1"}', // missing mergedContent
       });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -100,7 +100,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"skip","reason":"already there"}',
       });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "skip", reason: "already there" });
@@ -109,7 +109,7 @@ describe("llmRouter", () => {
     it("returns 'create' on API failure without throwing", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
       mockGenerateContent.mockRejectedValue(new Error("API Down"));
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -124,7 +124,7 @@ describe("llmRouter", () => {
         text: '{"action":"skip","reason":"retry worked"}',
       });
       
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       
@@ -137,7 +137,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"create"}',
       });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -148,7 +148,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"unknown_action"}',
       });
-      const { decideMemoryAction } = await import("../src/llmRouter");
+      const { decideMemoryAction } = await import("../src/llm/llmRouter");
       
       const result = await decideMemoryAction("new content", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -158,7 +158,7 @@ describe("llmRouter", () => {
   describe("decideContextAction", () => {
     it("returns 'create' if AI is not initialized", async () => {
       delete process.env.GEMINI_API_KEY;
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.9 }]);
       expect(result).toEqual({ action: "create" });
@@ -166,7 +166,7 @@ describe("llmRouter", () => {
 
     it("returns 'create' if no candidates meet SIMILARITY_GATE", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.5 }]);
       expect(result).toEqual({ action: "create" });
@@ -178,7 +178,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"update","targetId":"uri1","mergedContent":"merged"}',
       });
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "update", targetId: "uri1", mergedContent: "merged" });
@@ -190,7 +190,7 @@ describe("llmRouter", () => {
       mockGenerateContent.mockResolvedValue({
         text: '{"action":"skip","reason":"dup"}',
       });
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "skip", reason: "dup" });
@@ -199,7 +199,7 @@ describe("llmRouter", () => {
     it("returns 'create' on invalid JSON", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
       mockGenerateContent.mockResolvedValue({ text: "not json" });
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });
@@ -208,7 +208,7 @@ describe("llmRouter", () => {
     it("returns 'create' on API failure without throwing", async () => {
       process.env.GEMINI_API_KEY = "fake-key";
       mockGenerateContent.mockRejectedValue(new Error("API Down"));
-      const { decideContextAction } = await import("../src/llmRouter");
+      const { decideContextAction } = await import("../src/llm/llmRouter");
       
       const result = await decideContextAction("uri1", "name", "abstract", [{ id: "1", content: "old", score: 0.8 }]);
       expect(result).toEqual({ action: "create" });

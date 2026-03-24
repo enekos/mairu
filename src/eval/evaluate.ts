@@ -1,9 +1,9 @@
 import * as dotenv from "dotenv";
 import * as fs from "fs/promises";
 import * as path from "path";
-import { createContextManager } from "./client";
-import { ElasticDB } from "./elasticDB";
-import { config } from "./config";
+import { createContextManager } from "../storage/client";
+import { ElasticDB } from "../storage/elasticDB";
+import { config } from "../core/config";
 import { seedFixtures, cleanupFixtures, type FixtureSpec } from "./evalSeeder";
 import {
   loadDataset,
@@ -21,10 +21,10 @@ import {
   DEFAULT_CONTEXT_WEIGHTS,
   normalizeWeights,
   type HybridWeights,
-} from "./scorer";
-import type { MemorySearchOptions, SkillSearchOptions, ContextSearchOptions } from "./types";
+} from "../storage/scorer";
+import type { MemorySearchOptions, SkillSearchOptions, ContextSearchOptions } from "../core/types";
 
-dotenv.config({ path: require("path").resolve(__dirname, "..", ".env") });
+dotenv.config({ path: require("path").resolve(__dirname, "../..", ".env") });
 
 interface DomainWeights {
   memory: HybridWeights;

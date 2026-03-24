@@ -47,7 +47,7 @@ describe("ingestor", () => {
 
   it("throws an error if AI is not initialized", async () => {
     delete process.env.GEMINI_API_KEY;
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     
     await expect(parseTextIntoContextNodes("some text")).rejects.toThrow(
       "GEMINI_API_KEY is not set — cannot parse text into context nodes."
@@ -56,7 +56,7 @@ describe("ingestor", () => {
 
   it("throws an error if text is too large", async () => {
     process.env.GEMINI_API_KEY = "fake-key";
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     
     const hugeText = "a".repeat(100_001);
     await expect(parseTextIntoContextNodes(hugeText)).rejects.toThrow(
@@ -85,7 +85,7 @@ describe("ingestor", () => {
       ]`,
     });
     
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     const result = await parseTextIntoContextNodes("test text", "contextfs://test");
     
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
@@ -116,7 +116,7 @@ describe("ingestor", () => {
       text: '{"not": "an array"}',
     });
     
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     await expect(parseTextIntoContextNodes("test text")).rejects.toThrow(
       /LLM returned unparseable output/
     );
@@ -128,7 +128,7 @@ describe("ingestor", () => {
       text: '[{"invalid": "node missing required fields"}]',
     });
     
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     await expect(parseTextIntoContextNodes("test text")).rejects.toThrow(
       /LLM returned no valid context nodes/
     );
@@ -149,7 +149,7 @@ describe("ingestor", () => {
       ]`,
     });
     
-    const { parseTextIntoContextNodes } = await import("../src/ingestor");
+    const { parseTextIntoContextNodes } = await import("../src/llm/ingestor");
     const result = await parseTextIntoContextNodes("test text");
     
     expect(mockGenerateContent).toHaveBeenCalledTimes(2);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeStatements } from "../src/nlDescriber";
+import { describeStatements } from "../src/ast/nlDescriber";
 import { Project } from "ts-morph";
 
 function describeFunction(source: string, fnName: string): string {

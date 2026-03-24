@@ -5,10 +5,10 @@
  * vibe-mutation: prompt → LLM searches context → plans mutations → diff → user approves → execute
  */
 import { GoogleGenAI } from "@google/genai";
-import { extractJsonObject } from "./jsonUtils";
-import { config } from "./config";
-import { ContextManager } from "./contextManager";
-import { MemoryCategory, MemoryOwner } from "./types";
+import { extractJsonObject } from "../core/jsonUtils";
+import { config } from "../core/config";
+import { ContextManager } from "../storage/contextManager";
+import { MemoryCategory, MemoryOwner } from "../core/types";
 
 const LLM_MODEL = config.llmModel;
 

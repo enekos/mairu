@@ -106,7 +106,7 @@ context-cli daemon . -P my-project
 ## Features Deep Dive
 
 ### Automated AST Codebase Ingestion (Daemon)
-`contextfs` ships with a background daemon powered by `ts-morph` and `chokidar`. It observes a local codebase directory and automatically extracts class signatures, function definitions, and module exports. This ensures your hierarchical context tree is always synchronized with the real code state without manual ingestion. It skips `node_modules` and build directories automatically.
+`contextfs` ships with a background daemon powered by `ts-morph` and `chokidar`. It observes a local codebase directory and automatically extracts class signatures, function definitions, and module exports, as well as a human readable version of AST in natural language. This ensures your hierarchical context tree is always synchronized with the real code state without manual ingestion. It skips `node_modules` and build directories automatically.
 
 ### Context Versioning & Rollback
 To protect against hallucinated updates from AI agents (via `vibe-mutation` or direct node updates), `context nodes` feature soft-deletes and version history.
