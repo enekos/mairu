@@ -10,10 +10,12 @@ import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./languageDescribe
 export interface DaemonOptions {
   maxFileSizeBytes?: number;
   processingDebounceMs?: number;
+  concurrency?: number;
 }
 
 const DEFAULT_MAX_FILE_SIZE_BYTES = 512 * 1024; // 512 KB
 const DEFAULT_PROCESSING_DEBOUNCE_MS = 200;
+const DEFAULT_CONCURRENCY = 8;
 const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
 const IGNORED_PATH_SEGMENTS = new Set(["node_modules", "dist", "build"]);
 
@@ -63,6 +65,7 @@ export class CodebaseDaemon {
   private processTimer: NodeJS.Timeout | null = null;
   private readonly maxFileSizeBytes: number;
   private readonly processingDebounceMs: number;
+  private readonly concurrency: number;
   private readonly fileFingerprints: Map<string, string> = new Map();
   private readonly fileContentHashes: Map<string, string> = new Map();
   private readonly nodePayloadHashes: Map<string, string> = new Map();
@@ -73,6 +76,7 @@ export class CodebaseDaemon {
     this.watchDir = path.resolve(watchDir);
     this.maxFileSizeBytes = options.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
     this.processingDebounceMs = options.processingDebounceMs ?? DEFAULT_PROCESSING_DEBOUNCE_MS;
+    this.concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
     this.describer = new TypeScriptDescriber();
   }
 
@@ -486,16 +490,29 @@ export class CodebaseDaemon {
     this.flushPendingSoon();
   }
 
+  private async runWithConcurrency<T>(
+    items: T[],
+    concurrency: number,
+    fn: (item: T) => Promise<void>
+  ): Promise<void> {
+    let index = 0;
+    const workers = Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+      while (index < items.length) {
+        const currentIndex = index++;
+        await fn(items[currentIndex]);
+      }
+    });
+    await Promise.all(workers);
+  }
+
   private async processPendingFiles() {
     if (this.isProcessing) return;
     this.isProcessing = true;
 
     try {
-      while (this.pendingFiles.size > 0) {
-        const filePath = Array.from(this.pendingFiles)[0];
-        this.pendingFiles.delete(filePath);
-        await this.processFile(filePath);
-      }
+      const filesToProcess = Array.from(this.pendingFiles);
+      this.pendingFiles.clear();
+      await this.runWithConcurrency(filesToProcess, this.concurrency, (f) => this.processFile(f));
     } catch (e) {
       console.error("[Daemon] Error processing files:", e);
     } finally {
@@ -509,9 +526,7 @@ export class CodebaseDaemon {
   private async processAllFiles() {
     console.log("[Daemon] Running initial full codebase scan...");
     const files = this.discoverSourceFiles(this.watchDir).filter((f) => this.shouldProcessFile(f));
-    for (const filePath of files) {
-      await this.processFile(filePath);
-    }
+    await this.runWithConcurrency(files, this.concurrency, (f) => this.processFile(f));
     console.log(`[Daemon] Initial scan complete (${files.length} files).`);
   }
 
