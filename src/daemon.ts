@@ -6,6 +6,7 @@ import { createHash } from "crypto";
 import { TypeScriptDescriber } from "./typescriptDescriber";
 import { enrichDescriptions } from "./nlEnricher";
 import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./languageDescriber";
+import { compareSymbols, sortSymbols, sortEdges } from "./languageDescriber";
 
 export interface DaemonOptions {
   maxFileSizeBytes?: number;
@@ -45,17 +46,6 @@ const MAX_SERIALIZED_SYMBOLS = 80;
 const MAX_SERIALIZED_EDGES = 220;
 const MAX_EDGES_PER_SOURCE_SYMBOL = 8;
 const MAX_CONTENT_CHARS = 16_000;
-const MAX_OVERVIEW_EDGE_LINES = 8;
-
-const KIND_SORT_ORDER: Record<LogicSymbolKind, number> = {
-  cls: 0,
-  fn: 1,
-  mtd: 2,
-  var: 3,
-  iface: 4,
-  enum: 5,
-  type: 6,
-};
 
 export class CodebaseDaemon {
   private manager: ContextManager;
@@ -447,7 +437,7 @@ export class CodebaseDaemon {
     const rankedSymbols = [...graph.symbols].sort((a, b) => {
       const scoreDiff = this.symbolScore(b, outgoingCounts) - this.symbolScore(a, outgoingCounts);
       if (scoreDiff !== 0) return scoreDiff;
-      return this.compareSymbols(a, b);
+      return compareSymbols(a, b);
     });
 
     const selectedSymbols = rankedSymbols.slice(0, MAX_SERIALIZED_SYMBOLS);
@@ -471,8 +461,8 @@ export class CodebaseDaemon {
     const totalSymbols = graph.symbols.length;
     const totalEdges = graph.edges.length;
     return {
-      symbols: this.sortSymbols(selectedSymbols),
-      edges: this.sortEdges(selectedEdges),
+      symbols: sortSymbols(selectedSymbols),
+      edges: sortEdges(selectedEdges),
       totalSymbols,
       totalEdges,
       truncatedSymbols: Math.max(0, totalSymbols - selectedSymbols.length),
@@ -500,30 +490,6 @@ export class CodebaseDaemon {
     const exportedBoost = symbol.exported ? 1000 : 0;
     const edgeBoost = (outgoingCounts.get(symbol.id) ?? 0) * 5;
     return exportedBoost + kindBoost + complexityBoost + controlBoost + edgeBoost;
-  }
-
-  private sortSymbols(symbols: LogicSymbol[]): LogicSymbol[] {
-    return [...symbols].sort((a, b) => this.compareSymbols(a, b));
-  }
-
-  private compareSymbols(a: LogicSymbol, b: LogicSymbol): number {
-    const kindDiff = KIND_SORT_ORDER[a.kind] - KIND_SORT_ORDER[b.kind];
-    if (kindDiff !== 0) return kindDiff;
-    const nameDiff = a.name.localeCompare(b.name);
-    if (nameDiff !== 0) return nameDiff;
-    const lineDiff = a.line - b.line;
-    if (lineDiff !== 0) return lineDiff;
-    return a.id.localeCompare(b.id);
-  }
-
-  private sortEdges(edges: LogicEdge[]): LogicEdge[] {
-    return [...edges].sort((a, b) => {
-      const kindDiff = a.kind.localeCompare(b.kind);
-      if (kindDiff !== 0) return kindDiff;
-      const fromDiff = a.from.localeCompare(b.from);
-      if (fromDiff !== 0) return fromDiff;
-      return a.to.localeCompare(b.to);
-    });
   }
 
   private queueFile(filePath: string) {

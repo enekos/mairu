@@ -15,6 +15,7 @@ import type {
   LogicSymbolKind,
   ComplexityBucket,
 } from "./languageDescriber";
+import { sortSymbols, sortEdges } from "./languageDescriber";
 import { describeStatements } from "./nlDescriber";
 
 interface RawLogicGraph {
@@ -29,16 +30,6 @@ interface CallableSymbolRef {
   className: string | null;
   node: FunctionDeclaration | MethodDeclaration;
 }
-
-const KIND_SORT_ORDER: Record<LogicSymbolKind, number> = {
-  cls: 0,
-  fn: 1,
-  mtd: 2,
-  var: 3,
-  iface: 4,
-  enum: 5,
-  type: 6,
-};
 
 export class TypeScriptDescriber implements LanguageDescriber {
   readonly languageId = "typescript";
@@ -256,8 +247,8 @@ export class TypeScriptDescriber implements LanguageDescriber {
     ).sort((a, b) => a.localeCompare(b));
 
     return {
-      symbols: this.sortSymbols(symbols),
-      edges: this.sortEdges(Array.from(edgesMap.values())),
+      symbols: sortSymbols(symbols),
+      edges: sortEdges(Array.from(edgesMap.values())),
       imports,
       callableSymbols,
     };
@@ -396,27 +387,4 @@ export class TypeScriptDescriber implements LanguageDescriber {
     return false;
   }
 
-  private sortSymbols(symbols: LogicSymbol[]): LogicSymbol[] {
-    return [...symbols].sort((a, b) => this.compareSymbols(a, b));
-  }
-
-  private compareSymbols(a: LogicSymbol, b: LogicSymbol): number {
-    const kindDiff = KIND_SORT_ORDER[a.kind] - KIND_SORT_ORDER[b.kind];
-    if (kindDiff !== 0) return kindDiff;
-    const nameDiff = a.name.localeCompare(b.name);
-    if (nameDiff !== 0) return nameDiff;
-    const lineDiff = a.line - b.line;
-    if (lineDiff !== 0) return lineDiff;
-    return a.id.localeCompare(b.id);
-  }
-
-  private sortEdges(edges: LogicEdge[]): LogicEdge[] {
-    return [...edges].sort((a, b) => {
-      const kindDiff = a.kind.localeCompare(b.kind);
-      if (kindDiff !== 0) return kindDiff;
-      const fromDiff = a.from.localeCompare(b.from);
-      if (fromDiff !== 0) return fromDiff;
-      return a.to.localeCompare(b.to);
-    });
-  }
 }
