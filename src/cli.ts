@@ -6,6 +6,7 @@ import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp }
 import * as fs from "fs";
 import * as readline from "readline";
 import { CodebaseDaemon } from "./daemon";
+import { runMcpServer } from "./mcp/mcpServer";
 
 const cm = createContextManager();
 const program = new Command();
@@ -636,4 +637,19 @@ program
     }
   });
 
+
+program
+  .command("mcp")
+  .description("Start the MCP (Model Context Protocol) server on stdio")
+  .option("-P, --project <project>", "Project namespace")
+  .action(async (opts) => {
+    try {
+      await runMcpServer(opts.project);
+    } catch (e) {
+      console.error(e);
+      process.exit(1);
+    }
+  });
+
 program.parse(process.argv);
+

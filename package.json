@@ -59,6 +59,7 @@
   "dependencies": {
     "@elastic/elasticsearch": "^8.17.0",
     "@google/genai": "^1.45.0",
+    "@modelcontextprotocol/sdk": "^1.28.0",
     "@repomix/tree-sitter-wasms": "^0.1.16",
     "chokidar": "^5.0.0",
     "commander": "^14.0.3",

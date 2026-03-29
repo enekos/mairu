@@ -136,7 +136,7 @@
       {#each contextNodes.slice(0, 5) as c}
         <li>
           <span class="cat-dot" style="background:#2563eb"></span>
-          <span class="recent-content"><code>{c.uri}</code> — {c.abstract?.slice(0, 80)}{c.abstract?.length > 80 ? "..." : ""}</span>
+          <span class="recent-content"><code>{c.uri}</code> — {c.abstract}</span>
           <span class="recent-date">{fmtDate(c.updated_at || c.created_at)}</span>
         </li>
       {/each}

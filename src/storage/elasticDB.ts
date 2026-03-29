@@ -91,6 +91,7 @@ function textField(opts?: { keyword?: boolean; ngram?: boolean }) {
 
 export class ElasticDB {
   private client: Client;
+  private initialized = false;
 
   constructor(node: string, auth?: { username: string; password: string }) {
     this.client = new Client({
@@ -100,8 +101,21 @@ export class ElasticDB {
     });
   }
 
+  private async ensureInitialized() {
+    if (this.initialized) return;
+    try { await this.initIndices(); this.initialized = true; }
+    catch (e: any) {
+      if (e?.meta?.meta?.connection?.status === "error" || e?.code === "ECONNREFUSED") {
+        console.error("❌ Elasticsearch connection failed. Is Docker running? (Run: docker compose up -d)");
+        process.exit(1);
+      }
+      throw e;
+    }
+  }
+
   /** Cluster health + per-index stats for the dashboard */
   async getClusterStats() {
+    await this.ensureInitialized();
     const [health, indicesStats] = await Promise.all([
       this.client.cluster.health(),
       this.client.indices.stats({
@@ -194,6 +208,7 @@ export class ElasticDB {
   }
 
   async resetIndices() {
+    await this.ensureInitialized();
     for (const idx of [SKILLS_INDEX, MEMORIES_INDEX, CONTEXT_INDEX]) {
       const exists = await this.client.indices.exists({ index: idx });
       if (exists) await this.client.indices.delete({ index: idx });
@@ -216,6 +231,7 @@ export class ElasticDB {
   // ---------------------------------------------------------------------------
 
   async addSkill(skill: AgentSkill, embedding: number[]) {
+    await this.ensureInitialized();
     assertEmbeddingDimension(embedding, "ElasticDB.addSkill");
     const ts = new Date().toISOString();
     await this.client.index({
@@ -250,6 +266,7 @@ export class ElasticDB {
     },
     embedding?: number[]
   ) {
+    await this.ensureInitialized();
     const doc: Record<string, any> = { updated_at: new Date().toISOString() };
     if (updates.name !== undefined) doc.name = updates.name;
     if (updates.description !== undefined) doc.description = updates.description;
@@ -265,6 +282,7 @@ export class ElasticDB {
   }
 
   async searchSkills(queryEmbedding: number[], queryText: string, options: SkillSearchOptions = {}): Promise<(AgentSkill & { _score: number; _highlight?: Record<string, string[]> })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchSkills");
     const topK = options.topK ?? 10;
     const ow = options.weights ?? DEFAULT_SKILL_WEIGHTS;
@@ -337,6 +355,7 @@ export class ElasticDB {
   }
 
   async searchSkillsByVector(queryEmbedding: number[], options: { topK?: number; project?: string } = {}): Promise<(AgentSkill & { _score: number })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchSkillsByVector");
     const topK = options.topK ?? 10;
     const filters: any[] = [];
@@ -358,6 +377,7 @@ export class ElasticDB {
   }
 
   async listSkills(options?: SkillSearchOptions, limit = 100, offset = 0): Promise<AgentSkill[]> {
+    await this.ensureInitialized();
     const filters: any[] = [];
     if (options?.project) filters.push({ term: { project: options.project } });
 
@@ -373,6 +393,7 @@ export class ElasticDB {
   }
 
   async getSkill(id: string): Promise<AgentSkill | null> {
+    await this.ensureInitialized();
     try {
       const res = await this.client.get({ index: SKILLS_INDEX, id, _source_excludes: ["embedding"] });
       return res._source as AgentSkill;
@@ -383,6 +404,7 @@ export class ElasticDB {
   }
 
   async deleteSkill(id: string) {
+    await this.ensureInitialized();
     await this.client.delete({ index: SKILLS_INDEX, id, refresh: true }).catch((e: any) => {
       if (e.meta?.statusCode !== 404) throw e;
     });
@@ -393,6 +415,7 @@ export class ElasticDB {
   // ---------------------------------------------------------------------------
 
   async addMemory(memory: AgentMemory, embedding: number[]) {
+    await this.ensureInitialized();
     assertEmbeddingDimension(embedding, "ElasticDB.addMemory");
     const ts = new Date().toISOString();
     await this.client.index({
@@ -444,6 +467,7 @@ export class ElasticDB {
   }
 
   async searchMemories(queryEmbedding: number[], queryText: string, options: MemorySearchOptions = {}): Promise<(AgentMemory & { _score: number; _highlight?: Record<string, string[]> })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchMemories");
     const topK = options.topK ?? 10;
     const ow = options.weights ?? DEFAULT_MEMORY_WEIGHTS;
@@ -527,6 +551,7 @@ export class ElasticDB {
   }
 
   async searchMemoriesByVector(queryEmbedding: number[], options: { topK?: number; project?: string } = {}): Promise<(AgentMemory & { _score: number })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchMemoriesByVector");
     const topK = options.topK ?? 10;
     const filters: any[] = [];
@@ -548,6 +573,7 @@ export class ElasticDB {
   }
 
   async listMemories(options?: MemorySearchOptions, limit = 100, offset = 0): Promise<AgentMemory[]> {
+    await this.ensureInitialized();
     const filters: any[] = [];
     if (options?.project) filters.push({ term: { project: options.project } });
 
@@ -563,6 +589,7 @@ export class ElasticDB {
   }
 
   async getMemory(id: string): Promise<AgentMemory | null> {
+    await this.ensureInitialized();
     try {
       const res = await this.client.get({ index: MEMORIES_INDEX, id, _source_excludes: ["embedding"] });
       return res._source as AgentMemory;
@@ -573,6 +600,7 @@ export class ElasticDB {
   }
 
   async deleteMemory(id: string) {
+    await this.ensureInitialized();
     await this.client.delete({ index: MEMORIES_INDEX, id, refresh: true }).catch((e: any) => {
       if (e.meta?.statusCode !== 404) throw e;
     });
@@ -583,6 +611,7 @@ export class ElasticDB {
   // ---------------------------------------------------------------------------
 
   async addContextNode(node: AgentContextNode, embedding: number[]) {
+    await this.ensureInitialized();
     assertEmbeddingDimension(embedding, "ElasticDB.addContextNode");
     const ts = new Date().toISOString();
 
@@ -687,6 +716,7 @@ export class ElasticDB {
   }
 
   async searchContextNodes(queryEmbedding: number[], queryText: string, options: ContextSearchOptions = {}): Promise<(AgentContextNode & { _score: number; _highlight?: Record<string, string[]> })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchContextNodes");
     const topK = options.topK ?? 10;
     const ow = options.weights ?? DEFAULT_CONTEXT_WEIGHTS;
@@ -766,6 +796,7 @@ export class ElasticDB {
   }
 
   async searchContextNodesByVector(queryEmbedding: number[], options: { topK?: number; project?: string; includeDeleted?: boolean } = {}): Promise<(AgentContextNode & { _score: number })[]> {
+    await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchContextNodesByVector");
     const topK = options.topK ?? 10;
     const filters: any[] = [];
@@ -788,6 +819,7 @@ export class ElasticDB {
   }
 
   async listContextNodes(parentUri?: string, options?: ContextSearchOptions, limit = 100, offset = 0): Promise<AgentContextNode[]> {
+    await this.ensureInitialized();
     const filters: any[] = [];
     if (options?.project) filters.push({ term: { project: options.project } });
     if (parentUri) filters.push({ term: { parent_uri: parentUri } });
@@ -805,6 +837,7 @@ export class ElasticDB {
   }
 
   async getContextNode(uri: string): Promise<AgentContextNode | null> {
+    await this.ensureInitialized();
     try {
       const res = await this.client.get({ index: CONTEXT_INDEX, id: uri, _source_excludes: ["embedding"] });
       return res._source as AgentContextNode;
@@ -815,6 +848,7 @@ export class ElasticDB {
   }
 
   async deleteContextNode(uri: string) {
+    await this.ensureInitialized();
     const ts = new Date().toISOString();
     
     // Soft delete descendants
@@ -843,6 +877,7 @@ export class ElasticDB {
   }
 
   async restoreContextNode(uri: string) {
+    await this.ensureInitialized();
     // Restore descendants
     await this.client.updateByQuery({
       index: CONTEXT_INDEX,
@@ -868,6 +903,7 @@ export class ElasticDB {
   }
 
   async getContextSubtree(nodeUri: string, includeDeleted = false): Promise<(AgentContextNode & { depth: number })[]> {
+    await this.ensureInitialized();
     const filters: any[] = [];
     if (!includeDeleted) filters.push({ bool: { must_not: { term: { is_deleted: true } } } });
 
@@ -902,6 +938,7 @@ export class ElasticDB {
   }
 
   async getContextPath(nodeUri: string, includeDeleted = false): Promise<(AgentContextNode & { depth: number })[]> {
+    await this.ensureInitialized();
     const node = await this.getContextNodeWithAncestors(nodeUri);
     if (!node) return [];
 

@@ -39,7 +39,7 @@
         position: { x, y },
         data: { label: node.name },
         type: 'default',
-        style: 'background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; font-size: 12px; max-width: 200px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;'
+        style: 'background: #1e293b; color: white; border: 1px solid #334155; border-radius: 8px; padding: 10px; font-size: 12px; white-space: pre-wrap; word-break: break-word;'
       });
 
       if (node.parent_uri) {

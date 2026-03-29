@@ -111,7 +111,7 @@ header {
   padding: 8px 12px; background: #1e293b; border-radius: 8px; border: 1px solid #334155;
 }
 .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-.recent-content { flex: 1; color: #cbd5e1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-content { flex: 1; color: #cbd5e1; font-size: 13px; white-space: pre-wrap; word-break: break-word; }
 .recent-date { color: #475569; font-size: 12px; flex-shrink: 0; }
 
 /* Add panel */
@@ -193,7 +193,7 @@ tbody td { padding: 10px 12px; vertical-align: top; }
 .uri-text {
   background: none; border: none; color: #818cf8; cursor: pointer; font-size: 12px;
   font-family: monospace; text-align: left; padding: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px;
+  white-space: pre-wrap; word-break: break-word;
 }
 .uri-text:hover { text-decoration: underline; }
 .node-name { font-size: 13px; color: #e2e8f0; font-weight: 500; }
@@ -374,4 +374,8 @@ tbody td { padding: 10px 12px; vertical-align: top; }
 .lab-empty-state kbd {
   background: #1e293b; border: 1px solid #334155; border-radius: 4px;
   padding: 1px 5px; font-size: 11px; color: #94a3b8;
+}
+.content-cell, .abstract-cell, .desc, .lab-card-content {
+  white-space: pre-wrap;
+  word-break: break-word;
 }

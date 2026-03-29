@@ -222,6 +222,16 @@
                   {:else if row.abstract}
                     <span class="lab-abstract"> — {row.abstract}</span>
                   {/if}
+                  {#if highlight && row._highlight?.overview}
+                    <div style="margin-top: 6px; color: #cbd5e1; font-size: 12px;"><strong>Overview:</strong><br>{@html row._highlight.overview[0]}</div>
+                  {:else if row.overview}
+                    <div style="margin-top: 6px; color: #cbd5e1; font-size: 12px;"><strong>Overview:</strong><br>{row.overview}</div>
+                  {/if}
+                  {#if highlight && row._highlight?.content}
+                    <div style="margin-top: 6px; color: #94a3b8; font-size: 12px;"><strong>Content:</strong><br>{@html row._highlight.content[0]}</div>
+                  {:else if row.content}
+                    <div style="margin-top: 6px; color: #94a3b8; font-size: 12px;"><strong>Content:</strong><br>{row.content}</div>
+                  {/if}
                 {/if}
               </div>
 

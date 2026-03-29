@@ -56,7 +56,7 @@ export const config = {
   embedding: {
     get model() { return process.env.EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL; },
     get dimension() { return getEmbeddingDimension(); },
-    get allowZeroEmbeddings() { return parseBoolean(process.env.ALLOW_ZERO_EMBEDDINGS, false); },
+    get allowZeroEmbeddings() { return parseBoolean(process.env.ALLOW_ZERO_EMBEDDINGS, true); },
   }
 };
 

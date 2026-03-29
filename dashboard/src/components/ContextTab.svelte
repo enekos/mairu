@@ -118,7 +118,7 @@
       <thead>
         <tr>
           <th style="width:30%">URI / Name</th>
-          <th style="width:40%">Abstract</th>
+          <th style="width:40%">Details</th>
           {#if hasSearchResults}<th>Score</th>{/if}
           <th>Updated</th>
           <th></th>
@@ -150,7 +150,15 @@
                   {/if}
                 </div>
               </td>
-              <td class="abstract-cell">{row.abstract}</td>
+              <td class="abstract-cell">
+                <div style="font-weight: 500; margin-bottom: 6px; color: #e2e8f0;">{row.abstract}</div>
+                {#if row.overview}
+                  <div style="margin-top: 8px; color: #cbd5e1; font-size: 12px;"><strong>Overview:</strong><br>{row.overview}</div>
+                {/if}
+                {#if row.content}
+                  <div style="margin-top: 8px; color: #94a3b8; font-size: 12px;"><strong>Content:</strong><br>{row.content}</div>
+                {/if}
+              </td>
               {#if hasSearchResults}
                 <td>
                   <span class="score-badge" style="color:{scoreColor(row._hybrid_score ?? 0)}">

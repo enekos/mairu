@@ -233,7 +233,7 @@
                     {:else}
                       {item.abstract}
                       {#if item.overview}
-                        <div class="vibe-item-overview">{item.overview.length > 200 ? item.overview.slice(0, 200) + "..." : item.overview}</div>
+                        <div class="vibe-item-overview">{item.overview}</div>
                       {/if}
                     {/if}
                   </div>
@@ -290,7 +290,7 @@
                   {#each Object.entries(op.data) as [key, value]}
                     <div class="vibe-op-field" style="color:{opColor(op.op)}">
                       <span class="vibe-op-field-key">{key}:</span>
-                      <span class="vibe-op-field-val">{typeof value === "string" && value.length > 120 ? value.slice(0, 120) + "..." : JSON.stringify(value)}</span>
+                      <span class="vibe-op-field-val" style="white-space: pre-wrap; word-break: break-word;">{typeof value === "string" ? value : JSON.stringify(value)}</span>
                     </div>
                   {/each}
                 </div>
@@ -469,8 +469,8 @@
   .vibe-item-title { color: #f1f5f9; font-size: 13px; }
   .vibe-item-owner { font-size: 11px; color: #475569; }
   .vibe-score { font-size: 12px; font-weight: 700; margin-left: auto; }
-  .vibe-item-content { font-size: 13px; color: #94a3b8; line-height: 1.5; }
-  .vibe-item-overview { margin-top: 4px; font-size: 12px; color: #64748b; }
+  .vibe-item-content { font-size: 13px; color: #94a3b8; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .vibe-item-overview { margin-top: 4px; font-size: 12px; color: #64748b; white-space: pre-wrap; word-break: break-word; }
   .vibe-item-project {
     display: inline-block; font-size: 10px; color: #64748b;
     background: #0f172a; padding: 2px 6px; border-radius: 4px; width: fit-content;
@@ -510,7 +510,7 @@
   .vibe-op-top { display: flex; align-items: center; gap: 8px; }
   .vibe-op-type { font-size: 12px; font-weight: 700; font-family: monospace; }
   .vibe-op-target { font-size: 11px; color: #818cf8; }
-  .vibe-op-desc { font-size: 13px; color: #cbd5e1; }
+  .vibe-op-desc { font-size: 13px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
 
   .vibe-op-data {
     display: flex; flex-direction: column; gap: 2px;
