@@ -114,9 +114,69 @@ describe("Embedder", () => {
     const { Embedder: FreshEmbedder } = await import("../src/storage/embedder");
 
     const result = await FreshEmbedder.getEmbedding("test text");
-    
+
     expect(mockEmbedContent).toHaveBeenCalledTimes(2);
     expect(result).toEqual(fakeEmbedding);
+  });
+});
+
+describe("getEmbeddings (batch)", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    if (typeof vi.resetModules === "function") {
+      vi.resetModules();
+    }
+    vi.clearAllMocks();
+    process.env = { ...originalEnv };
+    delete process.env.EMBEDDING_MODEL;
+    delete process.env.EMBEDDING_DIM;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it("returns embeddings for multiple texts", async () => {
+    process.env.GEMINI_API_KEY = "fake-key";
+    process.env.EMBEDDING_DIM = "3072";
+    const fakeEmbedding = Array(3072).fill(0.1);
+
+    mockEmbedContent.mockResolvedValue({
+      embeddings: [{ values: fakeEmbedding }],
+    });
+
+    const { Embedder: FreshEmbedder } = await import("../src/storage/embedder");
+
+    const results = await FreshEmbedder.getEmbeddings(["hello", "world"]);
+    expect(results).toHaveLength(2);
+    expect(results[0]).toHaveLength(3072);
+    expect(results[1]).toHaveLength(3072);
+  });
+
+  it("returns empty array for empty input", async () => {
+    process.env.GEMINI_API_KEY = "fake-key";
+
+    const { Embedder: FreshEmbedder } = await import("../src/storage/embedder");
+
+    const results = await FreshEmbedder.getEmbeddings([]);
+    expect(results).toHaveLength(0);
+  });
+
+  it("handles single text", async () => {
+    process.env.GEMINI_API_KEY = "fake-key";
+    process.env.EMBEDDING_DIM = "3072";
+    const fakeEmbedding = Array(3072).fill(0.1);
+
+    mockEmbedContent.mockResolvedValue({
+      embeddings: [{ values: fakeEmbedding }],
+    });
+
+    const { Embedder: FreshEmbedder } = await import("../src/storage/embedder");
+
+    const results = await FreshEmbedder.getEmbeddings(["single"]);
+    expect(results).toHaveLength(1);
+    expect(results[0]).toHaveLength(3072);
   });
 });
 

@@ -45,4 +45,9 @@ export class Embedder {
       throw error;
     }
   }
+
+  static async getEmbeddings(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    return Promise.all(texts.map((text) => this.getEmbedding(text)));
+  }
 }
