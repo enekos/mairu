@@ -400,3 +400,157 @@ export async function executeMutationOp(
       return `Unknown operation: ${op.op}`;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Flush — extract durable facts from conversation transcripts
+// ─────────────────────────────────────────────────────────────────────────────
+
+export async function planFlush(
+  cm: ContextManager,
+  transcript: string,
+  project?: string,
+  topK = 10
+): Promise<VibeMutationPlan> {
+  if (!config.geminiApiKey) throw new Error("GEMINI_API_KEY is not set");
+
+  const normalizedTranscript = transcript.trim();
+  const searchPrompt = truncateForLlm(normalizedTranscript, MAX_SEARCH_PROMPT_CHARS);
+  const flushPrompt = truncateForLlm(normalizedTranscript, MAX_MUTATION_PROMPT_CHARS);
+
+  const queryResult = await executeVibeQuery(cm, searchPrompt, project, topK);
+
+  const existingContext = queryResult.results
+    .flatMap((r) => r.items.map((item) => ({ store: r.store, ...item })));
+
+  const seen = new Set<string>();
+  const deduped = existingContext.filter((item) => {
+    const key = (item.id || item.uri) as string | undefined;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const contextStr = buildBoundedContext(deduped);
+
+  const systemPrompt = `You are a memory extraction agent. Your job is to read a conversation transcript and identify facts worth persisting long-term in a knowledge database.
+
+EXTRACT THESE (high importance 7-10):
+- User preferences and corrections ("don't do X", "always use Y")
+- Architectural decisions and constraints ("we use gRPC not REST")
+- Environment facts ("staging uses Kubernetes 1.28")
+- Important observations about the codebase
+
+IGNORE THESE (do not save):
+- Transient debugging steps and temporary state
+- In-progress task details that will be outdated soon
+- Commands that were run and their output
+- Greetings, acknowledgments, filler conversation
+
+DATABASE STORES:
+- memory: { id, content, category (profile|preferences|entities|events|cases|patterns|observation|reflection|decision|constraint|architecture), owner (user|agent|system), importance (1-10), project }
+- node: { uri, name, abstract, overview?, content?, parent_uri?, project }
+
+EXISTING ENTRIES (avoid duplicating these):
+${contextStr}
+
+${project ? `Use project: "${project}" for new entries.` : ""}
+
+Respond with ONLY a JSON object:
+{
+  "reasoning": "what durable facts you found",
+  "operations": [
+    {
+      "op": "create_memory"|"update_memory"|"create_node"|"update_node",
+      "target": "id or uri (for updates)",
+      "description": "what this saves",
+      "data": { ... }
+    }
+  ]
+}
+
+Return empty operations array if nothing is worth persisting.`;
+
+  const response = await generateWithRetry(LLM_MODEL, `${systemPrompt}\n\nCONVERSATION TRANSCRIPT:\n${flushPrompt}`);
+  const parsed = extractJsonObject(response.text?.trim() || "");
+
+  if (!parsed || !Array.isArray(parsed.operations)) {
+    return { reasoning: "Could not parse flush plan from LLM response", operations: [] };
+  }
+
+  const validOps = [
+    "create_memory", "update_memory",
+    "create_node", "update_node",
+  ];
+
+  return {
+    reasoning: parsed.reasoning || "",
+    operations: parsed.operations.filter((op: any) =>
+      typeof op === "object" &&
+      typeof op.op === "string" &&
+      validOps.includes(op.op) &&
+      typeof op.description === "string"
+    ).map((op: any) => ({
+      op: op.op,
+      target: op.target,
+      description: op.description,
+      data: op.data || {},
+    })),
+  };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summarize — LLM synthesis of search results
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SummarizeResult {
+  summary: string;
+  sources: Array<{ store: string; id: string; snippet: string }>;
+}
+
+export async function summarizeSearchResults(
+  query: string,
+  results: Array<{ store: string; items: Record<string, any>[] }>,
+): Promise<SummarizeResult> {
+  if (!config.geminiApiKey) throw new Error("GEMINI_API_KEY is not set");
+
+  const allItems = results.flatMap((r) =>
+    r.items.map((item) => ({ store: r.store, ...item }))
+  );
+  const contextStr = buildBoundedContext(allItems);
+
+  const systemPrompt = `You are a knowledge synthesis agent. Given a user's query and search results from a knowledge database, produce a focused summary that answers the query.
+
+SEARCH RESULTS:
+${contextStr}
+
+Respond with ONLY a JSON object:
+{
+  "summary": "A concise paragraph answering the query based on the search results. If no relevant results, say so.",
+  "sources": [
+    { "store": "memory|skill|node", "id": "the id or uri", "snippet": "key phrase from this source" }
+  ]
+}`;
+
+  const response = await generateWithRetry(LLM_MODEL, `${systemPrompt}\n\nQUERY: ${query}`);
+  const parsed = extractJsonObject(response.text?.trim() || "");
+
+  if (!parsed || typeof parsed.summary !== "string") {
+    return {
+      summary: response.text?.trim() || "Unable to generate summary.",
+      sources: [],
+    };
+  }
+
+  return {
+    summary: parsed.summary,
+    sources: Array.isArray(parsed.sources)
+      ? parsed.sources.filter((s: any) =>
+          typeof s === "object" && typeof s.store === "string" && typeof s.id === "string"
+        ).map((s: any) => ({
+          store: s.store,
+          id: s.id,
+          snippet: s.snippet || "",
+        }))
+      : [],
+  };
+}
