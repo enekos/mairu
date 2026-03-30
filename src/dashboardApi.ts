@@ -2,7 +2,7 @@ import { createServer, IncomingMessage, ServerResponse } from "http";
 import { URL } from "url";
 import { createContextManager } from "./storage/client";
 import { config } from "./core/config";
-import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp } from "./llm/vibeEngine";
+import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp, summarizeSearchResults } from "./llm/vibeEngine";
 
 const cm = createContextManager();
 const port = config.dashboardApiPort;
@@ -405,6 +405,39 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         }
       }
       sendJson(res, 200, { results });
+      return;
+    }
+
+    // Search + Summarize
+    if (pathname === "/api/search/summarize" && req.method === "POST") {
+      const body = await readBody(req);
+      const query = validateString(body.query, "query");
+      const topK = body.topK ?? 5;
+      const stores: string[] = body.stores ?? ["memory", "skill", "node"];
+      const searchOpts = { topK, project: body.project };
+
+      const results: Array<{ store: string; items: Record<string, any>[] }> = [];
+      const searches = stores.map(async (store: string) => {
+        let items: Record<string, any>[];
+        switch (store) {
+          case "memory":
+            items = await cm.searchMemories(query, searchOpts);
+            break;
+          case "skill":
+            items = await cm.searchSkills(query, searchOpts);
+            break;
+          case "node":
+            items = await cm.searchContext(query, searchOpts);
+            break;
+          default:
+            items = [];
+        }
+        results.push({ store, items });
+      });
+      await Promise.all(searches);
+
+      const summary = await summarizeSearchResults(query, results);
+      sendJson(res, 200, summary);
       return;
     }
 
