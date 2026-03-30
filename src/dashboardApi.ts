@@ -185,7 +185,9 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
             ai_intent: body.ai_intent,
             ai_topics: body.ai_topics,
             ai_quality_score: body.ai_quality_score,
-          }
+          },
+          body.session_id,
+          body.peer_id
         );
         sendJson(res, 201, result);
         return;
@@ -194,7 +196,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         const body = await readBody(req);
         const result = await cm.updateMemory(body.id, {
           content: body.content,
+          category: body.category,
           importance: body.importance,
+          session_id: body.session_id,
+          peer_id: body.peer_id,
           ai_intent: body.ai_intent,
           ai_topics: body.ai_topics,
           ai_quality_score: body.ai_quality_score,
@@ -207,6 +212,60 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         const id = parsed.searchParams.get("id");
         if (id) await cm.deleteMemory(id);
         sendJson(res, 200, { ok: true });
+        return;
+      }
+    }
+
+    // Stateful Retrieval: session.context()
+    if (pathname.match(/^\/api\/sessions\/[^\/]+\/context$/) && req.method === "GET") {
+      const sessionId = pathname.split("/")[3];
+      const project = parsed.searchParams.get("project") || undefined;
+      const historyLimit = Number(parsed.searchParams.get("historyLimit") || "10");
+
+      // 1. Fetch recent history for this session
+      const history = await cm.listMemories({ session_id: sessionId, category: "message", project }, historyLimit);
+
+      // 2. Generate a compact reasoning prompt from recent history to drive retrieval
+      const historyText = history.reverse().map(m => `[${m.owner}]: ${m.content}`).join("\n");
+      
+      // 3. Search long-term memory using the recent context as the query
+      // If history is empty, return empty context
+      if (!historyText.trim()) {
+        sendJson(res, 200, { history: [], context: [] });
+        return;
+      }
+      
+      const searchRes = await executeVibeQuery(cm, historyText, project, 5);
+
+      // Extract just the memories for the agent
+      const contextItems = searchRes.results.flatMap(r => r.items);
+      
+      sendJson(res, 200, {
+        history: historyText,
+        context: contextItems,
+        reasoning: searchRes.reasoning
+      });
+      return;
+    }
+
+    // Tiered On-Demand Reasoning: .chat()
+    if (pathname === "/api/reasoning/chat" && req.method === "POST") {
+      const body = await readBody(req);
+      const prompt = validateString(body.prompt, "prompt");
+      const tier = body.tier || "low"; // minimal, low, medium, high, max
+      const project = body.project;
+      
+      // For now, map everything to vibeQuery/vibeMutation for simplicity, 
+      // but in a full implementation we would vary the LLM passes and search fan-out based on tier.
+      if (tier === "minimal") {
+        // Direct search
+        const results = await cm.searchMemories(prompt, { topK: 5, project });
+        sendJson(res, 200, { reasoning: "Direct search", results });
+        return;
+      } else {
+        // Vibe query (Medium/High tier equivalent)
+        const result = await executeVibeQuery(cm, prompt, project, body.topK ?? 5);
+        sendJson(res, 200, result);
         return;
       }
     }

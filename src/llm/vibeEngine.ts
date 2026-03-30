@@ -364,7 +364,8 @@ export async function executeMutationOp(
           ai_quality_score: d.ai_quality_score,
         }
       );
-      return `Created skill: ${result.id}`;
+      if ("id" in result) return `Created skill: ${result.id}`;
+      return `Skill write result: ${JSON.stringify(result)}`;
     }
     case "update_skill": {
       await cm.updateSkill(op.target!, d);

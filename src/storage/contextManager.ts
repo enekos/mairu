@@ -146,13 +146,15 @@ export class ContextManager {
     project?: string,
     metadata: Record<string, any> = {},
     useRouter = true,
-    aiMetadata: AiMetadataUpdates = {}
+    aiMetadata: AiMetadataUpdates = {},
+    session_id?: string,
+    peer_id?: string
   ): Promise<AgentMemory | SkippedWrite | UpdatedWrite | BudgetExceeded> {
     const embedding = await Embedder.getEmbedding(content);
 
     if (useRouter) {
       // Use vector-only search for dedup — scores are pure cosine similarity in [0, 1]
-      const candidates = await this.db.searchMemoriesByVector(embedding, { topK: 5, project });
+      const candidates = await this.db.searchMemoriesByVector(embedding, { topK: 5, project, session_id, peer_id });
 
       const routerCandidates: RouterCandidate[] = candidates.slice(0, 5).map((r) => ({
         id: r.id as string,
@@ -185,6 +187,8 @@ export class ContextManager {
     const memory = {
       id: `mem_${randomUUID().replace(/-/g, "")}`,
       project,
+      session_id,
+      peer_id,
       content,
       category,
       owner,
@@ -204,8 +208,11 @@ export class ContextManager {
     id: string,
     updates: {
       content?: string;
+      category?: MemoryCategory;
       importance?: number;
       project?: string;
+      session_id?: string;
+      peer_id?: string;
       ai_intent?: AgentMemory["ai_intent"];
       ai_topics?: AgentMemory["ai_topics"];
       ai_quality_score?: AgentMemory["ai_quality_score"];

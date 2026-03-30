@@ -4,6 +4,7 @@ import {
   AgentMemory,
   AgentContextNode,
   MemorySearchOptions,
+  MemoryCategory,
   SkillSearchOptions,
   ContextSearchOptions,
 } from "../core/types";
@@ -207,6 +208,8 @@ export class ElasticDB {
     await this.createIndexIfNotExists(MEMORIES_INDEX, settings, {
       id: { type: "keyword" },
       project: { type: "keyword" },
+      session_id: { type: "keyword" },
+      peer_id: { type: "keyword" },
       content: textField({ ngram: true }),
       category: { type: "keyword" },
       owner: { type: "keyword" },
@@ -466,6 +469,8 @@ export class ElasticDB {
       document: {
         id: memory.id,
         project: memory.project || null,
+        session_id: memory.session_id || null,
+        peer_id: memory.peer_id || null,
         content: memory.content,
         category: memory.category,
         owner: memory.owner,
@@ -486,7 +491,10 @@ export class ElasticDB {
     id: string,
     updates: {
       content?: string;
+      category?: MemoryCategory;
       importance?: number;
+      session_id?: string;
+      peer_id?: string;
       ai_intent?: AgentMemory["ai_intent"];
       ai_topics?: AgentMemory["ai_topics"];
       ai_quality_score?: AgentMemory["ai_quality_score"];
@@ -496,7 +504,10 @@ export class ElasticDB {
   ) {
     const doc: Record<string, any> = { updated_at: new Date().toISOString() };
     if (updates.content !== undefined) doc.content = updates.content;
+    if (updates.category !== undefined) doc.category = updates.category;
     if (updates.importance !== undefined) doc.importance = updates.importance;
+    if (updates.session_id !== undefined) doc.session_id = updates.session_id;
+    if (updates.peer_id !== undefined) doc.peer_id = updates.peer_id;
     if (updates.ai_intent !== undefined) doc.ai_intent = updates.ai_intent;
     if (updates.ai_topics !== undefined) doc.ai_topics = updates.ai_topics;
     if (updates.ai_quality_score !== undefined) doc.ai_quality_score = updates.ai_quality_score;
@@ -524,6 +535,8 @@ export class ElasticDB {
 
     const filters: any[] = [];
     if (options.project) filters.push({ term: { project: options.project } });
+    if (options.session_id) filters.push({ term: { session_id: options.session_id } });
+    if (options.peer_id) filters.push({ term: { peer_id: options.peer_id } });
     if (options.owner) filters.push({ term: { owner: options.owner } });
     if (options.category) filters.push({ term: { category: options.category } });
     if (options.minImportance) filters.push({ range: { importance: { gte: options.minImportance } } });
@@ -592,12 +605,14 @@ export class ElasticDB {
     return this.mapHits<AgentMemory>(res, options.highlight);
   }
 
-  async searchMemoriesByVector(queryEmbedding: number[], options: { topK?: number; project?: string } = {}): Promise<(AgentMemory & { _score: number })[]> {
+  async searchMemoriesByVector(queryEmbedding: number[], options: { topK?: number; project?: string; session_id?: string; peer_id?: string } = {}): Promise<(AgentMemory & { _score: number })[]> {
     await this.ensureInitialized();
     assertEmbeddingDimension(queryEmbedding, "ElasticDB.searchMemoriesByVector");
     const topK = options.topK ?? 10;
     const filters: any[] = [];
     if (options.project) filters.push({ term: { project: options.project } });
+    if (options.session_id) filters.push({ term: { session_id: options.session_id } });
+    if (options.peer_id) filters.push({ term: { peer_id: options.peer_id } });
 
     const res = await this.client.search({
       index: MEMORIES_INDEX,
@@ -618,6 +633,8 @@ export class ElasticDB {
     await this.ensureInitialized();
     const filters: any[] = [];
     if (options?.project) filters.push({ term: { project: options.project } });
+    if (options?.session_id) filters.push({ term: { session_id: options.session_id } });
+    if (options?.peer_id) filters.push({ term: { peer_id: options.peer_id } });
 
     const res = await this.client.search({
       index: MEMORIES_INDEX,

@@ -47,13 +47,16 @@ export type MemoryCategory =
   | "reflection"
   | "decision"
   | "constraint"
-  | "architecture";
+  | "architecture"
+  | "message"; // Turn-by-turn history
 
 export type MemoryOwner = "user" | "agent" | "system";
 
 export interface AgentMemory {
   project?: string;
   id: string;
+  session_id?: string; // Session isolation
+  peer_id?: string;    // Cross-session peer entity identity
   content: string;
   category: MemoryCategory;
   owner: MemoryOwner;
@@ -94,6 +97,8 @@ export interface AgentContextNode {
 
 export interface MemorySearchOptions extends ElasticSearchTuning {
   project?: string;
+  session_id?: string;
+  peer_id?: string;
   topK?: number;
   threshold?: number;
   owner?: MemoryOwner;
