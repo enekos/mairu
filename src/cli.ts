@@ -40,6 +40,11 @@ memCmd
   .action(async (content, opts) => {
     try {
       const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), opts.project, {}, true);
+      if ("budgetExceeded" in result) {
+        console.error(`\x1b[31m${result.message}\x1b[0m`);
+        console.error(`Use 'context-cli memory list -P ${opts.project}' to review and 'context-cli memory delete <id>' to free space.`);
+        process.exit(1);
+      }
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -54,6 +59,10 @@ memCmd
   .action(async (content, opts) => {
     try {
       const result = await cm.addMemory(content, opts.category, opts.owner, parseInt(opts.importance), opts.project, {}, false);
+      if ("budgetExceeded" in result) {
+        console.error(`\x1b[31m${result.message}\x1b[0m`);
+        process.exit(1);
+      }
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -184,7 +193,12 @@ skillCmd
   .option("-P, --project <project>", "Project namespace")
   .action(async (name, description, opts) => {
     try {
-      console.log(JSON.stringify(await cm.addSkill(name, description, opts.project), null, 2));
+      const result = await cm.addSkill(name, description, opts.project);
+      if ("budgetExceeded" in result) {
+        console.error(`\x1b[31m${result.message}\x1b[0m`);
+        process.exit(1);
+      }
+      console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 
@@ -250,6 +264,10 @@ nodeCmd
   .action(async (uri, name, abstract, opts) => {
     try {
       const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, opts.project, {}, true);
+      if ("budgetExceeded" in result) {
+        console.error(`\x1b[31m${result.message}\x1b[0m`);
+        process.exit(1);
+      }
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
@@ -264,6 +282,10 @@ nodeCmd
   .action(async (uri, name, abstract, opts) => {
     try {
       const result = await cm.addContextNode(uri, name, abstract, opts.overview, opts.content, opts.parent || null, opts.project, {}, false);
+      if ("budgetExceeded" in result) {
+        console.error(`\x1b[31m${result.message}\x1b[0m`);
+        process.exit(1);
+      }
       console.log(JSON.stringify(result, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });

@@ -144,6 +144,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
           ai_quality_score: body.ai_quality_score,
         };
         const result = await cm.addSkill(name, description, body.project, body.metadata ?? {}, aiMetadata);
+        if ("budgetExceeded" in result) {
+          sendJson(res, 409, result);
+          return;
+        }
         sendJson(res, 201, result);
         return;
       }
@@ -193,6 +197,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
           body.session_id,
           body.peer_id
         );
+        if ("budgetExceeded" in result) {
+          sendJson(res, 409, result);
+          return;
+        }
         sendJson(res, 201, result);
         return;
       }
@@ -344,6 +352,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
             ai_quality_score: body.ai_quality_score,
           }
         );
+        if ("budgetExceeded" in result) {
+          sendJson(res, 409, result);
+          return;
+        }
         sendJson(res, 201, result);
         return;
       }
