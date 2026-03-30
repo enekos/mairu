@@ -70,22 +70,22 @@ async function seed() {
     undefined,
     duoRoot.uri
   ) as AgentContextNode;
-  const frontend = await contextManager.addContextNode(
+  await contextManager.addContextNode(
     "contextfs://duo/frontend",
     "Frontend (Vue 3 SPA)",
     "Main UI for schema building, data exploration.",
     undefined,
     undefined,
     duoRoot.uri
-  ) as AgentContextNode;
-  const services = await contextManager.addContextNode(
+  );
+  await contextManager.addContextNode(
     "contextfs://duo/services",
     "External Services",
     "Python/TS services for external processing.",
     undefined,
     undefined,
     duoRoot.uri
-  ) as AgentContextNode;
+  );
 
   // Deep diving into Backend
   await contextManager.addContextNode(

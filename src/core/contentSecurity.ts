@@ -3,6 +3,7 @@ export interface ScanResult {
   warnings: string[];
 }
 
+// eslint-disable-next-line no-misleading-character-class
 const INVISIBLE_UNICODE = /[\u200B\u200C\u200D\u200E\u200F\u202A-\u202E\u2060\u2066-\u2069\uFEFF\uFE00-\uFE0F]/;
 
 const INJECTION_PATTERNS = [

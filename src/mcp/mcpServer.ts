@@ -3,7 +3,6 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { createContextManager } from "../storage/client";
 import {
-  executeVibeQuery,
   planVibeMutation,
   executeMutationOp,
 } from "../llm/vibeEngine";

@@ -45,7 +45,7 @@
 - Create: `src/core/contentSecurity.ts`
 - Test: `tests/contentSecurity.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 // tests/contentSecurity.test.ts
@@ -126,12 +126,12 @@ describe("scanContent", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/contentSecurity.test.ts`
 Expected: FAIL — module `../src/core/contentSecurity` not found
 
-- [ ] **Step 3: Implement the scanner**
+- [x] **Step 3: Implement the scanner**
 
 ```typescript
 // src/core/contentSecurity.ts
@@ -184,12 +184,12 @@ export function scanContent(content: string): ScanResult {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/contentSecurity.test.ts`
 Expected: All 12 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/core/contentSecurity.ts tests/contentSecurity.test.ts
@@ -206,7 +206,7 @@ git commit -m "feat: add content security scanner for prompt injection detection
 - Modify: `src/core/configParsing.ts`
 - Test: `tests/configParsing.test.ts` (existing — add new cases)
 
-- [ ] **Step 1: Write the failing test for parseNonNegativeInt**
+- [x] **Step 1: Write the failing test for parseNonNegativeInt**
 
 Add to existing `tests/configParsing.test.ts`:
 
@@ -242,12 +242,12 @@ describe("parseNonNegativeInt", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/configParsing.test.ts`
 Expected: FAIL — `parseNonNegativeInt` is not exported
 
-- [ ] **Step 3: Add parseNonNegativeInt to configParsing.ts**
+- [x] **Step 3: Add parseNonNegativeInt to configParsing.ts**
 
 Add to the end of `src/core/configParsing.ts`:
 
@@ -262,12 +262,12 @@ export function parseNonNegativeInt(value: string | undefined): number | undefin
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/configParsing.test.ts`
 Expected: All tests PASS
 
-- [ ] **Step 5: Add BudgetExceeded type to types.ts**
+- [x] **Step 5: Add BudgetExceeded type to types.ts**
 
 Add after the `UpdatedWrite` interface at the end of `src/core/types.ts`:
 
@@ -282,7 +282,7 @@ export interface BudgetExceeded {
 }
 ```
 
-- [ ] **Step 6: Add budget config to config.ts**
+- [x] **Step 6: Add budget config to config.ts**
 
 Add import of `parseNonNegativeInt` to the existing import line in `src/core/config.ts`:
 
@@ -300,7 +300,7 @@ Add a new `budget` section to the config object, after the `embedding` section:
   },
 ```
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/core/types.ts src/core/config.ts src/core/configParsing.ts tests/configParsing.test.ts
@@ -315,7 +315,7 @@ git commit -m "feat: add budget types, config, and parseNonNegativeInt helper"
 - Modify: `src/storage/elasticDB.ts`
 - Test: `tests/budget.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 // tests/budget.test.ts
@@ -422,12 +422,12 @@ describe("bulkIndex", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/budget.test.ts`
 Expected: FAIL — `countByProject` and `bulkIndex` do not exist on `ElasticDB`
 
-- [ ] **Step 3: Add countByProject to elasticDB.ts**
+- [x] **Step 3: Add countByProject to elasticDB.ts**
 
 Add the following method to the `ElasticDB` class (before the private helper methods, after the `getClusterStats` method):
 
@@ -441,7 +441,7 @@ Add the following method to the `ElasticDB` class (before the private helper met
   }
 ```
 
-- [ ] **Step 4: Add bulkIndex to elasticDB.ts**
+- [x] **Step 4: Add bulkIndex to elasticDB.ts**
 
 Add the following method right after `countByProject`:
 
@@ -481,12 +481,12 @@ Add the following method right after `countByProject`:
   }
 ```
 
-- [ ] **Step 5: Run tests to verify they pass**
+- [x] **Step 5: Run tests to verify they pass**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/budget.test.ts`
 Expected: All 5 tests PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/storage/elasticDB.ts tests/budget.test.ts
@@ -501,7 +501,7 @@ git commit -m "feat: add countByProject and bulkIndex to ElasticDB"
 - Modify: `src/storage/contextManager.ts`
 - Modify: `tests/budget.test.ts` (add contextManager tests)
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `tests/budget.test.ts`:
 
@@ -606,12 +606,12 @@ describe("budget enforcement", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/budget.test.ts`
 Expected: FAIL — budget checks don't exist yet in contextManager
 
-- [ ] **Step 3: Add budget enforcement to contextManager.ts**
+- [x] **Step 3: Add budget enforcement to contextManager.ts**
 
 Add imports at the top of `src/storage/contextManager.ts`:
 
@@ -705,17 +705,17 @@ Modify the `addContextNode` method — same pattern. Add budget check before the
     // Create
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/budget.test.ts`
 Expected: All tests PASS
 
-- [ ] **Step 5: Run full test suite to check nothing broke**
+- [x] **Step 5: Run full test suite to check nothing broke**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run`
 Expected: All existing tests still PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/storage/contextManager.ts tests/budget.test.ts
@@ -730,7 +730,7 @@ git commit -m "feat: enforce per-project budget limits on writes"
 - Modify: `src/storage/embedder.ts`
 - Test: `tests/embedder.test.ts` (existing — add batch tests)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Add to `tests/embedder.test.ts`:
 
@@ -758,12 +758,12 @@ describe("getEmbeddings (batch)", () => {
 
 Note: `expectedDim` should match the test file's existing variable for the embedding dimension. If the existing test file uses `config.embedding.dimension`, use that. If it uses a hardcoded value, match it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/embedder.test.ts`
 Expected: FAIL — `getEmbeddings` does not exist
 
-- [ ] **Step 3: Implement getEmbeddings**
+- [x] **Step 3: Implement getEmbeddings**
 
 Add to `src/storage/embedder.ts` inside the `Embedder` class, after the `getEmbedding` method:
 
@@ -775,12 +775,12 @@ Add to `src/storage/embedder.ts` inside the `Embedder` class, after the `getEmbe
   }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/embedder.test.ts`
 Expected: All tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/storage/embedder.ts tests/embedder.test.ts
@@ -795,7 +795,7 @@ git commit -m "feat: add batch getEmbeddings method to Embedder"
 - Create: `src/storage/batchWriter.ts`
 - Test: `tests/batchWriter.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 // tests/batchWriter.test.ts
@@ -919,12 +919,12 @@ describe("BatchWriter", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/batchWriter.test.ts`
 Expected: FAIL — `../src/storage/batchWriter` module not found
 
-- [ ] **Step 3: Implement BatchWriter**
+- [x] **Step 3: Implement BatchWriter**
 
 ```typescript
 // src/storage/batchWriter.ts
@@ -1024,12 +1024,12 @@ export class BatchWriter {
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/batchWriter.test.ts`
 Expected: All 4 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/storage/batchWriter.ts tests/batchWriter.test.ts
@@ -1044,7 +1044,7 @@ git commit -m "feat: add BatchWriter for bulk embedding and ES indexing"
 - Modify: `src/llm/vibeEngine.ts`
 - Test: `tests/vibeFlush.test.ts`
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```typescript
 // tests/vibeFlush.test.ts
@@ -1164,12 +1164,12 @@ describe("summarizeSearchResults", () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/vibeFlush.test.ts`
 Expected: FAIL — `planFlush` and `summarizeSearchResults` are not exported from vibeEngine
 
-- [ ] **Step 3: Implement planFlush**
+- [x] **Step 3: Implement planFlush**
 
 Add to the end of `src/llm/vibeEngine.ts`, before the closing of the file:
 
@@ -1330,12 +1330,12 @@ Respond with ONLY a JSON object:
 }
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run tests/vibeFlush.test.ts`
 Expected: All 4 tests PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/llm/vibeEngine.ts tests/vibeFlush.test.ts
@@ -1349,7 +1349,7 @@ git commit -m "feat: add planFlush and summarizeSearchResults to vibeEngine"
 **Files:**
 - Modify: `src/cli.ts`
 
-- [ ] **Step 1: Add flush command**
+- [x] **Step 1: Add flush command**
 
 Add the following after the `vibe-mutation` command block (after line 608) in `src/cli.ts`:
 
@@ -1424,7 +1424,7 @@ program
   });
 ```
 
-- [ ] **Step 2: Add nudge command**
+- [x] **Step 2: Add nudge command**
 
 Add right after the flush command:
 
@@ -1458,7 +1458,7 @@ program
   });
 ```
 
-- [ ] **Step 3: Add summarize command**
+- [x] **Step 3: Add summarize command**
 
 Add right after the nudge command:
 
@@ -1522,12 +1522,12 @@ program
   });
 ```
 
-- [ ] **Step 4: Verify CLI builds without errors**
+- [x] **Step 4: Verify CLI builds without errors**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx tsc --noEmit`
 Expected: No type errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/cli.ts
@@ -1541,7 +1541,7 @@ git commit -m "feat: add flush, nudge, and summarize CLI commands"
 **Files:**
 - Modify: `src/dashboardApi.ts`
 
-- [ ] **Step 1: Add the import**
+- [x] **Step 1: Add the import**
 
 Update the import line at the top of `src/dashboardApi.ts`:
 
@@ -1549,7 +1549,7 @@ Update the import line at the top of `src/dashboardApi.ts`:
 import { executeVibeQuery, planVibeMutation, executeMutationOp, VibeMutationOp, summarizeSearchResults } from "./llm/vibeEngine";
 ```
 
-- [ ] **Step 2: Add the summarize endpoint**
+- [x] **Step 2: Add the summarize endpoint**
 
 Add before the `sendJson(res, 404, ...)` line near the end of `handleRequest`:
 
@@ -1589,12 +1589,12 @@ Add before the `sendJson(res, 404, ...)` line near the end of `handleRequest`:
 
 ```
 
-- [ ] **Step 3: Verify the dashboard API compiles**
+- [x] **Step 3: Verify the dashboard API compiles**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx tsc --noEmit`
 Expected: No type errors
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/dashboardApi.ts
@@ -1608,7 +1608,7 @@ git commit -m "feat: add POST /api/search/summarize endpoint"
 **Files:**
 - Modify: `src/storage/contextManager.ts`
 
-- [ ] **Step 1: Add security scan to write paths**
+- [x] **Step 1: Add security scan to write paths**
 
 Add import at the top of `src/storage/contextManager.ts`:
 
@@ -1647,17 +1647,17 @@ In `addContextNode`, add the security scan right before the `// Budget check` li
     this.warnIfUnsafe(`${name}: ${abstract}`, "node");
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [x] **Step 2: Verify it compiles**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx tsc --noEmit`
 Expected: No type errors
 
-- [ ] **Step 3: Run full test suite**
+- [x] **Step 3: Run full test suite**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run`
 Expected: All tests PASS
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/storage/contextManager.ts
@@ -1672,7 +1672,7 @@ git commit -m "feat: add content security scanning on write paths"
 - Modify: `src/cli.ts`
 - Modify: `src/dashboardApi.ts`
 
-- [ ] **Step 1: Add BudgetExceeded handling in CLI memory store command**
+- [x] **Step 1: Add BudgetExceeded handling in CLI memory store command**
 
 In `src/cli.ts`, update the `memory store` action to handle budget exceeded. Replace the existing action body of the `memory store` command:
 
@@ -1699,7 +1699,7 @@ Apply the same pattern to the `memory add` action, the `skill add` action, and t
       }
 ```
 
-- [ ] **Step 2: Add BudgetExceeded handling in dashboard API**
+- [x] **Step 2: Add BudgetExceeded handling in dashboard API**
 
 In `src/dashboardApi.ts`, update the POST handlers for `/api/memories`, `/api/skills`, and `/api/context`. After the `const result = await cm.add...` line in each POST handler, add:
 
@@ -1710,12 +1710,12 @@ In `src/dashboardApi.ts`, update the POST handlers for `/api/memories`, `/api/sk
         }
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [x] **Step 3: Verify it compiles**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx tsc --noEmit`
 Expected: No type errors
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/cli.ts src/dashboardApi.ts
@@ -1729,7 +1729,7 @@ git commit -m "feat: handle budget exceeded in CLI and dashboard API"
 **Files:**
 - Modify: `.env.example`
 
-- [ ] **Step 1: Add budget vars to .env.example**
+- [x] **Step 1: Add budget vars to .env.example**
 
 Add after the `DASHBOARD_API_PORT` line:
 
@@ -1740,22 +1740,22 @@ Add after the `DASHBOARD_API_PORT` line:
 # NODE_BUDGET_PER_PROJECT=1000
 ```
 
-- [ ] **Step 2: Run full test suite**
+- [x] **Step 2: Run full test suite**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx vitest run`
 Expected: All tests PASS
 
-- [ ] **Step 3: Run type check**
+- [x] **Step 3: Run type check**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx tsc --noEmit`
 Expected: No errors
 
-- [ ] **Step 4: Run linter**
+- [x] **Step 4: Run linter**
 
 Run: `cd /Users/enekosarasola/contextfs && bunx oxlint src`
 Expected: No errors (or only pre-existing warnings)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add .env.example

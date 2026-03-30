@@ -183,7 +183,7 @@ export function summarize(results: PerCaseResult[]): SummaryStats {
   const recalls = results.map((r) => r.recallAtK);
   const avgRecallAtK = recalls.reduce((s, v) => s + v, 0) / results.length;
 
-  const sortedLatencies = [...results.map((r) => r.latencyMs)].sort((a, b) => a - b);
+  const sortedLatencies = results.map((r) => r.latencyMs).sort((a, b) => a - b);
 
   const gapValues = results.map((r) => r.scoreStats.relevantIrrelevantGap).filter((g): g is number => g !== null);
   const avgRelevantIrrelevantGap = gapValues.length > 0
