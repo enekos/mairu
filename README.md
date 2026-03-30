@@ -17,6 +17,7 @@ Centralized context and memory storage for coding agents with:
 - fuzzy matching, exact phrase boost, ngram partial matching, synonym expansion
 - configurable embedding model and dimension
 - retrieval quality benchmarking via JSON datasets
+- optional online adaptive retrieval policy (bandit-based RL-style weight tuning)
 
 ## Requirements
 
@@ -68,6 +69,14 @@ ES_DEFAULT_FUZZINESS=auto   # typo tolerance: auto, 0, 1, 2
 ES_PHRASE_BOOST=2.0         # boost for exact phrase matches (0 = disabled)
 ES_RECENCY_SCALE=30d        # recency half-life (e.g. 7d, 30d, 90d)
 ES_RECENCY_DECAY=0.5        # decay factor at scale distance
+
+# Online adaptive retrieval (optional)
+RL_ADAPTIVE_ENABLED=false   # enable adaptive memory weight policy
+RL_PROJECT_ALLOWLIST=       # comma-separated projects (empty = all projects)
+RL_EPSILON=0.15             # exploration rate for bandit arm selection
+RL_WARMUP_SAMPLES=5         # per-arm warmup selections before exploitation
+RL_POLICY_STORE_PATH=.contextfs-rl-policies.json
+RL_EVENT_LOG_PATH=.contextfs-rl-events.jsonl
 ```
 
 ## CLI Usage
@@ -81,8 +90,10 @@ Examples:
 ```bash
 # memories
 context-cli memory store "User prefers strict TypeScript and hexagonal architecture" -c preferences -o user -i 8 -P my-project
-context-cli memory search "coding preferences" -k 5 -P my-project
+context-cli memory search "coding preferences" -k 5 -P my-project --mode surface
 context-cli memory search "auth setup" -k 5 -P my-project --fuzziness auto --phraseBoost 3 --highlight
+context-cli memory feedback -P my-project --arm balanced --outcome accepted --rank 1 --query "coding preferences"
+context-cli memory policy -P my-project
 
 # skills
 context-cli skill add "Postgres Expert" "Optimizes large SQL queries and indexes" -P my-project
@@ -113,6 +124,12 @@ To protect against hallucinated updates from AI agents (via `vibe-mutation` or d
 - Soft Deletes: Calling `context-cli node delete` soft-deletes the node and all its descendants. They will not appear in search results. You can easily recover them via `context-cli node restore`.
 - Versioning: Every update operation archives the previous state (`name`, `abstract`, `overview`, `content`) into a `version_history` array (up to 10 versions), directly inside the Elasticsearch document.
 
+### Memory Lifecycle + Adaptive Policy
+- Memories can carry lifecycle metadata: `memory_state` (`raw`/`curated`/`archived`), provenance (`source_memory_ids`), and quality/reward stats.
+- Search defaults to `surface` retrieval (`curated` memory) and can fall back to `deep` retrieval on low-confidence results.
+- The dreamer daemon now synthesizes grouped message memories into curated long-term memories and archives source raw memories.
+- Optional RL-style adaptation uses a contextual bandit over hybrid search weights and logs retrieval outcomes to JSONL for replay/debugging.
+
 ## Retrieval Evaluation Harness
 
 1. Create a dataset:
@@ -129,6 +146,10 @@ cp eval/dataset.example.json eval/dataset.json
 bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --verbose true
 # with pass/fail thresholds:
 bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --fail-below-mrr 0.8 --fail-below-recall 0.75
+# compare baseline vs adaptive policy (requires --project):
+bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --project my-project --adaptive-compare true
+# replay a reward event log:
+bun run eval:retrieval -- --dataset eval/dataset.json --replay-events .contextfs-rl-events.jsonl
 ```
 
 Outputs: `avgRecallAtK`, `mrr`, `avgLatencyMs`, optional `perCase` details.
@@ -152,6 +173,7 @@ bun run dashboard:dev   # Svelte dev server on port 5173
 | `bun run clean` | Remove `dist/` |
 | `bun run setup` | Init/reset Elasticsearch indices (destructive) |
 | `bun run link` | Build and install `context-cli` globally |
+| `bun run eval:ablation` | Compare vector-only/keyword-only/hybrid retrieval |
 
 ## License
 

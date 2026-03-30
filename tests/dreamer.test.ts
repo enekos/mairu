@@ -17,6 +17,7 @@ vi.mock("../src/storage/client", () => {
       if (!(global as any).__mockCm) {
         (global as any).__mockCm = {
           listMemories: vi.fn(),
+          searchMemories: vi.fn(),
           updateMemory: vi.fn()
         };
       }
@@ -40,7 +41,7 @@ describe("Background Dreaming Daemon (Continual Learning)", () => {
     
     await dreamLoop();
     
-    expect(mockCm.listMemories).toHaveBeenCalledWith({ category: "message" }, 100);
+    expect(mockCm.listMemories).toHaveBeenCalledWith({ category: "message", memoryState: "raw" }, 100);
     expect(planVibeMutation).not.toHaveBeenCalled();
   });
 
@@ -68,6 +69,7 @@ describe("Background Dreaming Daemon (Continual Learning)", () => {
     }));
 
     mockCm.listMemories.mockResolvedValueOnce(messages);
+    mockCm.searchMemories.mockResolvedValue([]);
 
     // Mock the LLM returning a valid profile extraction
     vi.mocked(planVibeMutation).mockResolvedValueOnce({
@@ -94,6 +96,9 @@ describe("Background Dreaming Daemon (Continual Learning)", () => {
     
     // It should have called updateMemory to mark the 5 processed messages
     expect(mockCm.updateMemory).toHaveBeenCalledTimes(5);
-    expect(mockCm.updateMemory).toHaveBeenCalledWith("mem0", { category: "observation" });
+    expect(mockCm.updateMemory).toHaveBeenCalledWith(
+      "mem0",
+      expect.objectContaining({ category: "observation", memory_state: "archived" })
+    );
   });
 });

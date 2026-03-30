@@ -154,6 +154,8 @@ async function run() {
     weightsPath,
     failAboveNegativeRate,
     project,
+    adaptiveCompare,
+    replayEventsPath,
   } = parseArgs(process.argv.slice(2));
 
   const dataset = await loadDataset(datasetPath);
@@ -189,7 +191,34 @@ async function run() {
 
   // Main eval run
   const effectiveWeights = customWeights ?? undefined;
+  const previousAdaptive = process.env.RL_ADAPTIVE_ENABLED;
+  process.env.RL_ADAPTIVE_ENABLED = "false";
   const perCase = await runCases(contextManager, dataset.cases, topK, project, effectiveWeights);
+  let adaptiveSummary:
+    | {
+        baseline: { global: SummaryStats; byDomain: { memory: SummaryStats; skill: SummaryStats; context: SummaryStats } };
+        adaptive: { global: SummaryStats; byDomain: { memory: SummaryStats; skill: SummaryStats; context: SummaryStats } };
+        delta: { mrr: number; recallAtK: number; negativeHits: number };
+      }
+    | undefined;
+  if (adaptiveCompare && project) {
+    process.env.RL_ADAPTIVE_ENABLED = "true";
+    // Warmup pass to update policy stats, then measured pass.
+    await runCases(contextManager, dataset.cases, topK, project, effectiveWeights);
+    const adaptiveCases = await runCases(contextManager, dataset.cases, topK, project, effectiveWeights);
+    const baseBlock = buildSummaryBlock(perCase);
+    const adaptiveBlock = buildSummaryBlock(adaptiveCases);
+    adaptiveSummary = {
+      baseline: baseBlock,
+      adaptive: adaptiveBlock,
+      delta: {
+        mrr: adaptiveBlock.global.mrr - baseBlock.global.mrr,
+        recallAtK: adaptiveBlock.global.avgRecallAtK - baseBlock.global.avgRecallAtK,
+        negativeHits: adaptiveBlock.global.avgNegativeHits - baseBlock.global.avgNegativeHits,
+      },
+    };
+  }
+  process.env.RL_ADAPTIVE_ENABLED = previousAdaptive;
 
   const { global, byDomain } = buildSummaryBlock(perCase);
   const failedCases = perCase.filter((c) => !c.hitRate);
@@ -217,6 +246,7 @@ async function run() {
     },
     global,
     byDomain,
+    ...(adaptiveSummary ? { adaptiveCompare: adaptiveSummary } : {}),
     ...(ablationResults ? { ablation: ablationResults } : {}),
     failedCases:
       failedCases.length > 0
@@ -231,6 +261,26 @@ async function run() {
         : undefined,
     perCase: verbose ? perCase : undefined,
   };
+
+  if (replayEventsPath) {
+    const replayAbsolute = path.isAbsolute(replayEventsPath)
+      ? replayEventsPath
+      : path.resolve(process.cwd(), replayEventsPath);
+    const rawLines = (await fs.readFile(replayAbsolute, "utf8"))
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const events = rawLines.map((line) => JSON.parse(line) as { reward?: number; action?: string });
+    const totalReward = events.reduce((sum, evt) => sum + (evt.reward ?? 0), 0);
+    Object.assign(output, {
+      replay: {
+        path: replayAbsolute,
+        events: events.length,
+        totalReward,
+        avgReward: events.length > 0 ? totalReward / events.length : 0,
+      },
+    });
+  }
 
   const json = JSON.stringify(output, null, 2);
   console.log(json);

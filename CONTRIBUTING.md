@@ -30,6 +30,9 @@ bun run typecheck
 - `bun run dashboard:api` - run API for dashboard.
 - `bun run dashboard:dev` - run Svelte dashboard.
 - `bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --verbose true` - run retrieval benchmark.
+- `context-cli memory search "query" -P my-project --mode surface` - curated-memory-first retrieval.
+- `context-cli memory feedback -P my-project --arm <arm> --outcome accepted|ignored --rank 1` - feed reward signals.
+- `context-cli memory policy -P my-project` / `context-cli memory policy -P my-project --reset` - inspect/reset adaptive policy state.
 
 ## Contribution Guidelines
 
@@ -37,6 +40,8 @@ bun run typecheck
 - Update docs and examples when behavior changes.
 - Preserve backward compatibility where practical.
 - Do not commit secrets (`.env`, tokens, credentials).
+- If changing adaptive retrieval behavior, run eval in both baseline and adaptive modes:
+  - `bun run eval:retrieval -- --dataset eval/dataset.json --project my-project --adaptive-compare true`
 
 ## Pull Requests
 

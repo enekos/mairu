@@ -71,6 +71,7 @@ memCmd
   .option("--phraseBoost <n>", "Boost for exact phrase matches (0=off)")
   .option("--minScore <n>", "Hard minimum score cutoff")
   .option("--highlight", "Show highlighted match snippets")
+  .option("--mode <mode>", "Retrieval mode: surface | deep", "surface")
   .action(async (query, opts) => {
     try {
       const results = await cm.searchMemories(query, {
@@ -85,6 +86,7 @@ memCmd
         phraseBoost: opts.phraseBoost !== undefined ? parseFloat(opts.phraseBoost) : undefined,
         minScore: opts.minScore !== undefined ? parseFloat(opts.minScore) : undefined,
         highlight: opts.highlight ?? false,
+        retrievalMode: opts.mode === "deep" ? "deep" : "surface",
       });
       console.log(JSON.stringify(results, null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
@@ -125,6 +127,48 @@ memCmd
     try {
       await cm.deleteMemory(id);
       console.log(`Deleted memory: ${id}`);
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+memCmd
+  .command("feedback")
+  .description("Record reward feedback for adaptive memory policy")
+  .requiredOption("-P, --project <project>", "Project namespace")
+  .requiredOption("--arm <armId>", "Policy arm id (from search results _policy_arm)")
+  .option("--outcome <outcome>", "accepted | ignored | feedback", "feedback")
+  .option("--reward <n>", "Explicit numeric reward override")
+  .option("--query <text>", "Source query text")
+  .option("--rank <n>", "Selected rank (1-based)")
+  .option("--topScore <n>", "Top score seen")
+  .action(async (opts) => {
+    try {
+      const event = await cm.recordMemoryFeedback(
+        opts.project,
+        opts.arm,
+        opts.outcome,
+        opts.reward !== undefined ? parseFloat(opts.reward) : undefined,
+        {
+          query: opts.query,
+          selectedRank: opts.rank !== undefined ? parseInt(opts.rank) : undefined,
+          topScore: opts.topScore !== undefined ? parseFloat(opts.topScore) : undefined,
+        }
+      );
+      console.log(JSON.stringify(event, null, 2));
+    } catch (e) { console.error("Error:", e); process.exit(1); }
+  });
+
+memCmd
+  .command("policy")
+  .description("Inspect or reset adaptive policy for a project")
+  .requiredOption("-P, --project <project>", "Project namespace")
+  .option("--reset", "Reset project policy")
+  .action(async (opts) => {
+    try {
+      if (opts.reset) {
+        console.log(JSON.stringify({ ok: cm.resetMemoryPolicy(opts.project) }, null, 2));
+        return;
+      }
+      console.log(JSON.stringify(cm.getMemoryPolicy(opts.project), null, 2));
     } catch (e) { console.error("Error:", e); process.exit(1); }
   });
 

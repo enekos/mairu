@@ -51,6 +51,13 @@ export type MemoryCategory =
   | "message"; // Turn-by-turn history
 
 export type MemoryOwner = "user" | "agent" | "system";
+export type MemoryState = "raw" | "curated" | "archived";
+
+export interface MemoryRewardStats {
+  total: number;
+  count: number;
+  avg: number;
+}
 
 export interface AgentMemory {
   project?: string;
@@ -61,6 +68,13 @@ export interface AgentMemory {
   category: MemoryCategory;
   owner: MemoryOwner;
   importance: number;
+  memory_state?: MemoryState;
+  source_memory_ids?: string[];
+  last_accessed_at?: string;
+  access_count?: number;
+  quality_score?: number;
+  confidence?: number;
+  reward_stats?: MemoryRewardStats | null;
   ai_intent?: "fact" | "decision" | "how_to" | "todo" | "warning" | null;
   ai_topics?: string[] | null;
   ai_quality_score?: number | null;
@@ -105,6 +119,9 @@ export interface MemorySearchOptions extends ElasticSearchTuning {
   category?: MemoryCategory;
   minImportance?: number;
   maxAgeDays?: number;
+  memoryState?: MemoryState | MemoryState[];
+  retrievalMode?: "surface" | "deep";
+  trackAccess?: boolean;
   weights?: HybridSearchWeights;
 }
 

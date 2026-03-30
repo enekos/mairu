@@ -64,6 +64,18 @@ export const config = {
     get skillPerProject() { return parseNonNegativeInt(process.env.SKILL_BUDGET_PER_PROJECT) ?? 100; },
     get nodePerProject() { return parseNonNegativeInt(process.env.NODE_BUDGET_PER_PROJECT) ?? 1000; },
   },
+
+  rl: {
+    get adaptiveEnabled() { return parseBoolean(process.env.RL_ADAPTIVE_ENABLED, false); },
+    get projectAllowlist(): string[] {
+      const raw = process.env.RL_PROJECT_ALLOWLIST || "";
+      return raw.split(",").map((x) => x.trim()).filter(Boolean);
+    },
+    get epsilon() { return Number(process.env.RL_EPSILON ?? "0.15"); },
+    get warmupSamples() { return parseNonNegativeInt(process.env.RL_WARMUP_SAMPLES) ?? 5; },
+    get policyStorePath() { return process.env.RL_POLICY_STORE_PATH || ".contextfs-rl-policies.json"; },
+    get eventLogPath() { return process.env.RL_EVENT_LOG_PATH || ".contextfs-rl-events.jsonl"; },
+  },
 };
 
 export function assertEmbeddingDimension(vector: number[], context: string): void {

@@ -79,6 +79,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
       const q = parsed.searchParams.get("q") || "";
       const type = parsed.searchParams.get("type") || "all";
       const topK = Number(parsed.searchParams.get("topK") || "10");
+      const memoryMode = parsed.searchParams.get("memoryMode") || "surface";
 
       if (!q) { sendJson(res, 400, { error: "q parameter required" }); return; }
 
@@ -115,7 +116,10 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         results.skills = await cm.searchSkills(q, opts);
       }
       if (type === "all" || type === "memories") {
-        results.memories = await cm.searchMemories(q, opts);
+        results.memories = await cm.searchMemories(q, {
+          ...opts,
+          retrievalMode: memoryMode === "deep" ? "deep" : "surface",
+        });
       }
       if (type === "all" || type === "context") {
         results.contextNodes = await cm.searchContext(q, opts);
@@ -200,6 +204,13 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
           importance: body.importance,
           session_id: body.session_id,
           peer_id: body.peer_id,
+          memory_state: body.memory_state,
+          source_memory_ids: body.source_memory_ids,
+          last_accessed_at: body.last_accessed_at,
+          access_count: body.access_count,
+          quality_score: body.quality_score,
+          confidence: body.confidence,
+          reward_stats: body.reward_stats,
           ai_intent: body.ai_intent,
           ai_topics: body.ai_topics,
           ai_quality_score: body.ai_quality_score,
@@ -259,7 +270,7 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
       // but in a full implementation we would vary the LLM passes and search fan-out based on tier.
       if (tier === "minimal") {
         // Direct search
-        const results = await cm.searchMemories(prompt, { topK: 5, project });
+        const results = await cm.searchMemories(prompt, { topK: 5, project, retrievalMode: "surface" });
         sendJson(res, 200, { reasoning: "Direct search", results });
         return;
       } else {
@@ -268,6 +279,43 @@ async function handleRequest(req: IncomingMessage, res: ServerResponse<IncomingM
         sendJson(res, 200, result);
         return;
       }
+    }
+
+    // RL feedback + policy management
+    if (pathname === "/api/rl/feedback" && req.method === "POST") {
+      const body = await readBody(req);
+      const project = validateString(body.project, "project");
+      const armId = validateString(body.armId, "armId");
+      const outcome = (body.outcome || "feedback") as "accepted" | "ignored" | "feedback";
+      const reward = typeof body.reward === "number" ? body.reward : undefined;
+      const event = await cm.recordMemoryFeedback(project, armId, outcome, reward, {
+        query: body.query,
+        selectedRank: body.selectedRank,
+        topScore: body.topScore,
+        metadata: body.metadata,
+      });
+      sendJson(res, 200, event);
+      return;
+    }
+
+    if (pathname === "/api/rl/policy" && req.method === "GET") {
+      const project = parsed.searchParams.get("project");
+      if (!project) {
+        sendJson(res, 400, { error: "project parameter required" });
+        return;
+      }
+      sendJson(res, 200, cm.getMemoryPolicy(project));
+      return;
+    }
+
+    if (pathname === "/api/rl/policy" && req.method === "DELETE") {
+      const project = parsed.searchParams.get("project");
+      if (!project) {
+        sendJson(res, 400, { error: "project parameter required" });
+        return;
+      }
+      sendJson(res, 200, { ok: cm.resetMemoryPolicy(project) });
+      return;
     }
 
     // Context nodes CRUD

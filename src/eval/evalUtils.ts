@@ -86,6 +86,10 @@ export interface ParseArgsResult {
   failAboveNegativeRate: number | null;
   /** Scope all searches to this project */
   project: string | null;
+  /** Compare static baseline vs adaptive policy */
+  adaptiveCompare: boolean;
+  /** Optional replay JSONL for offline policy inspection */
+  replayEventsPath: string | null;
 }
 
 export function parseArgs(argv: string[]): ParseArgsResult {
@@ -113,6 +117,8 @@ export function parseArgs(argv: string[]): ParseArgsResult {
     weightsPath: args.get("weights") || null,
     failAboveNegativeRate: failAboveNegativeRateRaw != null ? parseFloat(failAboveNegativeRateRaw) : null,
     project: args.get("project") || null,
+    adaptiveCompare: args.get("adaptive-compare") === "true",
+    replayEventsPath: args.get("replay-events") || null,
   };
 }
 
