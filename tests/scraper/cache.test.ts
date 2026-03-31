@@ -1,8 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { createHash } from "crypto";
 import * as fs from "fs";
 import * as path from "path";
-import { ScrapeCache as ScrapeCacheType } from "../../src/scraper/types";
 
 // We'll test the module functions directly
 const tmpCacheFile = path.join("/tmp", `test-scrape-cache-${Date.now()}.json`);

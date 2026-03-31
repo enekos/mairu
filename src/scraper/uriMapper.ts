@@ -22,7 +22,7 @@ export function urlToUri(url: string, sectionHeading?: string): string {
   const pathSegments = parsed.pathname
     .split("/")
     .filter(Boolean)
-    .map((s) => encodeURIComponent(s).toLowerCase());
+    .map((s) => encodeURIComponent(s.toLowerCase()));
 
   const base = ["contextfs://scraped", slug, ...pathSegments].join("/");
 
