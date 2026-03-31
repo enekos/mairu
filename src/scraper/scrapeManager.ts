@@ -73,6 +73,7 @@ export async function scrapeAndIngest(options: ScrapeOptions): Promise<ScrapeRes
         console.log(`  [${result.pagesTotal}] ${label}`);
         console.log(`    → ${uri}`);
         console.log(`    abstract: ${summary.abstract.slice(0, 80)}...`);
+        // In dry-run mode, count as "would store" — caller should check dryRun flag
         result.pagesStored++;
         continue;
       }
@@ -101,7 +102,11 @@ export async function scrapeAndIngest(options: ScrapeOptions): Promise<ScrapeRes
         uri,
       });
 
-      if ("skipped" in stored && stored.skipped) {
+      if ("budgetExceeded" in stored && stored.budgetExceeded) {
+        console.warn(`  [${result.pagesTotal}] ${label} .............. BUDGET EXCEEDED — stopping`);
+        result.errors.push({ url: page.url, error: "budget exceeded" });
+        break;
+      } else if ("skipped" in stored && stored.skipped) {
         console.log(`  [${result.pagesTotal}] ${label} .............. skipped (duplicate)`);
         result.pagesSkipped++;
       } else if ("updated" in stored && stored.updated) {
@@ -127,7 +132,10 @@ export async function scrapeAndIngest(options: ScrapeOptions): Promise<ScrapeRes
             { ...metadata, section_heading: section.heading },
             useRouter
           );
-          if (!("skipped" in sectionStored && sectionStored.skipped)) {
+          if (
+            !("skipped" in sectionStored && sectionStored.skipped) &&
+            !("budgetExceeded" in sectionStored && sectionStored.budgetExceeded)
+          ) {
             result.sectionsStored++;
           }
         }
@@ -139,6 +147,13 @@ export async function scrapeAndIngest(options: ScrapeOptions): Promise<ScrapeRes
     }
   }
 
-  if (!dryRun) cache.save();
+  if (!dryRun) {
+    try {
+      cache.save();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[scraper] Failed to save cache: ${message}`);
+    }
+  }
   return result;
 }

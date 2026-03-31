@@ -27,3 +27,4 @@ pnpm-debug.log*
 # Daemon persistent cache
 .contextfs-cache.json
 .contextfs-cache.json.tmp
+.contextfs-scrape-cache.json
