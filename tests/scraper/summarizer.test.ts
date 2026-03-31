@@ -16,6 +16,13 @@ vi.mock("@google/genai", () => ({
   })),
 }));
 
+vi.mock("../../src/core/config", () => ({
+  config: {
+    geminiApiKey: "test-api-key",
+    llmModel: "gemini-2.0-flash-lite",
+  },
+}));
+
 describe("summarizePage", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -41,7 +48,7 @@ describe("summarizePage", () => {
       "Just a few words.",
       "https://example.com/short"
     );
-    // For short content (< 50 words), still returns a PageSummary
+    // For short content (< 5 words), returns fallback summary without calling LLM
     expect(result.abstract).toBeTruthy();
     expect(typeof result.ai_quality_score).toBe("number");
   });

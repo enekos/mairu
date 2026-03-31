@@ -5,6 +5,10 @@ import type { PageSummary } from "./types";
 const MAX_INPUT_TOKENS = 8000; // ~6000 words
 const SHORT_PAGE_THRESHOLD = 5; // words
 
+const ai = config.geminiApiKey
+  ? new GoogleGenAI({ apiKey: config.geminiApiKey })
+  : null;
+
 function truncateMarkdown(markdown: string): string {
   // Rough estimate: 1 token ≈ 4 chars
   const maxChars = MAX_INPUT_TOKENS * 4;
@@ -34,7 +38,7 @@ Return ONLY valid JSON (no markdown, no explanation) with these fields:
 function fallbackSummary(title: string, markdown: string, url: string): PageSummary {
   const firstLine = markdown.split("\n").find((l) => l.trim().length > 0) ?? title;
   return {
-    abstract: `${title}: ${firstLine.slice(0, 200)}`,
+    abstract: `${title} (${url}): ${firstLine.slice(0, 200)}`,
     overview: markdown.slice(0, 500),
     ai_intent: null,
     ai_topics: [],
@@ -53,7 +57,9 @@ export async function summarizePage(
     return fallbackSummary(title, markdown, url);
   }
 
-  const ai = new GoogleGenAI({ apiKey: config.geminiApiKey ?? "" });
+  if (!ai) {
+    return fallbackSummary(title, markdown, url);
+  }
   const prompt = buildPrompt(title, markdown, url);
 
   try {

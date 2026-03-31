@@ -111,6 +111,7 @@ export async function* crawl(options: CrawlOptions): AsyncGenerator<CrawledPage>
           chunk.map(({ url, depth }) => processUrl(url, depth))
         );
         for (const result of settled) {
+          if (pageCount >= maxPages) break;
           if (result.status === "fulfilled" && result.value) {
             const crawledPage = result.value;
             pageCount++;
