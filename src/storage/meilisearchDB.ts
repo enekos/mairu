@@ -399,8 +399,184 @@ export class MeilisearchDB {
   }
 
   // ---------------------------------------------------------------------------
-  // [Memories and Context Node methods will be added in Tasks 4 and 5]
+  // Memories
   // ---------------------------------------------------------------------------
+
+  async addMemory(memory: AgentMemory, embedding: number[]) {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(embedding, "MeilisearchDB.addMemory");
+    const ts = new Date().toISOString();
+    const index = this.client.index(MEMORIES_INDEX);
+    const doc = {
+      id: memory.id,
+      project: memory.project || null,
+      content: memory.content,
+      category: memory.category,
+      owner: memory.owner,
+      importance: memory.importance,
+      ai_intent: memory.ai_intent ?? null,
+      ai_topics: memory.ai_topics ?? null,
+      ai_quality_score: memory.ai_quality_score ?? null,
+      _vectors: { default: embedding },
+      metadata: memory.metadata || null,
+      created_at: memory.created_at || ts,
+      updated_at: memory.updated_at || ts,
+    };
+    const task = await index.addDocuments([doc]);
+    await this.client.tasks.waitForTask(task.taskUid);
+  }
+
+  async updateMemory(
+    id: string,
+    updates: {
+      content?: string;
+      category?: MemoryCategory;
+      importance?: number;
+      ai_intent?: AgentMemory["ai_intent"];
+      ai_topics?: AgentMemory["ai_topics"];
+      ai_quality_score?: AgentMemory["ai_quality_score"];
+      metadata?: Record<string, any>;
+    },
+    embedding?: number[]
+  ) {
+    await this.ensureInitialized();
+    const doc: Record<string, any> = { id, updated_at: new Date().toISOString() };
+    if (updates.content !== undefined) doc.content = updates.content;
+    if (updates.category !== undefined) doc.category = updates.category;
+    if (updates.importance !== undefined) doc.importance = updates.importance;
+    if (updates.ai_intent !== undefined) doc.ai_intent = updates.ai_intent;
+    if (updates.ai_topics !== undefined) doc.ai_topics = updates.ai_topics;
+    if (updates.ai_quality_score !== undefined) doc.ai_quality_score = updates.ai_quality_score;
+    if (updates.metadata !== undefined) doc.metadata = updates.metadata;
+    if (embedding) {
+      assertEmbeddingDimension(embedding, "MeilisearchDB.updateMemory");
+      doc._vectors = { default: embedding };
+    }
+    const index = this.client.index(MEMORIES_INDEX);
+    const task = await index.updateDocuments([doc]);
+    await this.client.tasks.waitForTask(task.taskUid);
+  }
+
+  async searchMemories(
+    queryEmbedding: number[],
+    queryText: string,
+    options: MemorySearchOptions = {}
+  ): Promise<(AgentMemory & { _score: number; _highlight?: Record<string, string[]> })[]> {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(queryEmbedding, "MeilisearchDB.searchMemories");
+    const topK = options.topK ?? 10;
+    const ow = options.weights ?? DEFAULT_MEMORY_WEIGHTS;
+    const w = normalizeWeights({
+      vector: ow.vector, keyword: ow.keyword,
+      recency: ow.recency ?? 0, importance: ow.importance ?? 0,
+    });
+
+    const filters = this.buildMemoryFilters(options);
+    const vectorKeywordSum = w.vector + w.keyword;
+    const semanticRatio = vectorKeywordSum > 0 ? w.vector / vectorKeywordSum : 0.5;
+    const fetchLimit = topK * CANDIDATE_MULTIPLIER;
+
+    const searchParams: any = {
+      vector: queryEmbedding,
+      hybrid: { semanticRatio, embedder: "default" },
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit: fetchLimit,
+      showRankingScore: true,
+    };
+
+    if (options.highlight) {
+      searchParams.attributesToHighlight = ["content"];
+      searchParams.highlightPreTag = "<mark>";
+      searchParams.highlightPostTag = "</mark>";
+    }
+
+    if (options.minScore != null) {
+      searchParams.rankingScoreThreshold = options.minScore;
+    }
+
+    const index = this.client.index(MEMORIES_INDEX);
+    const res = await index.search(queryText, searchParams);
+
+    return this.rerankAndMap<AgentMemory>(res.hits, w, topK, options);
+  }
+
+  async searchMemoriesByVector(
+    queryEmbedding: number[],
+    options: { topK?: number; project?: string } = {}
+  ): Promise<(AgentMemory & { _score: number })[]> {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(queryEmbedding, "MeilisearchDB.searchMemoriesByVector");
+    const topK = options.topK ?? 10;
+    const filters: string[] = [];
+    if (options.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+
+    const index = this.client.index(MEMORIES_INDEX);
+    const res = await index.search("", {
+      vector: queryEmbedding,
+      hybrid: { semanticRatio: 1.0, embedder: "default" },
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit: topK,
+      showRankingScore: true,
+    } as any);
+
+    return res.hits.map((hit: any) => ({
+      ...this.stripVectors(hit),
+      _score: hit._rankingScore ?? 0,
+    }));
+  }
+
+  async listMemories(options?: MemorySearchOptions, limit = 100, offset = 0): Promise<AgentMemory[]> {
+    await this.ensureInitialized();
+    const filters: string[] = [];
+    if (options?.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+
+    const index = this.client.index(MEMORIES_INDEX);
+    const res = await index.getDocuments({
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit,
+      offset,
+      fields: ["id", "project", "content", "category", "owner", "importance", "ai_intent", "ai_topics", "ai_quality_score", "metadata", "created_at", "updated_at"],
+    });
+    return res.results.map((doc: any) => this.stripVectors(doc));
+  }
+
+  async getMemory(id: string): Promise<AgentMemory | null> {
+    await this.ensureInitialized();
+    try {
+      const index = this.client.index(MEMORIES_INDEX);
+      const doc = await index.getDocument(id, {
+        fields: ["id", "project", "content", "category", "owner", "importance", "ai_intent", "ai_topics", "ai_quality_score", "metadata", "created_at", "updated_at"],
+      });
+      return doc as AgentMemory;
+    } catch (e: any) {
+      if (e?.code === "document_not_found") return null;
+      throw e;
+    }
+  }
+
+  async deleteMemory(id: string) {
+    await this.ensureInitialized();
+    try {
+      const index = this.client.index(MEMORIES_INDEX);
+      const task = await index.deleteDocument(id);
+      await this.client.tasks.waitForTask(task.taskUid);
+    } catch (e: any) {
+      if (e?.code !== "document_not_found") throw e;
+    }
+  }
+
+  private buildMemoryFilters(options: MemorySearchOptions): string[] {
+    const filters: string[] = [];
+    if (options.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+    if (options.owner) filters.push(`owner = "${this.escapeFilterValue(options.owner)}"`);
+    if (options.category) filters.push(`category = "${this.escapeFilterValue(options.category)}"`);
+    if (options.minImportance) filters.push(`importance >= ${options.minImportance}`);
+    if (options.maxAgeDays) {
+      const cutoff = new Date(Date.now() - options.maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+      filters.push(`created_at >= "${cutoff}"`);
+    }
+    return filters;
+  }
 
   // ---------------------------------------------------------------------------
   // Helpers
