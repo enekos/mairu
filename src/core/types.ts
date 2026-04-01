@@ -18,13 +18,9 @@ export interface HybridSearchWeights {
   importance?: number;
 }
 
-/** Elasticsearch fine-tuning options available on all search methods */
-export interface ElasticSearchTuning {
-  /** Typo tolerance: "auto" (recommended), 0, 1, or 2 max edits. Default: "auto" */
-  fuzziness?: "auto" | 0 | 1 | 2;
-  /** Boost for exact phrase matches (0 = disabled). Default: 2.0 */
-  phraseBoost?: number;
-  /** Hard minimum ES score cutoff — results below this are dropped. Default: none */
+/** Search tuning options available on all search methods */
+export interface SearchTuning {
+  /** Hard minimum score cutoff — results below this are dropped. Default: none */
   minScore?: number;
   /** Return highlighted snippets showing matched terms. Default: false */
   highlight?: boolean;
@@ -92,7 +88,7 @@ export interface AgentContextNode {
   }>;
 }
 
-export interface MemorySearchOptions extends ElasticSearchTuning {
+export interface MemorySearchOptions extends SearchTuning {
   project?: string;
   topK?: number;
   threshold?: number;
@@ -103,7 +99,7 @@ export interface MemorySearchOptions extends ElasticSearchTuning {
   weights?: HybridSearchWeights;
 }
 
-export interface SkillSearchOptions extends ElasticSearchTuning {
+export interface SkillSearchOptions extends SearchTuning {
   project?: string;
   topK?: number;
   threshold?: number;
@@ -111,7 +107,7 @@ export interface SkillSearchOptions extends ElasticSearchTuning {
   weights?: HybridSearchWeights;
 }
 
-export interface ContextSearchOptions extends ElasticSearchTuning {
+export interface ContextSearchOptions extends SearchTuning {
   project?: string;
   topK?: number;
   threshold?: number;

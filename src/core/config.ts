@@ -28,9 +28,16 @@ function getEmbeddingDimension(): number {
 }
 
 export const config = {
-  get elasticUrl() { return process.env.ELASTIC_URL || "http://localhost:9200"; },
-  get elasticUsername() { return process.env.ELASTIC_USERNAME; },
-  get elasticPassword() { return process.env.ELASTIC_PASSWORD; },
+  meili: {
+    get url() { return process.env.MEILI_URL || "http://localhost:7700"; },
+    get apiKey() { return process.env.MEILI_API_KEY || ""; },
+    get synonyms(): string[] {
+      const raw = process.env.SYNONYMS || "";
+      return raw ? raw.split(";").map((s) => s.trim()).filter(Boolean) : [];
+    },
+    get recencyScale() { return process.env.RECENCY_SCALE || "30d"; },
+    get recencyDecay() { return parseFloat(process.env.RECENCY_DECAY || "0.5"); },
+  },
 
   get geminiApiKey() { return process.env.GEMINI_API_KEY; },
 
@@ -39,19 +46,6 @@ export const config = {
   get dashboardApiPort() { return parsePositiveInt(process.env.DASHBOARD_API_PORT) || 8787; },
 
   get candidateMultiplier() { return parsePositiveInt(process.env.CANDIDATE_MULTIPLIER) || 4; },
-
-  elastic: {
-    get bm25K1() { return parseFloat(process.env.ES_BM25_K1 || "1.2"); },
-    get bm25B() { return parseFloat(process.env.ES_BM25_B || "0.75"); },
-    get recencyScale() { return process.env.ES_RECENCY_SCALE || "30d"; },
-    get recencyDecay() { return parseFloat(process.env.ES_RECENCY_DECAY || "0.5"); },
-    get defaultFuzziness() { return (process.env.ES_DEFAULT_FUZZINESS || "auto") as "auto" | "0" | "1" | "2"; },
-    get defaultPhraseBoost() { return parseFloat(process.env.ES_PHRASE_BOOST || "2.0"); },
-    get synonyms(): string[] {
-      const raw = process.env.ES_SYNONYMS || "";
-      return raw ? raw.split(";").map((s) => s.trim()).filter(Boolean) : [];
-    },
-  },
 
   embedding: {
     get model() { return process.env.EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL; },
