@@ -26,9 +26,9 @@ export interface SearchTuning {
   highlight?: boolean;
   /** Custom field boost overrides, e.g. { "name": 5, "content": 1 } */
   fieldBoosts?: Record<string, number>;
-  /** Override recency scale (e.g. "30d") */
+  /** Override recency scale per-query (e.g. "30d"). Falls back to config.meili.recencyScale when absent. */
   recencyScale?: string;
-  /** Override recency decay factor (e.g. 0.5) */
+  /** Override recency decay factor per-query (e.g. 0.5). Falls back to config.meili.recencyDecay when absent. */
   recencyDecay?: number;
 }
 

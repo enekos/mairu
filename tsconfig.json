@@ -2,6 +2,10 @@
   "compilerOptions": {
     "target": "es2022",
     "module": "commonjs",
+    "moduleResolution": "node",
+    "paths": {
+      "meilisearch": ["./node_modules/meilisearch/dist/index.d.ts"]
+    },
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,

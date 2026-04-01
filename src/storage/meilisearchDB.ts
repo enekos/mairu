@@ -1,0 +1,471 @@
+import { Meilisearch, Index } from "meilisearch";
+import {
+  AgentSkill,
+  AgentMemory,
+  AgentContextNode,
+  MemorySearchOptions,
+  MemoryCategory,
+  SkillSearchOptions,
+  ContextSearchOptions,
+} from "../core/types";
+import { assertEmbeddingDimension, config } from "../core/config";
+import {
+  DEFAULT_MEMORY_WEIGHTS,
+  DEFAULT_SKILL_WEIGHTS,
+  DEFAULT_CONTEXT_WEIGHTS,
+  normalizeWeights,
+} from "./scorer";
+
+const EMBEDDING_DIM = config.embedding.dimension;
+const CANDIDATE_MULTIPLIER = config.candidateMultiplier;
+const AI_QUALITY_FUNCTION_WEIGHT = 2;
+
+export const SKILLS_INDEX = "contextfs_skills";
+export const MEMORIES_INDEX = "contextfs_memories";
+export const CONTEXT_INDEX = "contextfs_context_nodes";
+
+/** Parse a duration string like "30d", "7d", "90d" to milliseconds. */
+function parseDurationMs(duration: string): number {
+  const match = duration.match(/^(\d+)([dhms])$/);
+  if (!match) return 30 * 24 * 60 * 60 * 1000; // default 30d
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  switch (unit) {
+    case "d": return value * 24 * 60 * 60 * 1000;
+    case "h": return value * 60 * 60 * 1000;
+    case "m": return value * 60 * 1000;
+    case "s": return value * 1000;
+    default: return 30 * 24 * 60 * 60 * 1000;
+  }
+}
+
+export class MeilisearchDB {
+  private client: Meilisearch;
+  private initialized = false;
+
+  constructor(url: string, apiKey?: string) {
+    this.client = new Meilisearch({ host: url, apiKey: apiKey || undefined });
+  }
+
+  private async ensureInitialized() {
+    if (this.initialized) return;
+    try {
+      await this.initIndices();
+      this.initialized = true;
+    } catch (e: any) {
+      if (e?.code === "ECONNREFUSED" || e?.type === "MeiliSearchCommunicationError") {
+        console.error("❌ Meilisearch connection failed. Is Docker running? (Run: docker compose up -d)");
+        process.exit(1);
+      }
+      throw e;
+    }
+  }
+
+  async initIndices() {
+    // Create indexes (no-op if they already exist)
+    const indexes = [
+      { uid: SKILLS_INDEX, primaryKey: "id" },
+      { uid: MEMORIES_INDEX, primaryKey: "id" },
+      { uid: CONTEXT_INDEX, primaryKey: "uri" },
+    ];
+
+    for (const idx of indexes) {
+      const task = await this.client.createIndex(idx.uid, { primaryKey: idx.primaryKey });
+      await this.client.tasks.waitForTask(task.taskUid);
+    }
+
+    // Configure skills index
+    const skillsIndex = this.client.index(SKILLS_INDEX);
+    await this.waitForSettings(skillsIndex, {
+      searchableAttributes: ["name", "description"],
+      filterableAttributes: ["project", "ai_intent", "ai_topics", "created_at", "updated_at"],
+      sortableAttributes: ["updated_at", "created_at"],
+    });
+
+    // Configure memories index
+    const memoriesIndex = this.client.index(MEMORIES_INDEX);
+    await this.waitForSettings(memoriesIndex, {
+      searchableAttributes: ["content"],
+      filterableAttributes: ["project", "category", "owner", "importance", "ai_intent", "ai_topics", "created_at", "updated_at"],
+      sortableAttributes: ["updated_at", "created_at", "importance"],
+    });
+
+    // Configure context nodes index
+    const contextIndex = this.client.index(CONTEXT_INDEX);
+    await this.waitForSettings(contextIndex, {
+      searchableAttributes: ["name", "abstract", "overview", "content"],
+      filterableAttributes: ["project", "uri", "parent_uri", "ancestors", "is_deleted", "ai_intent", "ai_topics", "created_at", "updated_at"],
+      sortableAttributes: ["updated_at", "created_at"],
+    });
+
+    // Configure embedders on all indexes
+    for (const uid of [SKILLS_INDEX, MEMORIES_INDEX, CONTEXT_INDEX]) {
+      const index = this.client.index(uid);
+      const task = await index.updateEmbedders({
+        default: { source: "userProvided", dimensions: EMBEDDING_DIM },
+      } as any);
+      await this.client.tasks.waitForTask(task.taskUid);
+    }
+
+    // Push synonyms
+    const synonymGroups = config.meili.synonyms;
+    if (synonymGroups.length > 0) {
+      const synonymMap: Record<string, string[]> = {};
+      for (const group of synonymGroups) {
+        const words = group.split(",").map((w) => w.trim()).filter(Boolean);
+        for (const word of words) {
+          synonymMap[word] = words.filter((w) => w !== word);
+        }
+      }
+      for (const uid of [SKILLS_INDEX, MEMORIES_INDEX, CONTEXT_INDEX]) {
+        const task = await this.client.index(uid).updateSynonyms(synonymMap);
+        await this.client.tasks.waitForTask(task.taskUid);
+      }
+    }
+  }
+
+  private async waitForSettings(index: Index, settings: {
+    searchableAttributes?: string[];
+    filterableAttributes?: string[];
+    sortableAttributes?: string[];
+  }) {
+    if (settings.searchableAttributes) {
+      const task = await index.updateSearchableAttributes(settings.searchableAttributes);
+      await this.client.tasks.waitForTask(task.taskUid);
+    }
+    if (settings.filterableAttributes) {
+      const task = await index.updateFilterableAttributes(settings.filterableAttributes);
+      await this.client.tasks.waitForTask(task.taskUid);
+    }
+    if (settings.sortableAttributes) {
+      const task = await index.updateSortableAttributes(settings.sortableAttributes);
+      await this.client.tasks.waitForTask(task.taskUid);
+    }
+  }
+
+  async resetIndices() {
+    for (const uid of [SKILLS_INDEX, MEMORIES_INDEX, CONTEXT_INDEX]) {
+      try {
+        const task = await this.client.deleteIndex(uid);
+        await this.client.tasks.waitForTask(task.taskUid);
+      } catch (e: any) {
+        if (e?.code !== "index_not_found") throw e;
+      }
+    }
+  }
+
+  /** Cluster/instance stats for the dashboard */
+  async getClusterStats() {
+    await this.ensureInitialized();
+    const stats = await this.client.getStats();
+
+    const indices: Record<string, any> = {};
+    for (const uid of [SKILLS_INDEX, MEMORIES_INDEX, CONTEXT_INDEX]) {
+      const s = stats.indexes[uid];
+      indices[uid] = {
+        docs: s?.numberOfDocuments ?? 0,
+        deletedDocs: 0,
+        sizeBytes: 0,
+      };
+    }
+
+    return {
+      clusterName: "meilisearch",
+      status: "green",
+      numberOfNodes: 1,
+      activeShards: 0,
+      relocatingShards: 0,
+      unassignedShards: 0,
+      indices,
+    };
+  }
+
+  async countByProject(index: string, project: string): Promise<number> {
+    await this.ensureInitialized();
+    const idx = this.client.index(index);
+    const res = await idx.search("", {
+      filter: `project = "${this.escapeFilterValue(project)}"`,
+      limit: 0,
+    });
+    return res.estimatedTotalHits ?? 0;
+  }
+
+  async bulkIndex(ops: Array<{ index: string; id: string; body: object }>): Promise<{
+    successful: number;
+    failed: number;
+    errors: Array<{ id: string; error: string }>;
+  }> {
+    if (ops.length === 0) return { successful: 0, failed: 0, errors: [] };
+
+    // Group by index
+    const byIndex = new Map<string, Array<Record<string, any>>>();
+    for (const op of ops) {
+      const docs = byIndex.get(op.index) ?? [];
+      docs.push({ ...op.body });
+      byIndex.set(op.index, docs);
+    }
+
+    const errors: Array<{ id: string; error: string }> = [];
+    let successful = 0;
+
+    for (const [indexUid, docs] of byIndex) {
+      const index = this.client.index(indexUid);
+      const task = await index.addDocuments(docs);
+      const result = await this.client.tasks.waitForTask(task.taskUid);
+      if (result.status === "succeeded") {
+        successful += docs.length;
+      } else {
+        for (const doc of docs) {
+          errors.push({ id: doc.id || doc.uri || "unknown", error: result.error?.message || "Unknown error" });
+        }
+      }
+    }
+
+    return { successful, failed: errors.length, errors };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Skills
+  // ---------------------------------------------------------------------------
+
+  async addSkill(skill: AgentSkill, embedding: number[]) {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(embedding, "MeilisearchDB.addSkill");
+    const ts = new Date().toISOString();
+    const index = this.client.index(SKILLS_INDEX);
+    const doc = {
+      id: skill.id,
+      project: skill.project || null,
+      name: skill.name,
+      description: skill.description,
+      ai_intent: skill.ai_intent ?? null,
+      ai_topics: skill.ai_topics ?? null,
+      ai_quality_score: skill.ai_quality_score ?? null,
+      _vectors: { default: embedding },
+      metadata: skill.metadata || null,
+      created_at: skill.created_at || ts,
+      updated_at: skill.updated_at || ts,
+    };
+    const task = await index.addDocuments([doc]);
+    await this.client.tasks.waitForTask(task.taskUid);
+  }
+
+  async updateSkill(
+    id: string,
+    updates: {
+      name?: string;
+      description?: string;
+      ai_intent?: AgentSkill["ai_intent"];
+      ai_topics?: AgentSkill["ai_topics"];
+      ai_quality_score?: AgentSkill["ai_quality_score"];
+      metadata?: Record<string, any>;
+    },
+    embedding?: number[]
+  ) {
+    await this.ensureInitialized();
+    const doc: Record<string, any> = { id, updated_at: new Date().toISOString() };
+    if (updates.name !== undefined) doc.name = updates.name;
+    if (updates.description !== undefined) doc.description = updates.description;
+    if (updates.ai_intent !== undefined) doc.ai_intent = updates.ai_intent;
+    if (updates.ai_topics !== undefined) doc.ai_topics = updates.ai_topics;
+    if (updates.ai_quality_score !== undefined) doc.ai_quality_score = updates.ai_quality_score;
+    if (updates.metadata !== undefined) doc.metadata = updates.metadata;
+    if (embedding) {
+      assertEmbeddingDimension(embedding, "MeilisearchDB.updateSkill");
+      doc._vectors = { default: embedding };
+    }
+    const index = this.client.index(SKILLS_INDEX);
+    const task = await index.updateDocuments([doc]);
+    await this.client.tasks.waitForTask(task.taskUid);
+  }
+
+  async searchSkills(
+    queryEmbedding: number[],
+    queryText: string,
+    options: SkillSearchOptions = {}
+  ): Promise<(AgentSkill & { _score: number; _highlight?: Record<string, string[]> })[]> {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(queryEmbedding, "MeilisearchDB.searchSkills");
+    const topK = options.topK ?? 10;
+    const ow = options.weights ?? DEFAULT_SKILL_WEIGHTS;
+    const w = normalizeWeights({
+      vector: ow.vector, keyword: ow.keyword,
+      recency: ow.recency ?? 0, importance: 0,
+    });
+
+    const filters = this.buildSkillFilters(options);
+    const semanticRatio = w.vector / (w.vector + w.keyword);
+    const fetchLimit = topK * CANDIDATE_MULTIPLIER;
+
+    const searchParams: any = {
+      vector: queryEmbedding,
+      hybrid: { semanticRatio, embedder: "default" },
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit: fetchLimit,
+      showRankingScore: true,
+    };
+
+    if (options.highlight) {
+      searchParams.attributesToHighlight = ["name", "description"];
+      searchParams.highlightPreTag = "<mark>";
+      searchParams.highlightPostTag = "</mark>";
+    }
+
+    if (options.minScore) {
+      searchParams.rankingScoreThreshold = options.minScore;
+    }
+
+    const index = this.client.index(SKILLS_INDEX);
+    const res = await index.search(queryText, searchParams);
+
+    return this.rerankAndMap<AgentSkill>(res.hits, w, topK, options);
+  }
+
+  async searchSkillsByVector(
+    queryEmbedding: number[],
+    options: { topK?: number; project?: string } = {}
+  ): Promise<(AgentSkill & { _score: number })[]> {
+    await this.ensureInitialized();
+    assertEmbeddingDimension(queryEmbedding, "MeilisearchDB.searchSkillsByVector");
+    const topK = options.topK ?? 10;
+    const filters: string[] = [];
+    if (options.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+
+    const index = this.client.index(SKILLS_INDEX);
+    const res = await index.search("", {
+      vector: queryEmbedding,
+      hybrid: { semanticRatio: 1.0, embedder: "default" },
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit: topK,
+      showRankingScore: true,
+    } as any);
+
+    return res.hits.map((hit: any) => ({
+      ...this.stripVectors(hit),
+      _score: hit._rankingScore ?? 0,
+    }));
+  }
+
+  async listSkills(options?: SkillSearchOptions, limit = 100, offset = 0): Promise<AgentSkill[]> {
+    await this.ensureInitialized();
+    const filters: string[] = [];
+    if (options?.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+
+    const index = this.client.index(SKILLS_INDEX);
+    const res = await index.getDocuments({
+      filter: filters.length > 0 ? filters.join(" AND ") : undefined,
+      limit,
+      offset,
+      fields: ["id", "project", "name", "description", "ai_intent", "ai_topics", "ai_quality_score", "metadata", "created_at", "updated_at"],
+    });
+    return res.results.map((doc: any) => this.stripVectors(doc));
+  }
+
+  async getSkill(id: string): Promise<AgentSkill | null> {
+    await this.ensureInitialized();
+    try {
+      const index = this.client.index(SKILLS_INDEX);
+      const doc = await index.getDocument(id, {
+        fields: ["id", "project", "name", "description", "ai_intent", "ai_topics", "ai_quality_score", "metadata", "created_at", "updated_at"],
+      });
+      return doc as AgentSkill;
+    } catch (e: any) {
+      if (e?.code === "document_not_found") return null;
+      throw e;
+    }
+  }
+
+  async deleteSkill(id: string) {
+    await this.ensureInitialized();
+    try {
+      const index = this.client.index(SKILLS_INDEX);
+      const task = await index.deleteDocument(id);
+      await this.client.tasks.waitForTask(task.taskUid);
+    } catch (e: any) {
+      if (e?.code !== "document_not_found") throw e;
+    }
+  }
+
+  private buildSkillFilters(options: SkillSearchOptions): string[] {
+    const filters: string[] = [];
+    if (options.project) filters.push(`project = "${this.escapeFilterValue(options.project)}"`);
+    if (options.maxAgeDays) {
+      const cutoff = new Date(Date.now() - options.maxAgeDays * 24 * 60 * 60 * 1000).toISOString();
+      filters.push(`created_at >= "${cutoff}"`);
+    }
+    return filters;
+  }
+
+  // ---------------------------------------------------------------------------
+  // [Memories and Context Node methods will be added in Tasks 4 and 5]
+  // ---------------------------------------------------------------------------
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  private rerankAndMap<T>(
+    hits: any[],
+    weights: { vector: number; keyword: number; recency: number; importance: number },
+    topK: number,
+    options: { recencyScale?: string; recencyDecay?: number; highlight?: boolean } = {}
+  ): (T & { _score: number; _highlight?: Record<string, string[]> })[] {
+    const now = Date.now();
+    const scaleMs = parseDurationMs(options.recencyScale || config.meili.recencyScale);
+    const decay = options.recencyDecay ?? config.meili.recencyDecay;
+
+    const scored = hits.map((hit: any) => {
+      let score = hit._rankingScore ?? 0;
+
+      // Recency decay — falls back to config.meili.recencyScale / recencyDecay when not set per-query
+      if (weights.recency > 0 && hit.created_at) {
+        const ageMs = now - new Date(hit.created_at).getTime();
+        const recencyScore = Math.pow(decay, ageMs / scaleMs);
+        score += recencyScore * weights.recency;
+      }
+
+      // Importance boost
+      if (weights.importance > 0 && hit.importance != null) {
+        score += (hit.importance / 10) * weights.importance;
+      }
+
+      // AI quality boost
+      if (hit.ai_quality_score != null && hit.ai_quality_score > 0) {
+        score += (hit.ai_quality_score / 10) * AI_QUALITY_FUNCTION_WEIGHT * 0.1;
+      }
+
+      const result: any = {
+        ...this.stripVectors(hit),
+        _score: score,
+      };
+
+      // Map highlights from _formatted
+      if (options.highlight && hit._formatted) {
+        const highlight: Record<string, string[]> = {};
+        for (const [key, val] of Object.entries(hit._formatted)) {
+          if (typeof val === "string" && val.includes("<mark>")) {
+            highlight[key] = [val];
+          }
+        }
+        if (Object.keys(highlight).length > 0) {
+          result._highlight = highlight;
+        }
+      }
+
+      return result;
+    });
+
+    return scored
+      .sort((a: any, b: any) => b._score - a._score)
+      .slice(0, topK);
+  }
+
+  private stripVectors(doc: any): any {
+    const { _vectors, _rankingScore, _formatted, _matchesPosition, ...rest } = doc;
+    return rest;
+  }
+
+  private escapeFilterValue(value: string): string {
+    return value.replace(/"/g, '\\"');
+  }
+}
