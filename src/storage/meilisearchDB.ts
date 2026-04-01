@@ -152,6 +152,7 @@ export class MeilisearchDB {
         if (e?.code !== "index_not_found") throw e;
       }
     }
+    this.initialized = false;
   }
 
   /** Cluster/instance stats for the dashboard */
@@ -294,7 +295,8 @@ export class MeilisearchDB {
     });
 
     const filters = this.buildSkillFilters(options);
-    const semanticRatio = w.vector / (w.vector + w.keyword);
+    const vectorKeywordSum = w.vector + w.keyword;
+    const semanticRatio = vectorKeywordSum > 0 ? w.vector / vectorKeywordSum : 0.5;
     const fetchLimit = topK * CANDIDATE_MULTIPLIER;
 
     const searchParams: any = {
@@ -311,7 +313,7 @@ export class MeilisearchDB {
       searchParams.highlightPostTag = "</mark>";
     }
 
-    if (options.minScore) {
+    if (options.minScore != null) {
       searchParams.rankingScoreThreshold = options.minScore;
     }
 
