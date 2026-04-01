@@ -230,7 +230,8 @@ export class CodebaseDaemon {
     };
     const selectedGraph = this.selectGraphForSerialization(rawGraph);
     const enrichedDescriptions = enrichDescriptions(result.symbolDescriptions, result.edges);
-    const abstractText = result.fileSummary;
+    const fileJsDoc = this.extractFileJsDoc(sourceText);
+    const abstractText = fileJsDoc ?? result.fileSummary;
     const overviewText = this.buildCompactContent(filePath, selectedGraph);
     const nlContent = this.buildNLContent(enrichedDescriptions, selectedGraph);
     const logicGraphMetadata = {
@@ -314,6 +315,7 @@ export class CodebaseDaemon {
           // Class section with nested methods
           const lines: string[] = [];
           lines.push(`## ${kindLabel[kind]}: ${symbol.name}${tagStr}`);
+          if (symbol.docstring) lines.push(`*${symbol.docstring}*`);
           if (desc) lines.push(desc);
 
           const methods = methodsByClass.get(symbol.id) ?? [];
@@ -327,6 +329,7 @@ export class CodebaseDaemon {
 
             lines.push("");
             lines.push(`### Method: ${mtd.name}${mtdTagStr}`);
+            if (mtd.docstring) lines.push(`*${mtd.docstring}*`);
             if (paramStr) lines.push(paramStr);
             if (mtdDesc) {
               lines.push("");
@@ -346,6 +349,7 @@ export class CodebaseDaemon {
           const lines: string[] = [];
           const paramStr = symbol.params.length > 0 ? `Parameters: ${symbol.params.join(", ")}` : "";
           lines.push(`## ${kindLabel[kind]}: ${symbol.name}${tagStr}`);
+          if (symbol.docstring) lines.push(`*${symbol.docstring}*`);
           if (paramStr) lines.push(paramStr);
           if (desc) {
             lines.push("");
@@ -354,7 +358,9 @@ export class CodebaseDaemon {
           sections.push({ symbolId: symbol.id, score: symbolScores.get(symbol.id) ?? 0, text: lines.join("\n") });
         } else {
           // var, iface, enum, type — one-line mention
-          const line = `- ${kindLabel[kind]}: ${symbol.name}${tagStr}${desc ? ` — ${desc}` : ""}`;
+          const docPart = symbol.docstring ? ` — *${symbol.docstring}*` : "";
+          const descPart = !symbol.docstring && desc ? ` — ${desc}` : "";
+          const line = `- ${kindLabel[kind]}: ${symbol.name}${tagStr}${docPart}${descPart}`;
           sections.push({ symbolId: symbol.id, score: symbolScores.get(symbol.id) ?? 0, text: line });
         }
       }
@@ -409,6 +415,7 @@ export class CodebaseDaemon {
           symbol.control.await ? "await" : "",
           symbol.control.throw ? "throw" : "",
         ].filter(Boolean);
+        const doc = symbol.docstring ? ` doc="${symbol.docstring.slice(0, 60)}"` : "";
         lines.push(
           [
             `- ${symbol.kind} ${symbol.id}`,
@@ -418,7 +425,7 @@ export class CodebaseDaemon {
             `cx=${symbol.complexity}`,
             controlTokens.length > 0 ? `ctrl=${controlTokens.join("|")}` : "",
             parent,
-          ].filter(Boolean).join(" ")
+          ].filter(Boolean).join(" ") + doc
         );
       }
     }
@@ -483,6 +490,26 @@ export class CodebaseDaemon {
       exportedCount,
       internalCount: Math.max(0, totalSymbols - exportedCount),
     };
+  }
+
+  private extractFileJsDoc(sourceText: string): string | undefined {
+    // Match a JSDoc comment at the very beginning of the file (possibly after whitespace)
+    const match = sourceText.match(/^\s*\/\*\*([\s\S]*?)\*\//);
+    if (!match) return undefined;
+
+    const stripped = match[1]!
+      .split("\n")
+      .map(line => line.replace(/^\s*\*\s?/, ""))
+      .join(" ")
+      .trim();
+
+    if (!stripped) return undefined;
+
+    // Take first sentence
+    const beforeTags = stripped.split(/\s@/)[0]!.trim();
+    const sentenceMatch = beforeTags.match(/^(.+?\.)\s/);
+    const result = sentenceMatch ? sentenceMatch[1]! : beforeTags;
+    return result.length > 200 ? result.slice(0, 200) + "..." : result || undefined;
   }
 
   private symbolScore(symbol: LogicSymbol, outgoingCounts: Map<string, number>): number {

@@ -408,4 +408,75 @@ describe("CodebaseDaemon", () => {
     expect(content).toMatch(/[Rr]etr(y|ies)|[Ww]hile|[Ll]oop/);
     expect(content).toMatch(/MAX_RETRIES|retries/);
   });
+
+  it("includes JSDoc docstrings in NL content output", async () => {
+    const tempDir = makeTempDir();
+    const filePath = path.join(tempDir, "documented.ts");
+    const code = source([
+      "/** Validates email addresses against RFC 5322. */",
+      "export function validate(email: string) {",
+      "  return email.includes('@');",
+      "}",
+      "",
+      "export function plain() {",
+      "  return true;",
+      "}",
+    ]);
+    fs.writeFileSync(filePath, code, "utf8");
+
+    const manager = createManagerStub();
+    const daemon = new CodebaseDaemon(manager as any, "proj", tempDir);
+    await daemon.initParsers();
+
+    await (daemon as any).processFile(filePath);
+
+    const call = manager.upsertFileContextNode.mock.calls[0];
+    const content: string = call[4];  // nlContent is the 5th argument
+
+    expect(content).toContain("Validates email addresses against RFC 5322.");
+    expect(content).toContain("validate");
+  });
+
+  it("includes docstring in compact overview", async () => {
+    const tempDir = makeTempDir();
+    const filePath = path.join(tempDir, "compact.ts");
+    const code = source([
+      "/** Short doc. */",
+      "export function foo() { return 1; }",
+    ]);
+    fs.writeFileSync(filePath, code, "utf8");
+
+    const manager = createManagerStub();
+    const daemon = new CodebaseDaemon(manager as any, "proj", tempDir);
+    await daemon.initParsers();
+
+    await (daemon as any).processFile(filePath);
+
+    const call = manager.upsertFileContextNode.mock.calls[0];
+    const overview: string = call[3];  // overviewText is the 4th argument
+
+    expect(overview).toContain('doc="Short doc."');
+  });
+
+  it("uses file-level JSDoc as abstract when present", async () => {
+    const tempDir = makeTempDir();
+    const filePath = path.join(tempDir, "filedoc.ts");
+    const code = source([
+      "/** Utility functions for string manipulation. */",
+      "",
+      "export function trim(s: string) { return s.trim(); }",
+    ]);
+    fs.writeFileSync(filePath, code, "utf8");
+
+    const manager = createManagerStub();
+    const daemon = new CodebaseDaemon(manager as any, "proj", tempDir);
+    await daemon.initParsers();
+
+    await (daemon as any).processFile(filePath);
+
+    const call = manager.upsertFileContextNode.mock.calls[0];
+    const abstractText: string = call[2];  // abstractText is the 3rd argument
+
+    expect(abstractText).toBe("Utility functions for string manipulation.");
+  });
 });
