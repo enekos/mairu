@@ -21,11 +21,13 @@ describe("LanguageDescriber interface", () => {
       id: "tpl:App", kind: "tpl", name: "App", exported: false,
       parentId: null, params: [], complexity: "low",
       control: { async: false, branch: false, await: false, throw: false }, line: 1,
+      byteStart: 0, byteEnd: 0, contentHash: "",
     };
     const fnSymbol: LogicSymbol = {
       id: "fn:setup", kind: "fn", name: "setup", exported: true,
       parentId: null, params: [], complexity: "low",
       control: { async: false, branch: false, await: false, throw: false }, line: 1,
+      byteStart: 0, byteEnd: 0, contentHash: "",
     };
     const sorted = sortSymbols([tplSymbol, fnSymbol]);
     expect(sorted[0].kind).toBe("fn");

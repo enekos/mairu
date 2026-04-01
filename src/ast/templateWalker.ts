@@ -39,6 +39,9 @@ function makeTemplateSymbol(
     complexity: "low",
     control: { ...DEFAULT_CONTROL },
     line,
+    byteStart: 0,
+    byteEnd: 0,
+    contentHash: "",
   };
 }
 
