@@ -4,6 +4,8 @@ import * as chokidar from "chokidar";
 import * as fs from "fs";
 import { createHash } from "crypto";
 import { TypeScriptDescriber } from "./ast/typescriptDescriber";
+import { PythonDescriber } from "./ast/pythonDescriber";
+import type { LanguageDescriber } from "./ast/languageDescriber";
 import { enrichDescriptions } from "./ast/nlEnricher";
 import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./ast/languageDescriber";
 import { compareSymbols, sortSymbols, sortEdges } from "./ast/languageDescriber";
@@ -17,7 +19,7 @@ export interface DaemonOptions {
 const DEFAULT_MAX_FILE_SIZE_BYTES = 512 * 1024; // 512 KB
 const DEFAULT_PROCESSING_DEBOUNCE_MS = 200;
 const DEFAULT_CONCURRENCY = 8;
-const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"]);
+const SUPPORTED_EXTENSIONS = new Set([".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".py"]);
 const IGNORED_PATH_SEGMENTS = new Set(["node_modules", "dist", "build"]);
 
 interface SourceSummary {
@@ -51,7 +53,8 @@ export class CodebaseDaemon {
   private manager: ContextManager;
   private project: string;
   private watchDir: string;
-  private readonly describer: TypeScriptDescriber;
+  private readonly tsDescriber: TypeScriptDescriber;
+  private readonly pyDescriber: PythonDescriber;
   private watcher: chokidar.FSWatcher | null = null;
   private isProcessing = false;
   private pendingFiles: Set<string> = new Set();
@@ -70,12 +73,14 @@ export class CodebaseDaemon {
     this.maxFileSizeBytes = options.maxFileSizeBytes ?? DEFAULT_MAX_FILE_SIZE_BYTES;
     this.processingDebounceMs = options.processingDebounceMs ?? DEFAULT_PROCESSING_DEBOUNCE_MS;
     this.concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
-    this.describer = new TypeScriptDescriber();
+    this.tsDescriber = new TypeScriptDescriber();
+    this.pyDescriber = new PythonDescriber();
   }
 
   /** Initialize tree-sitter parsers. Must be called before start(). */
   public async initParsers(): Promise<void> {
-    await this.describer.initParsers();
+    await this.tsDescriber.initParsers();
+    await this.pyDescriber.initParsers();
   }
 
   public loadCache(): void {
@@ -127,7 +132,7 @@ export class CodebaseDaemon {
     await this.processAllFiles();
 
     // Watch for changes
-    this.watcher = chokidar.watch(`${this.watchDir}/**/*.{ts,tsx,js,jsx,mjs,cjs}`, {
+    this.watcher = chokidar.watch(`${this.watchDir}/**/*.{ts,tsx,js,jsx,mjs,cjs,py}`, {
       ignored: /(^|[/\\])\..|node_modules|dist|build/, // ignore dotfiles and generated folders
       persistent: true,
       ignoreInitial: true,
@@ -157,7 +162,8 @@ export class CodebaseDaemon {
     if (this.isProcessing || this.pendingFiles.size > 0) {
       await this.processPendingFiles();
     }
-    this.describer.deleteParsers();
+    this.tsDescriber.deleteParsers();
+    this.pyDescriber.deleteParsers();
     console.log(`[Daemon] Stopped watching ${this.watchDir}`);
   }
 
@@ -221,8 +227,14 @@ export class CodebaseDaemon {
     }, this.processingDebounceMs);
   }
 
+  private getDescriberForFile(filePath: string) {
+    if (filePath.endsWith(".py")) return this.pyDescriber;
+    return this.tsDescriber;
+  }
+
   private summarizeSourceFile(filePath: string, sourceText: string): SourceSummary {
-    const result = this.describer.extractFileGraph(filePath, sourceText);
+    const describer = this.getDescriberForFile(filePath);
+    const result = describer.extractFileGraph(filePath, sourceText);
     const rawGraph = {
       symbols: result.symbols,
       edges: result.edges,

@@ -10,7 +10,7 @@ export function describeStatements(node: SyntaxNode): string {
   if (!body) return "Empty function body.";
 
   // Block body — walk statements
-  if (body.type === "statement_block") {
+  if (body.type === "statement_block" || body.type === "block") {
     const statements = body.namedChildren;
     if (statements.length === 0) return "Empty function body.";
     return statements
@@ -119,6 +119,17 @@ function describeForInStatement(node: SyntaxNode): string {
 }
 
 function describeForStatement(node: SyntaxNode): string {
+  // Python style for loop
+  const left = node.childForFieldName("left");
+  const right = node.childForFieldName("right");
+  if (left && right) {
+    const binding = left.text;
+    const iterable = right.text;
+    const body = node.childForFieldName("body");
+    return `Iterates over each \`${binding}\` in \`${iterable}\`, ${describeBlockInline(body)}`;
+  }
+
+  // TS style for loop
   const initializer = node.childForFieldName("initializer");
   const condition = node.childForFieldName("condition");
   const increment = node.childForFieldName("increment");
@@ -349,7 +360,7 @@ export function describeExpression(node: SyntaxNode): string {
   }
 
   // Call expression
-  if (node.type === "call_expression") {
+  if (node.type === "call_expression" || node.type === "call") {
     const fn = node.childForFieldName("function");
     const args = node.childForFieldName("arguments");
     const calleeText = fn?.text ?? "";
@@ -358,7 +369,14 @@ export function describeExpression(node: SyntaxNode): string {
       const argTexts = argNodes.map((a) => `\`${a.text}\``).join(", ");
       return `calling \`${calleeText}\` with ${argTexts}`;
     }
-    return `calling \`${calleeText}\`()`;
+    return `calling \`${calleeText}\``;
+  }
+
+  // Assignment expression
+  if (node.type === "assignment_expression" || node.type === "assignment") {
+    const left = node.childForFieldName("left");
+    const right = node.childForFieldName("right");
+    return `assigning \`${right?.text ?? "?"}\` to \`${left?.text ?? "?"}\``;
   }
 
   // New expression

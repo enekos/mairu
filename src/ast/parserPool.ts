@@ -3,7 +3,7 @@ import type { Tree } from "web-tree-sitter";
 import * as path from "path";
 import * as fs from "fs";
 
-export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "vue";
+export type SupportedLanguage = "typescript" | "tsx" | "javascript" | "vue" | "python";
 
 /**
  * Resolve a path inside a node_modules package by walking up from this file.
@@ -27,6 +27,7 @@ const WASM_FILES: Record<SupportedLanguage, string> = {
   tsx: path.join(WASM_DIR, "tree-sitter-tsx.wasm"),
   javascript: path.join(WASM_DIR, "tree-sitter-javascript.wasm"),
   vue: path.join(WASM_DIR, "tree-sitter-vue.wasm"),
+  python: path.join(WASM_DIR, "tree-sitter-python.wasm"),
 };
 
 let initialized = false;
