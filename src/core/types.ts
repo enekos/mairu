@@ -43,7 +43,8 @@ export type MemoryCategory =
   | "reflection"
   | "decision"
   | "constraint"
-  | "architecture";
+  | "architecture"
+  | "derived_pattern";
 
 export type MemoryOwner = "user" | "agent" | "system";
 
