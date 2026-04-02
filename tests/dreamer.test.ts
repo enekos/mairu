@@ -150,3 +150,96 @@ describe("deductionPass", () => {
     expect(mockDeleteMemory).not.toHaveBeenCalled();
   });
 });
+
+describe("inductionPass", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.GEMINI_API_KEY = "fake-key";
+  });
+
+  it("creates a derived_pattern from a cluster of 3+ related memories", async () => {
+    const memories = [
+      { id: "mem_1", content: "Use early returns in auth handlers", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-01T00:00:00Z", project: "proj" },
+      { id: "mem_2", content: "Prefer early returns in validation logic", category: "decision", owner: "agent", importance: 6, created_at: "2026-03-05T00:00:00Z", project: "proj" },
+      { id: "mem_3", content: "Always use early returns for error handling", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-10T00:00:00Z", project: "proj" },
+    ];
+
+    // First call: listMemories returns all 3 (non-pattern memories)
+    mockListMemories
+      .mockResolvedValueOnce(memories)
+      .mockResolvedValueOnce([]);
+
+    // Clustering: mem_1 search returns mem_2 and mem_3 as similar
+    mockSearchMemoriesByVector
+      .mockResolvedValueOnce([
+        { ...memories[1], _score: 0.82 },
+        { ...memories[2], _score: 0.80 },
+      ])
+      // Dedup check for new pattern: no existing pattern matches
+      .mockResolvedValueOnce([]);
+
+    // LLM synthesizes a pattern
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({
+        pattern: "Team consistently prefers early returns for error/validation paths across all handlers",
+        confidence: "high",
+        evidence: "Observed in auth handlers, validation logic, and error handling",
+      }),
+    });
+
+    const { inductionPass } = await import("../src/dreamer");
+    await inductionPass("proj");
+
+    expect(mockAddMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        content: expect.stringContaining("early returns"),
+        category: "derived_pattern",
+        owner: "system",
+        importance: expect.any(Number),
+        project: "proj",
+      }),
+      expect.any(Array), // embedding
+    );
+  });
+
+  it("skips clusters smaller than 3 memories", async () => {
+    const memories = [
+      { id: "mem_1", content: "Use TypeScript strict mode", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-01T00:00:00Z", project: "proj" },
+      { id: "mem_2", content: "Enable strict TypeScript", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-05T00:00:00Z", project: "proj" },
+    ];
+
+    mockListMemories.mockResolvedValueOnce(memories).mockResolvedValueOnce([]);
+    mockSearchMemoriesByVector.mockResolvedValueOnce([
+      { ...memories[1], _score: 0.82 },
+    ]);
+
+    const { inductionPass } = await import("../src/dreamer");
+    await inductionPass("proj");
+
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(mockAddMemory).not.toHaveBeenCalled();
+  });
+
+  it("skips if LLM returns null pattern", async () => {
+    const memories = [
+      { id: "m1", content: "A", category: "observation", owner: "agent", importance: 3, created_at: "2026-03-01T00:00:00Z", project: "proj" },
+      { id: "m2", content: "B", category: "observation", owner: "agent", importance: 3, created_at: "2026-03-02T00:00:00Z", project: "proj" },
+      { id: "m3", content: "C", category: "observation", owner: "agent", importance: 3, created_at: "2026-03-03T00:00:00Z", project: "proj" },
+    ];
+
+    mockListMemories.mockResolvedValueOnce(memories).mockResolvedValueOnce([]);
+    mockSearchMemoriesByVector.mockResolvedValueOnce([
+      { ...memories[1], _score: 0.80 },
+      { ...memories[2], _score: 0.78 },
+    ]);
+
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({ pattern: null, confidence: null, evidence: null }),
+    });
+
+    const { inductionPass } = await import("../src/dreamer");
+    await inductionPass("proj");
+
+    expect(mockAddMemory).not.toHaveBeenCalled();
+  });
+});

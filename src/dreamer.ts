@@ -18,6 +18,7 @@ const PATTERN_SIMILARITY_THRESHOLD = 0.75;
 const SIBLING_SIMILARITY_THRESHOLD = 0.9;
 const ORPHAN_SIMILARITY_THRESHOLD = 0.8;
 const LIST_PAGE_SIZE = 100;
+const MIN_CLUSTER_SIZE = 3;
 
 function getDB(): MeilisearchDB {
   return new MeilisearchDB(config.meili.url, config.meili.apiKey || undefined);
@@ -106,6 +107,95 @@ Respond with ONLY a JSON object:
       }
     } catch (e) {
       console.warn(`[dreamer] Deduction failed for memory ${memory.id}:`, e);
+    }
+  }
+}
+
+export async function inductionPass(project: string): Promise<void> {
+  const db = getDB();
+  const memories = (await fetchAllMemories(db, project))
+    .filter((m) => m.category !== "derived_pattern");
+
+  const assigned = new Set<string>();
+  const clusters: AgentMemory[][] = [];
+
+  for (const memory of memories) {
+    if (assigned.has(memory.id)) continue;
+    assigned.add(memory.id);
+
+    const embedding = await Embedder.getEmbedding(memory.content);
+    const similar = await db.searchMemoriesByVector(embedding, { topK: 20, project });
+
+    const cluster = [memory];
+    for (const candidate of similar) {
+      if (candidate.id === memory.id || assigned.has(candidate.id)) continue;
+      if (candidate._score >= PATTERN_SIMILARITY_THRESHOLD && candidate.category !== "derived_pattern") {
+        cluster.push(candidate);
+        assigned.add(candidate.id);
+      }
+    }
+
+    if (cluster.length >= MIN_CLUSTER_SIZE) {
+      clusters.push(cluster);
+    }
+  }
+
+  for (const cluster of clusters) {
+    const memberList = cluster
+      .map((m, i) => `[${i}] (${m.category}, importance: ${m.importance}): ${m.content}`)
+      .join("\n");
+
+    const prompt = `You are analyzing a cluster of related memories from a coding project. Identify the higher-order pattern they reveal.
+
+Memories:
+${memberList}
+
+If these memories reveal a recurring pattern, preference, or behavioral tendency, describe it as a concise, actionable insight. If no meaningful pattern exists, respond with null.
+
+Respond with ONLY a JSON object:
+{"pattern":"<string or null>","confidence":"low"|"medium"|"high","evidence":"<brief summary>"}`;
+
+    try {
+      const text = await llmGenerate(prompt);
+      const parsed = extractJsonObject(text) as {
+        pattern: string | null;
+        confidence: string | null;
+        evidence: string | null;
+      } | null;
+
+      if (!parsed?.pattern) continue;
+
+      // Check for duplicate patterns
+      const patternEmbedding = await Embedder.getEmbedding(parsed.pattern);
+      const existingPatterns = await db.searchMemoriesByVector(patternEmbedding, { topK: 3, project });
+      const isDuplicate = existingPatterns.some(
+        (p) => p.category === "derived_pattern" && p._score >= DEDUP_SIMILARITY_THRESHOLD
+      );
+
+      if (isDuplicate) continue;
+
+      const importance = Math.min(cluster.length + 3, 10);
+      const now = new Date().toISOString();
+      await db.addMemory(
+        {
+          id: `mem_${crypto.randomUUID()}`,
+          content: parsed.pattern,
+          category: "derived_pattern",
+          owner: "system",
+          importance,
+          project,
+          created_at: now,
+          metadata: {
+            dream_source: "induction",
+            cluster_size: cluster.length,
+            confidence: parsed.confidence,
+            evidence: parsed.evidence,
+          },
+        },
+        patternEmbedding,
+      );
+    } catch (e) {
+      console.warn(`[dreamer] Induction failed for cluster:`, e);
     }
   }
 }
