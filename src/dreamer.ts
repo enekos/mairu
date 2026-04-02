@@ -33,6 +33,7 @@ async function fetchAllMemories(db: MeilisearchDB, project: string): Promise<Age
     if (page.length === 0) break;
     all.push(...page);
     offset += page.length;
+    if (page.length < LIST_PAGE_SIZE) break;
   }
   return all;
 }

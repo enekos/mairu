@@ -73,8 +73,8 @@ describe("deductionPass", () => {
       created_at: "2026-03-15T00:00:00Z", project: "proj",
     };
 
-    // listMemories returns both memories
-    mockListMemories.mockResolvedValueOnce([mem1, mem2]).mockResolvedValueOnce([]);
+    // listMemories returns both memories (fewer than LIST_PAGE_SIZE, so loop exits)
+    mockListMemories.mockResolvedValueOnce([mem1, mem2]);
 
     // For mem1, vector search returns mem2 as similar
     mockSearchMemoriesByVector.mockResolvedValueOnce([
@@ -112,7 +112,7 @@ describe("deductionPass", () => {
       created_at: "2026-03-15T00:00:00Z", project: "proj",
     };
 
-    mockListMemories.mockResolvedValueOnce([mem1, mem2]).mockResolvedValueOnce([]);
+    mockListMemories.mockResolvedValueOnce([mem1, mem2]);
     mockSearchMemoriesByVector.mockResolvedValueOnce([
       { ...mem2, _score: 0.88 },
     ]);
@@ -139,7 +139,7 @@ describe("deductionPass", () => {
       created_at: "2026-03-01T00:00:00Z", project: "proj",
     };
 
-    mockListMemories.mockResolvedValueOnce([mem1]).mockResolvedValueOnce([]);
+    mockListMemories.mockResolvedValueOnce([mem1]);
     mockSearchMemoriesByVector.mockResolvedValueOnce([]); // no similar memories
 
     const { deductionPass } = await import("../src/dreamer");
@@ -164,10 +164,8 @@ describe("inductionPass", () => {
       { id: "mem_3", content: "Always use early returns for error handling", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-10T00:00:00Z", project: "proj" },
     ];
 
-    // First call: listMemories returns all 3 (non-pattern memories)
-    mockListMemories
-      .mockResolvedValueOnce(memories)
-      .mockResolvedValueOnce([]);
+    // First call: listMemories returns all 3 (non-pattern memories, fewer than LIST_PAGE_SIZE)
+    mockListMemories.mockResolvedValueOnce(memories);
 
     // Clustering: mem_1 search returns mem_2 and mem_3 as similar
     mockSearchMemoriesByVector
@@ -208,7 +206,7 @@ describe("inductionPass", () => {
       { id: "mem_2", content: "Enable strict TypeScript", category: "decision", owner: "agent", importance: 5, created_at: "2026-03-05T00:00:00Z", project: "proj" },
     ];
 
-    mockListMemories.mockResolvedValueOnce(memories).mockResolvedValueOnce([]);
+    mockListMemories.mockResolvedValueOnce(memories);
     mockSearchMemoriesByVector.mockResolvedValueOnce([
       { ...memories[1], _score: 0.82 },
     ]);
@@ -227,7 +225,7 @@ describe("inductionPass", () => {
       { id: "m3", content: "C", category: "observation", owner: "agent", importance: 3, created_at: "2026-03-03T00:00:00Z", project: "proj" },
     ];
 
-    mockListMemories.mockResolvedValueOnce(memories).mockResolvedValueOnce([]);
+    mockListMemories.mockResolvedValueOnce(memories);
     mockSearchMemoriesByVector.mockResolvedValueOnce([
       { ...memories[1], _score: 0.80 },
       { ...memories[2], _score: 0.78 },
