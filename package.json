@@ -1,7 +1,7 @@
 {
-  "name": "agents-context-elastic",
+  "name": "agents-context-meili",
   "version": "2.0.0",
-  "description": "Agent memory and context database on Elasticsearch with native hybrid retrieval (kNN + BM25), CLI, and evaluation harness.",
+  "description": "Agent memory and context database on Meilisearch with native hybrid retrieval (vector + full-text + re-ranking), CLI, and evaluation harness.",
   "license": "ISC",
   "private": false,
   "main": "dist/index.js",
@@ -47,13 +47,12 @@
   },
   "keywords": [
     "agents",
-    "elasticsearch",
+    "meilisearch",
     "context",
     "vector-search",
     "hybrid-search",
     "rag",
-    "bm25",
-    "knn"
+    "semantic-search"
   ],
   "author": "",
   "dependencies": {
