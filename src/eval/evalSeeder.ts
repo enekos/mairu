@@ -3,7 +3,7 @@
  * Bypasses the LLM deduplication router and uses explicit IDs for deterministic eval runs.
  */
 
-import { ElasticDB } from "../storage/elasticDB";
+import { MeilisearchDB } from "../storage/meilisearchDB";
 import { Embedder } from "../storage/embedder";
 import type { MemoryCategory, MemoryOwner } from "../core/types";
 
@@ -45,7 +45,7 @@ export interface FixtureSpec {
  * Seeds all fixtures into Elasticsearch using explicit IDs.
  * Context nodes are inserted in topological order (parents before children).
  */
-export async function seedFixtures(db: ElasticDB, fixtures: FixtureSpec, log?: (msg: string) => void): Promise<void> {
+export async function seedFixtures(db: MeilisearchDB, fixtures: FixtureSpec, log?: (msg: string) => void): Promise<void> {
   const emit = log ?? (() => {});
 
   const memories = fixtures.memories ?? [];
@@ -121,7 +121,7 @@ export async function seedFixtures(db: ElasticDB, fixtures: FixtureSpec, log?: (
  * Deletes all seeded fixtures from Elasticsearch.
  * Context nodes are deleted in reverse topological order (leaves before parents).
  */
-export async function cleanupFixtures(db: ElasticDB, fixtures: FixtureSpec, log?: (msg: string) => void): Promise<void> {
+export async function cleanupFixtures(db: MeilisearchDB, fixtures: FixtureSpec, log?: (msg: string) => void): Promise<void> {
   const emit = log ?? (() => {});
 
   for (const m of fixtures.memories ?? []) {

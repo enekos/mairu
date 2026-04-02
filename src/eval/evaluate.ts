@@ -2,7 +2,7 @@ import * as dotenv from "dotenv";
 import * as fs from "fs/promises";
 import * as path from "path";
 import { createContextManager } from "../storage/client";
-import { ElasticDB } from "../storage/elasticDB";
+import { MeilisearchDB } from "../storage/meilisearchDB";
 import { config } from "../core/config";
 import { seedFixtures, cleanupFixtures, type FixtureSpec } from "./evalSeeder";
 import {
@@ -177,10 +177,7 @@ async function run() {
   // Seed fixtures if requested
   const fixtures = dataset.fixtures as FixtureSpec | undefined;
   if (seed && fixtures) {
-    const db = new ElasticDB(
-      config.elasticUrl,
-      config.elasticUsername ? { username: config.elasticUsername!, password: config.elasticPassword! } : undefined
-    );
+    const db = new MeilisearchDB(config.meili.url, config.meili.apiKey || undefined);
     console.error("Seeding eval fixtures...");
     await seedFixtures(db, fixtures, (msg) => console.error(msg));
     // Small settle delay so ES refreshes are fully visible
@@ -243,10 +240,7 @@ async function run() {
 
   // Cleanup fixtures if requested
   if (cleanup && fixtures) {
-    const db = new ElasticDB(
-      config.elasticUrl,
-      config.elasticUsername ? { username: config.elasticUsername!, password: config.elasticPassword! } : undefined
-    );
+    const db = new MeilisearchDB(config.meili.url, config.meili.apiKey || undefined);
     console.error("Cleaning up eval fixtures...");
     await cleanupFixtures(db, fixtures, (msg) => console.error(msg));
   }
