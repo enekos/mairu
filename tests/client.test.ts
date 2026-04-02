@@ -1,20 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
-// Mock dotenv
-vi.mock("dotenv", () => {
-  return {
-    config: vi.fn(),
-  };
-});
+vi.mock("dotenv", () => ({
+  config: vi.fn(),
+}));
 
-// Mock ContextManager
-vi.mock("../src/storage/contextManager", () => {
-  return {
-    ContextManager: vi.fn().mockImplementation((node, auth) => {
-      return { node, auth };
-    }),
-  };
-});
+vi.mock("../src/storage/contextManager", () => ({
+  ContextManager: vi.fn().mockImplementation((url, apiKey) => {
+    return { url, apiKey };
+  }),
+}));
 
 describe("client", () => {
   const originalEnv = process.env;
@@ -22,12 +16,6 @@ describe("client", () => {
   beforeEach(() => {
     if (typeof vi.resetModules === "function") {
       vi.resetModules();
-    } else {
-      for (const key in require.cache) {
-        if (key.includes("/src/")) {
-          delete require.cache[key];
-        }
-      }
     }
     vi.clearAllMocks();
     process.env = { ...originalEnv };
@@ -37,39 +25,36 @@ describe("client", () => {
     process.env = originalEnv;
   });
 
-  it("creates ContextManager with default ELASTIC_URL", async () => {
-    process.env.ELASTIC_URL = "http://localhost:9200";
-    delete process.env.ELASTIC_USERNAME;
-    delete process.env.ELASTIC_PASSWORD;
+  it("creates ContextManager with default MEILI_URL", async () => {
+    process.env.MEILI_URL = "http://localhost:7700";
+    delete process.env.MEILI_API_KEY;
 
     const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
-    expect(manager.node).toBe("http://localhost:9200");
-    expect(manager.auth).toBeUndefined();
+    expect(manager.url).toBe("http://localhost:7700");
+    expect(manager.apiKey).toBeUndefined();
   });
 
-  it("passes auth when username and password are set", async () => {
-    process.env.ELASTIC_URL = "http://localhost:9200";
-    process.env.ELASTIC_USERNAME = "elastic";
-    process.env.ELASTIC_PASSWORD = "changeme";
+  it("passes apiKey when set", async () => {
+    process.env.MEILI_URL = "http://localhost:7700";
+    process.env.MEILI_API_KEY = "my-secret-key";
 
     const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
-    expect(manager.node).toBe("http://localhost:9200");
-    expect(manager.auth).toEqual({ username: "elastic", password: "changeme" });
+    expect(manager.url).toBe("http://localhost:7700");
+    expect(manager.apiKey).toBe("my-secret-key");
   });
 
-  it("works without auth when only ELASTIC_URL is set", async () => {
-    process.env.ELASTIC_URL = "http://custom:9200";
-    delete process.env.ELASTIC_USERNAME;
-    delete process.env.ELASTIC_PASSWORD;
+  it("uses custom MEILI_URL", async () => {
+    process.env.MEILI_URL = "http://custom-host:7700";
+    delete process.env.MEILI_API_KEY;
 
     const { createContextManager } = await import("../src/storage/client");
     const manager = createContextManager() as any;
 
-    expect(manager.node).toBe("http://custom:9200");
-    expect(manager.auth).toBeUndefined();
+    expect(manager.url).toBe("http://custom-host:7700");
+    expect(manager.apiKey).toBeUndefined();
   });
 });

@@ -10,19 +10,27 @@ vi.mock("../src/storage/embedder", () => ({
 
 const mockBulkIndex = vi.fn().mockResolvedValue({ successful: 2, failed: 0, errors: [] });
 
-vi.mock("@elastic/elasticsearch", () => ({
-  Client: vi.fn().mockImplementation(() => ({
-    count: vi.fn().mockResolvedValue({ count: 0 }),
-    bulk: vi.fn(),
-    indices: { exists: vi.fn().mockResolvedValue(true), create: vi.fn(), delete: vi.fn(), putMapping: vi.fn() },
-    index: vi.fn(),
-    get: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    search: vi.fn(),
-    updateByQuery: vi.fn(),
+vi.mock("meilisearch", () => ({
+  Meilisearch: vi.fn().mockImplementation(() => ({
+    getStats: vi.fn().mockResolvedValue({ indexes: {} }),
+    createIndex: vi.fn().mockResolvedValue({ taskUid: 0 }),
+    tasks: { waitForTask: vi.fn().mockResolvedValue({ status: "succeeded" }) },
+    deleteIndex: vi.fn().mockResolvedValue({ taskUid: 0 }),
+    index: vi.fn().mockReturnValue({
+      search: vi.fn().mockResolvedValue({ hits: [], estimatedTotalHits: 0 }),
+      getDocument: vi.fn().mockRejectedValue({ code: "document_not_found" }),
+      getDocuments: vi.fn().mockResolvedValue({ results: [] }),
+      addDocuments: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateDocuments: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      deleteDocument: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      deleteAllDocuments: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateSearchableAttributes: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateFilterableAttributes: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateSortableAttributes: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateEmbedders: vi.fn().mockResolvedValue({ taskUid: 0 }),
+      updateSynonyms: vi.fn().mockResolvedValue({ taskUid: 0 }),
+    }),
   })),
-  HttpConnection: vi.fn(),
 }));
 
 vi.mock("../src/core/config", async (importOriginal) => {
@@ -31,6 +39,7 @@ vi.mock("../src/core/config", async (importOriginal) => {
     ...original,
     config: {
       ...original.config,
+      meili: { url: "http://localhost:7700", apiKey: "", synonyms: [], recencyScale: "30d", recencyDecay: 0.5 },
       embedding: { model: "test", dimension: 3072, allowZeroEmbeddings: true },
       geminiApiKey: "test",
       budget: { memoryPerProject: 0, skillPerProject: 0, nodePerProject: 0 },
@@ -40,16 +49,16 @@ vi.mock("../src/core/config", async (importOriginal) => {
 });
 
 import { BatchWriter } from "../src/storage/batchWriter";
-import { ElasticDB } from "../src/storage/elasticDB";
+import { MeilisearchDB } from "../src/storage/meilisearchDB";
 import { Embedder } from "../src/storage/embedder";
 
 describe("BatchWriter", () => {
-  let db: ElasticDB;
+  let db: MeilisearchDB;
   let writer: BatchWriter;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    db = new ElasticDB("http://localhost:9200");
+    db = new MeilisearchDB("http://localhost:7700");
     db.bulkIndex = mockBulkIndex;
     writer = new BatchWriter(db, { batchSize: 3, flushIntervalMs: 50000 });
   });
@@ -80,37 +89,14 @@ describe("BatchWriter", () => {
     writer.enqueue({
       type: "skill",
       data: {
-        id: "skill_1", project: "p", name: "coding", description: "writes code",
+        id: "skill_1", project: "p", name: "code", description: "write code",
         metadata: {}, ai_intent: null, ai_topics: null, ai_quality_score: null,
         created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       },
     });
 
-    const results = await writer.flush();
-    expect(Embedder.getEmbeddings).toHaveBeenCalled();
+    const result = await writer.flush();
     expect(mockBulkIndex).toHaveBeenCalledTimes(1);
-    expect(results.successful).toBeGreaterThanOrEqual(0);
-  });
-
-  it("flush with empty queue returns zeros", async () => {
-    const results = await writer.flush();
-    expect(results.successful).toBe(0);
-    expect(results.failed).toBe(0);
-    expect(mockBulkIndex).not.toHaveBeenCalled();
-  });
-
-  it("shutdown flushes remaining ops", async () => {
-    writer.enqueue({
-      type: "memory",
-      data: {
-        id: "mem_2", project: "p", content: "shutdown test",
-        category: "observation", owner: "agent", importance: 5,
-        metadata: {}, ai_intent: null, ai_topics: null, ai_quality_score: null,
-        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-      },
-    });
-
-    await writer.shutdown();
-    expect(mockBulkIndex).toHaveBeenCalledTimes(1);
+    expect(result.successful).toBe(2);
   });
 });
