@@ -11,12 +11,10 @@ import { Embedder } from "./storage/embedder";
 import { config } from "./core/config";
 import { extractJsonObject } from "./core/jsonUtils";
 import { llmGenerate } from "./llm/llmUtils";
-import type { AgentMemory, AgentContextNode } from "./core/types";
+import type { AgentMemory } from "./core/types";
 
 const DEDUP_SIMILARITY_THRESHOLD = 0.85;
 const PATTERN_SIMILARITY_THRESHOLD = 0.75;
-const SIBLING_SIMILARITY_THRESHOLD = 0.9;
-const ORPHAN_SIMILARITY_THRESHOLD = 0.8;
 const LIST_PAGE_SIZE = 100;
 const MIN_CLUSTER_SIZE = 3;
 

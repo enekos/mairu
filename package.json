@@ -13,7 +13,7 @@
     "CHANGELOG.md"
   ],
   "bin": {
-    "context-cli": "dist/cli.js"
+    "ctx": "dist/cli.js"
   },
   "engines": {
     "bun": ">=1"

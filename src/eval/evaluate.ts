@@ -24,7 +24,7 @@ import {
 } from "../storage/scorer";
 import type { MemorySearchOptions, SkillSearchOptions, ContextSearchOptions } from "../core/types";
 
-dotenv.config({ path: require("path").resolve(__dirname, "../..", ".env") });
+dotenv.config({ path: require("path").resolve(__dirname, "../..", ".env"), quiet: true } as any);
 
 interface DomainWeights {
   memory: HybridWeights;

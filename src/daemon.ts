@@ -5,7 +5,6 @@ import * as fs from "fs";
 import { createHash } from "crypto";
 import { TypeScriptDescriber } from "./ast/typescriptDescriber";
 import { PythonDescriber } from "./ast/pythonDescriber";
-import type { LanguageDescriber } from "./ast/languageDescriber";
 import { enrichDescriptions } from "./ast/nlEnricher";
 import type { LogicSymbol, LogicEdge, LogicSymbolKind } from "./ast/languageDescriber";
 import { compareSymbols, sortSymbols, sortEdges } from "./ast/languageDescriber";

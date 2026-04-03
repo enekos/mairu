@@ -2,7 +2,12 @@ import * as dotenv from "dotenv";
 import * as path from "path";
 import { parsePositiveInt, parseBoolean, parseNonNegativeInt } from "./configParsing";
 
-dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
+// 1. Try to load from the contextfs installation directory first
+// In both src/core and dist/core, the project root is two levels up
+dotenv.config({ path: path.resolve(__dirname, "..", "..", ".env"), quiet: true } as any);
+
+// 2. Fallback: try loading from current working directory (e.g., where 'ctx' is executed)
+dotenv.config({ path: path.resolve(process.cwd(), ".env"), quiet: true } as any);
 
 const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 const DEFAULT_EMBEDDING_DIMENSION = 3072;

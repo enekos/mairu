@@ -292,8 +292,12 @@ export class PythonDescriber implements LanguageDescriber {
       const stringNode = firstStmt.namedChildren[0];
       if (stringNode && stringNode.type === "string") {
         let text = stringNode.text.replace(/^["']{1,3}|["']{1,3}$/g, "");
-        text = text.split("\n")[0]?.trim() ?? text;
-        return text.length > 200 ? text.slice(0, 200) + "..." : text || undefined;
+        // Find the first non-empty line
+        const lines = text.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+        if (lines.length > 0) {
+          text = lines[0];
+          return text.length > 200 ? text.slice(0, 200) + "..." : text;
+        }
       }
     }
     return undefined;

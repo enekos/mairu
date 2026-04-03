@@ -66,7 +66,7 @@ export class MeilisearchDB {
     const indexes = [
       { uid: SKILLS_INDEX, primaryKey: "id" },
       { uid: MEMORIES_INDEX, primaryKey: "id" },
-      { uid: CONTEXT_INDEX, primaryKey: "uri" },
+      { uid: CONTEXT_INDEX, primaryKey: "id" },
     ];
 
     for (const idx of indexes) {
@@ -149,7 +149,7 @@ export class MeilisearchDB {
         const task = await this.client.deleteIndex(uid);
         await this.client.tasks.waitForTask(task.taskUid);
       } catch (e: any) {
-        if (e?.code !== "index_not_found") throw e;
+        if ((e?.code !== "index_not_found" && e?.cause?.code !== "index_not_found")) throw e;
       }
     }
     this.initialized = false;
@@ -372,7 +372,7 @@ export class MeilisearchDB {
       });
       return doc as AgentSkill;
     } catch (e: any) {
-      if (e?.code === "document_not_found") return null;
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
       throw e;
     }
   }
@@ -384,7 +384,7 @@ export class MeilisearchDB {
       const task = await index.deleteDocument(id);
       await this.client.tasks.waitForTask(task.taskUid);
     } catch (e: any) {
-      if (e?.code !== "document_not_found") throw e;
+      if ((e?.code !== "document_not_found" && e?.cause?.code !== "document_not_found")) throw e;
     }
   }
 
@@ -548,7 +548,7 @@ export class MeilisearchDB {
       });
       return doc as AgentMemory;
     } catch (e: any) {
-      if (e?.code === "document_not_found") return null;
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
       throw e;
     }
   }
@@ -560,7 +560,7 @@ export class MeilisearchDB {
       const task = await index.deleteDocument(id);
       await this.client.tasks.waitForTask(task.taskUid);
     } catch (e: any) {
-      if (e?.code !== "document_not_found") throw e;
+      if ((e?.code !== "document_not_found" && e?.cause?.code !== "document_not_found")) throw e;
     }
   }
 
@@ -589,6 +589,7 @@ export class MeilisearchDB {
 
     const index = this.client.index(CONTEXT_INDEX);
     const doc = {
+      id: this.uriToId(node.uri),
       uri: node.uri,
       project: node.project || null,
       parent_uri: node.parent_uri,
@@ -647,6 +648,7 @@ export class MeilisearchDB {
       }
 
       const doc: Record<string, any> = {
+        id: this.uriToId(uri),
         uri,
         updated_at: new Date().toISOString(),
         version_history: versionHistory,
@@ -669,7 +671,7 @@ export class MeilisearchDB {
       await this.client.tasks.waitForTask(task.taskUid);
     } else {
       // Node doesn't exist yet — partial update
-      const doc: Record<string, any> = { uri, updated_at: new Date().toISOString() };
+      const doc: Record<string, any> = { id: this.uriToId(uri), uri, updated_at: new Date().toISOString() };
       if (updates.name !== undefined) doc.name = updates.name;
       if (updates.abstract !== undefined) doc.abstract = updates.abstract;
       if (updates.overview !== undefined) doc.overview = updates.overview;
@@ -777,11 +779,12 @@ export class MeilisearchDB {
     await this.ensureInitialized();
     try {
       const index = this.client.index(CONTEXT_INDEX);
-      const doc = await index.getDocument(uri);
-      const { _vectors, ancestors, ...rest } = doc as any;
+      const doc = await index.getDocument(this.uriToId(uri));
+      const { _vectors, id, ...rest } = doc as any;
+      delete rest.ancestors;
       return rest as AgentContextNode;
     } catch (e: any) {
-      if (e?.code === "document_not_found") return null;
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
       throw e;
     }
   }
@@ -794,6 +797,7 @@ export class MeilisearchDB {
     const descendants = await this.getDescendants(uri);
     if (descendants.length > 0) {
       const updates = descendants.map((d: any) => ({
+        id: this.uriToId(d.uri),
         uri: d.uri,
         is_deleted: true,
         deleted_at: ts,
@@ -806,10 +810,10 @@ export class MeilisearchDB {
     // Soft delete the node itself
     try {
       const index = this.client.index(CONTEXT_INDEX);
-      const task = await index.updateDocuments([{ uri, is_deleted: true, deleted_at: ts }]);
+      const task = await index.updateDocuments([{ id: this.uriToId(uri), uri, is_deleted: true, deleted_at: ts }]);
       await this.client.tasks.waitForTask(task.taskUid);
     } catch (e: any) {
-      if (e?.code !== "document_not_found") throw e;
+      if ((e?.code !== "document_not_found" && e?.cause?.code !== "document_not_found")) throw e;
     }
   }
 
@@ -820,6 +824,7 @@ export class MeilisearchDB {
     const descendants = await this.getDescendants(uri);
     if (descendants.length > 0) {
       const updates = descendants.map((d: any) => ({
+        id: this.uriToId(d.uri),
         uri: d.uri,
         is_deleted: false,
         deleted_at: null,
@@ -832,10 +837,10 @@ export class MeilisearchDB {
     // Restore the node itself
     try {
       const index = this.client.index(CONTEXT_INDEX);
-      const task = await index.updateDocuments([{ uri, is_deleted: false, deleted_at: null }]);
+      const task = await index.updateDocuments([{ id: this.uriToId(uri), uri, is_deleted: false, deleted_at: null }]);
       await this.client.tasks.waitForTask(task.taskUid);
     } catch (e: any) {
-      if (e?.code !== "document_not_found") throw e;
+      if ((e?.code !== "document_not_found" && e?.cause?.code !== "document_not_found")) throw e;
     }
   }
 
@@ -849,9 +854,9 @@ export class MeilisearchDB {
     // Fetch root node
     let rootNode: any = null;
     try {
-      rootNode = await index.getDocument(nodeUri);
+      rootNode = await index.getDocument(this.uriToId(nodeUri));
     } catch (e: any) {
-      if (e?.code === "document_not_found") return [];
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return [];
       throw e;
     }
 
@@ -870,7 +875,8 @@ export class MeilisearchDB {
       .map((n: any) => {
         const nodeAncestors: string[] = n.ancestors || [];
         const depth = nodeAncestors.length - rootDepth;
-        const { _vectors, ancestors, _rankingScore, _formatted, _matchesPosition, ...rest } = n;
+        const { _vectors, _rankingScore, _formatted, _matchesPosition, id, ...rest } = n;
+        delete rest.ancestors;
         return { ...rest, depth } as AgentContextNode & { depth: number };
       })
       .sort((a: any, b: any) => a.depth - b.depth);
@@ -907,7 +913,7 @@ export class MeilisearchDB {
       .map((n: any) => {
         const nodeAncestors: string[] = n.ancestors || [];
         const depth = nodeAncestors.length;
-        const { ancestors: _, _vectors, _rankingScore, _formatted, _matchesPosition, ...rest } = n;
+        const { ancestors: _, _vectors, _rankingScore, _formatted, _matchesPosition, id, ...rest } = n;
         return { ...rest, depth } as AgentContextNode & { depth: number };
       })
       .sort((a: any, b: any) => a.depth - b.depth);
@@ -933,11 +939,11 @@ export class MeilisearchDB {
   private async getContextNodeWithAncestors(uri: string): Promise<(AgentContextNode & { ancestors?: string[] }) | null> {
     try {
       const index = this.client.index(CONTEXT_INDEX);
-      const doc = await index.getDocument(uri);
-      const { _vectors, ...rest } = doc as any;
+      const doc = await index.getDocument(this.uriToId(uri));
+      const { _vectors, id, ...rest } = doc as any;
       return rest as AgentContextNode & { ancestors?: string[] };
     } catch (e: any) {
-      if (e?.code === "document_not_found") return null;
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
       throw e;
     }
   }
@@ -946,9 +952,9 @@ export class MeilisearchDB {
   private async getContextNodeRaw(uri: string): Promise<any | null> {
     try {
       const index = this.client.index(CONTEXT_INDEX);
-      return await index.getDocument(uri);
+      return await index.getDocument(this.uriToId(uri));
     } catch (e: any) {
-      if (e?.code === "document_not_found") return null;
+      if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
       throw e;
     }
   }
@@ -1026,11 +1032,17 @@ export class MeilisearchDB {
   }
 
   private stripVectors(doc: any): any {
-    const { _vectors, _rankingScore, _formatted, _matchesPosition, ...rest } = doc;
+    const { _vectors, _rankingScore, _formatted, _matchesPosition, id, ...rest } = doc;
+    // Put back id for skills and memories if it was stripped
+    if (doc.id && !doc.uri) rest.id = id;
     return rest;
   }
 
   private escapeFilterValue(value: string): string {
     return value.replace(/"/g, '\\"');
+  }
+
+  private uriToId(uri: string): string {
+    return Buffer.from(uri).toString('base64url');
   }
 }
