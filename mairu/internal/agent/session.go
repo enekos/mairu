@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/generative-ai-go/genai"
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 type SavedPart struct {
@@ -346,9 +347,11 @@ func (a *Agent) CompactContext() error {
 		}
 	}
 
-	prompt := fmt.Sprintf(`Please summarize the following conversation history. Keep all important technical details, file paths, tool usage results, and coding decisions. Be as dense as possible to save tokens.
-
-%s`, conversation)
+	prompt := prompts.Render("session_summarize", struct {
+		Conversation string
+	}{
+		Conversation: conversation,
+	})
 
 	// We use a fresh LLM instance to summarize it to avoid messing up current history
 	// Need to import context and llm if they aren't already imported

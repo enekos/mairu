@@ -66,9 +66,49 @@ type model struct {
 	selectedMessage  int
 	messageLineStart []int
 	toolLog          []string
+
+	autocompleteIndex int
+	filteredCommands  []SlashCommand
 }
 
 type agentStreamMsg agent.AgentEvent
+
+type SlashCommand struct {
+	Name        string
+	Description string
+}
+
+var allSlashCommands = []SlashCommand{
+	{"/help", "Show this help message"},
+	{"/clear", "Clear the terminal screen"},
+	{"/copy", "Copy last response to clipboard"},
+	{"/models", "Open model selector"},
+	{"/model", "Switch to a specific model"},
+	{"/sessions", "Open session selector"},
+	{"/session", "Load a specific session"},
+	{"/memory search", "Search contextfs memory"},
+	{"/memory read", "Read contextfs memory"},
+	{"/memory write", "Write fact to contextfs memory"},
+	{"/memory store", "Store fact in contextfs memory"},
+	{"/node search", "Search contextfs nodes"},
+	{"/node read", "Read contextfs nodes"},
+	{"/node ls", "List contextfs node children"},
+	{"/node store", "Store/update a contextfs node"},
+	{"/node write", "Write/update a contextfs node"},
+	{"/vibe", "Run contextfs vibe-query"},
+	{"/remember", "Run contextfs vibe-mutation"},
+	{"/save", "Save the current session"},
+	{"/fork", "Fork the current session to a new name"},
+	{"/reset", "Start a fresh session"},
+	{"/new", "Start a fresh session"},
+	{"/compact", "Summarize history to save tokens"},
+	{"/squash", "Summarize history to save tokens"},
+	{"/export", "Export conversation to a file"},
+	{"/explore", "Toggle explore sidebar"},
+	{"/jump", "Jump to message number n"},
+	{"/exit", "Exit Mairu"},
+	{"/quit", "Exit Mairu"},
+}
 
 var (
 	colorUser   = lipgloss.Color("#5e81ac") // Nord blue
@@ -188,6 +228,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds  []tea.Cmd
 	)
 
+	// === Autocomplete interception ===
+	if keyMsg, ok := msg.(tea.KeyMsg); ok && len(m.filteredCommands) > 0 {
+		switch keyMsg.Type {
+		case tea.KeyUp:
+			m.autocompleteIndex--
+			if m.autocompleteIndex < 0 {
+				m.autocompleteIndex = len(m.filteredCommands) - 1
+			}
+			return m, nil
+		case tea.KeyDown:
+			m.autocompleteIndex++
+			if m.autocompleteIndex >= len(m.filteredCommands) {
+				m.autocompleteIndex = 0
+			}
+			return m, nil
+		case tea.KeyTab:
+			m.textarea.SetValue(m.filteredCommands[m.autocompleteIndex].Name + " ")
+			m.textarea.SetCursor(len(m.textarea.Value()))
+			m.filteredCommands = nil
+			return m, nil
+		case tea.KeyEsc:
+			m.filteredCommands = nil
+			return m, nil
+		}
+	}
+
 	if m.showList {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
@@ -241,6 +307,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.viewport, vpCmd = m.viewport.Update(msg)
 	m.spinner, spCmd = m.spinner.Update(msg)
 	cmds = append(cmds, tiCmd, vpCmd, spCmd)
+
+	if _, ok := msg.(tea.KeyMsg); ok {
+		val := m.textarea.Value()
+		if strings.HasPrefix(val, "/") {
+			m.filteredCommands = nil
+			for _, cmd := range allSlashCommands {
+				if strings.HasPrefix(cmd.Name, val) {
+					m.filteredCommands = append(m.filteredCommands, cmd)
+				}
+			}
+			if m.autocompleteIndex >= len(m.filteredCommands) {
+				m.autocompleteIndex = 0
+			}
+		} else {
+			m.filteredCommands = nil
+		}
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -342,6 +425,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 
+			m.filteredCommands = nil
 			v := strings.TrimSpace(m.textarea.Value())
 			m.textarea.Reset()
 
@@ -437,8 +521,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 - /model <name>: Switch to a specific model
 - /sessions: Open session selector
 - /session <name>: Load a specific session
-- /memory <search|store> <text>: Interact with contextfs memory
-- /node <search|ls> <text|uri>: Interact with contextfs nodes
+- /memory <search|read|store|write> <text>: Interact with contextfs memory
+- /node <search|read|ls|store|write> <text|uri|args>: Interact with contextfs nodes
 - /vibe <query>: Run contextfs vibe-query
 - /remember <text>: Run contextfs vibe-mutation
 - /save <name>: Save the current session
@@ -536,7 +620,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 						var out []byte
 						var err error
-						if subCmd == "search" {
+						if subCmd == "search" || subCmd == "read" {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Searching memory: " + args})
 							out, err = m.contextGet("/api/search", map[string]string{
 								"q":       args,
@@ -544,7 +628,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								"topK":    "5",
 								"project": projectName,
 							})
-						} else if subCmd == "store" {
+						} else if subCmd == "store" || subCmd == "write" {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Storing memory: " + args})
 							out, err = m.contextPost("/api/memories", map[string]any{
 								"project":    projectName,
@@ -554,7 +638,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								"importance": 5,
 							})
 						} else {
-							m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /memory <search|store> <text>"})
+							m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /memory <search|read|store|write> <text>"})
 							m.renderMessages()
 							m.viewport.GotoBottom()
 							return m, nil
@@ -569,7 +653,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "```json\n" + prettyJSON(out) + "\n```"})
 						}
 					} else {
-						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /memory <search|store> <text>"})
+						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /memory <search|read|store|write> <text>"})
 					}
 					m.renderMessages()
 					m.viewport.GotoBottom()
@@ -583,7 +667,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 						var out []byte
 						var err error
-						if subCmd == "search" {
+						if subCmd == "search" || subCmd == "read" {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Searching nodes: " + args})
 							out, err = m.contextGet("/api/search", map[string]string{
 								"q":       args,
@@ -598,7 +682,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 								"parentUri": args,
 							})
 						} else {
-							m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /node <search|ls> <text|uri>"})
+							m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /node <search|read|ls> <text|uri>"})
 							m.renderMessages()
 							m.viewport.GotoBottom()
 							return m, nil
@@ -613,7 +697,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "```json\n" + prettyJSON(out) + "\n```"})
 						}
 					} else {
-						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /node <search|ls> <text|uri>"})
+						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /node <search|read|ls> <text|uri>"})
 					}
 					m.renderMessages()
 					m.viewport.GotoBottom()
@@ -972,9 +1056,15 @@ func (m model) View() string {
 		mainRow = lipgloss.JoinHorizontal(lipgloss.Top, chatPane, sidebarPane)
 	}
 
+	acView := m.renderAutocomplete()
+	if acView != "" {
+		acView = appStyle.Render(acView) + "\n"
+	}
+
 	viewStr := fmt.Sprintf(
-		"%s\n%s\n%s",
+		"%s\n%s%s\n%s",
 		appStyle.Render(mainRow),
+		acView,
 		appStyle.Render(inputView),
 		appStyle.Render(m.renderFooter()),
 	)
@@ -1139,6 +1229,27 @@ func (m model) renderExploreSidebar(stats sessionStats) string {
 func (m model) renderFooter() string {
 	footer := "PgUp/PgDn scroll  ·  Home/End top-bottom  ·  Ctrl+F follow  ·  Ctrl+E explore  ·  /help"
 	return footerStyle.Render(footer)
+}
+
+func (m model) renderAutocomplete() string {
+	if len(m.filteredCommands) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	for i, cmd := range m.filteredCommands {
+		if i > 5 { // Show max 6 items
+			sb.WriteString(sidebarLabelStyle.Render(fmt.Sprintf("  ... %d more", len(m.filteredCommands)-6)) + "\n")
+			break
+		}
+		prefix := "  "
+		style := sidebarLabelStyle
+		if i == m.autocompleteIndex {
+			prefix = "> "
+			style = sidebarHeaderStyle
+		}
+		sb.WriteString(style.Render(fmt.Sprintf("%s%-18s %s", prefix, cmd.Name, cmd.Description)) + "\n")
+	}
+	return sb.String()
 }
 
 func (m *model) autoScroll() {

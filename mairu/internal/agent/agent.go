@@ -12,6 +12,7 @@ import (
 	"google.golang.org/api/iterator"
 	"mairu/internal/db"
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 type Agent struct {
@@ -112,20 +113,7 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 
 	fullPrompt := prompt
 	if a.llm.IsNewSession() {
-		systemPrompt := `You are Mairu, an elite AI coding agent with codebase awareness. You operate autonomously.
-You have access to a variety of tools:
-- read_symbol: read specific functions/classes
-- read_file/write_file/find_files: file operations
-- replace_block: safely apply block replacements by providing EXACT existing code
-- search_codebase: ripgrep the codebase
-- delegate_task: spawn a sub-agent to do research in parallel
-- bash: run shell commands (tests, git, ls, cat)
-
-IMPORTANT:
-1. Always test your code using the 'bash' tool after making changes.
-2. Use 'bash' to run 'git status' or 'git diff' to understand the current working state.
-3. Be concise and use Markdown for your answers.
-4. Issue multiple tools concurrently when possible to speed up operations.`
+		systemPrompt := prompts.Render("agent_system", nil)
 
 		contextFiles := a.loadContextFiles()
 		if contextFiles != "" {
@@ -358,7 +346,14 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 		} else {
 			// Prepend main conversation context
 			contextStr := a.GetRecentContext()
-			fullTask := fmt.Sprintf("Main Agent Context:\n%s\n\nYour Delegated Task:\n%s\n\nPlease investigate and provide a concise summary of your findings to the main agent.", contextStr, task)
+
+			fullTask := prompts.Render("delegate_task", struct {
+				Context string
+				Task    string
+			}{
+				Context: contextStr,
+				Task:    task,
+			})
 
 			subOut := make(chan AgentEvent)
 			go subAgent.RunStream(fullTask, subOut)
