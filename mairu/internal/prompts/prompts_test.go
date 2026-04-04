@@ -67,3 +67,23 @@ func TestRenderVibeMutationPlanner(t *testing.T) {
 		t.Errorf("vibe_mutation_planner prompt missing expected string, got:\n%s", out)
 	}
 }
+
+func TestRenderVibeMutationPlannerCompact(t *testing.T) {
+	data := struct {
+		Project                string
+		ExistingEntriesSummary string
+	}{
+		Project:                "demo",
+		ExistingEntriesSummary: `[{ "id": "mem_1" }]`,
+	}
+	out := Render("vibe_mutation_planner_compact", data)
+	if !strings.Contains(out, "You are a JSON mutation planner") {
+		t.Errorf("vibe_mutation_planner_compact missing expected heading")
+	}
+	if !strings.Contains(out, `Use project: "demo"`) {
+		t.Errorf("vibe_mutation_planner_compact missing project directive")
+	}
+	if !strings.Contains(out, `{ "id": "mem_1" }`) {
+		t.Errorf("vibe_mutation_planner_compact missing entries summary")
+	}
+}

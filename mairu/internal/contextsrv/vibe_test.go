@@ -74,7 +74,9 @@ func (r *vibeRepo) SearchText(ctx context.Context, opts SearchOptions) (map[stri
 func (r *vibeRepo) ListModerationQueue(ctx context.Context, limit int) ([]ModerationEvent, error) {
 	return []ModerationEvent{}, nil
 }
-func (r *vibeRepo) ReviewModeration(ctx context.Context, input ModerationReviewInput) error { return nil }
+func (r *vibeRepo) ReviewModeration(ctx context.Context, input ModerationReviewInput) error {
+	return nil
+}
 func (r *vibeRepo) EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error {
 	return nil
 }

@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"mairu/internal/ast"
 )
 
 const (
@@ -67,6 +69,8 @@ type Daemon struct {
 	fileFingerprints  map[string]string
 	fileContentHashes map[string]string
 	nodePayloadHashes map[string]string
+
+	describers []ast.LanguageDescriber
 }
 
 func New(manager Manager, project, watchDir string, opts Options) *Daemon {
@@ -88,7 +92,26 @@ func New(manager Manager, project, watchDir string, opts Options) *Daemon {
 		fileFingerprints:  map[string]string{},
 		fileContentHashes: map[string]string{},
 		nodePayloadHashes: map[string]string{},
+		describers: []ast.LanguageDescriber{
+			ast.TypeScriptDescriber{},
+			ast.TSXDescriber{},
+			ast.VueDescriber{},
+			ast.GoDescriber{},
+			ast.PythonDescriber{},
+		},
 	}
+}
+
+func (d *Daemon) getDescriber(filePath string) ast.LanguageDescriber {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	for _, desc := range d.describers {
+		for _, e := range desc.Extensions() {
+			if e == ext {
+				return desc
+			}
+		}
+	}
+	return nil
 }
 
 func (d *Daemon) InitParsers() error { return nil }
@@ -200,7 +223,7 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		return nil
 	}
 
-	summary := summarizeSourceFile(abs, string(raw), d.watchDir)
+	summary := d.summarizeSourceFile(abs, string(raw))
 	metadata := map[string]any{
 		"type":        "file",
 		"path":        abs,
@@ -328,68 +351,131 @@ type sourceSummary struct {
 	LogicGraph map[string]any
 }
 
-func summarizeSourceFile(filePath, src, watchDir string) sourceSummary {
-	fileDoc := extractFileJSDoc(src)
-	symbols := extractSymbols(src)
-	edges := extractEdges(src, symbols)
-	abstract := fileDoc
-	if abstract == "" {
-		if len(symbols) == 0 {
-			abstract = "This file is empty or contains no declarations."
+func (d *Daemon) summarizeSourceFile(filePath, src string) sourceSummary {
+	var fileDoc string
+	var abstract string
+	var overview string
+	var content string
+	var logicGraph map[string]any
+
+	describer := d.getDescriber(filePath)
+	if describer != nil {
+		fg := describer.ExtractFileGraph(filePath, src)
+		abstract = fg.FileSummary
+		if fileDoc = extractFileJSDoc(src); fileDoc != "" {
+			abstract = fileDoc
+		}
+
+		lines := []string{
+			"File: " + filepath.ToSlash(mustRel(d.watchDir, filePath)),
+			"Language: " + describer.LanguageID(),
+			"LogicGraph: v1",
+			fmt.Sprintf("GraphStats: symbols=%d edges=%d", len(fg.Symbols), len(fg.Edges)),
+			"",
+			"Symbols:",
+		}
+		if len(fg.Symbols) == 0 {
+			lines = append(lines, "- (none)")
 		} else {
-			names := make([]string, 0, len(symbols))
+			for _, s := range fg.Symbols {
+				doc := ""
+				if s.Doc != "" {
+					doc = ` doc="` + s.Doc + `"`
+				}
+				lines = append(lines, fmt.Sprintf("- %s %s%s", s.Kind, s.ID, doc))
+			}
+		}
+		lines = append(lines, "", "Edges:")
+		if len(fg.Edges) == 0 {
+			lines = append(lines, "- (none)")
+		} else {
+			for _, e := range fg.Edges {
+				lines = append(lines, fmt.Sprintf("- %s %s -> %s", e.Kind, e.From, e.To))
+			}
+		}
+
+		overview = strings.Join(lines, "\n")
+		if len(overview) > maxContentChars {
+			overview = overview[:maxContentChars] + "\n...TRUNCATED_BY_MAX_CONTENT_CHARS"
+		}
+
+		content = ast.DescribeSymbols(fg.Symbols, fg.Edges)
+		if len(content) > maxContentChars {
+			content = content[:maxContentChars] + "\n\n...TRUNCATED"
+		}
+
+		logicGraph = map[string]any{
+			"version": 1,
+			"symbols": fg.Symbols,
+			"edges":   fg.Edges,
+			"imports": fg.Imports,
+		}
+	} else {
+		// Fallback for languages without describer
+		fileDoc = extractFileJSDoc(src)
+		symbols := extractSymbols(src)
+		edges := extractEdges(src, symbols)
+		abstract = fileDoc
+		if abstract == "" {
+			if len(symbols) == 0 {
+				abstract = "This file is empty or contains no declarations."
+			} else {
+				names := make([]string, 0, len(symbols))
+				for _, s := range symbols {
+					names = append(names, s.Name)
+				}
+				sort.Strings(names)
+				abstract = "This file defines: " + strings.Join(names, ", ")
+			}
+		}
+		rel := filepath.ToSlash(mustRel(d.watchDir, filePath))
+		lines := []string{
+			"File: " + rel,
+			"Language: " + strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), "."),
+			"LogicGraph: v1",
+			fmt.Sprintf("GraphStats: symbols=%d shown=%d edges=%d shown=%d", len(symbols), len(symbols), len(edges), len(edges)),
+			"",
+			"Symbols:",
+		}
+		if len(symbols) == 0 {
+			lines = append(lines, "- (none)")
+		} else {
 			for _, s := range symbols {
-				names = append(names, s.Name)
+				doc := ""
+				if s.Doc != "" {
+					doc = ` doc="` + s.Doc + `"`
+				}
+				lines = append(lines, fmt.Sprintf("- %s %s%s", s.Kind, s.ID, doc))
 			}
-			sort.Strings(names)
-			abstract = "This file defines: " + strings.Join(names, ", ")
 		}
-	}
-	rel := filepath.ToSlash(mustRel(watchDir, filePath))
-	lines := []string{
-		"File: " + rel,
-		"Language: " + strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), "."),
-		"LogicGraph: v1",
-		fmt.Sprintf("GraphStats: symbols=%d shown=%d edges=%d shown=%d", len(symbols), len(symbols), len(edges), len(edges)),
-		"",
-		"Symbols:",
-	}
-	if len(symbols) == 0 {
-		lines = append(lines, "- (none)")
-	} else {
-		for _, s := range symbols {
-			doc := ""
-			if s.Doc != "" {
-				doc = ` doc="` + s.Doc + `"`
+		lines = append(lines, "", "Edges:")
+		if len(edges) == 0 {
+			lines = append(lines, "- (none)")
+		} else {
+			for _, e := range edges {
+				lines = append(lines, fmt.Sprintf("- call %s -> %s", e.From, e.To))
 			}
-			lines = append(lines, fmt.Sprintf("- %s %s%s", s.Kind, s.ID, doc))
 		}
-	}
-	lines = append(lines, "", "Edges:")
-	if len(edges) == 0 {
-		lines = append(lines, "- (none)")
-	} else {
-		for _, e := range edges {
-			lines = append(lines, fmt.Sprintf("- call %s -> %s", e.From, e.To))
+		overview = strings.Join(lines, "\n")
+		if len(overview) > maxContentChars {
+			overview = overview[:maxContentChars] + "\n...TRUNCATED_BY_MAX_CONTENT_CHARS"
 		}
-	}
-	overview := strings.Join(lines, "\n")
-	if len(overview) > maxContentChars {
-		overview = overview[:maxContentChars] + "\n...TRUNCATED_BY_MAX_CONTENT_CHARS"
-	}
-	content := buildNLContent(symbols, edges)
-	if len(content) > maxContentChars {
-		content = content[:maxContentChars] + "\n\n...TRUNCATED"
-	}
-	return sourceSummary{
-		Abstract: abstract,
-		Overview: overview,
-		Content:  content,
-		LogicGraph: map[string]any{
+		content = buildNLContent(symbols, edges)
+		if len(content) > maxContentChars {
+			content = content[:maxContentChars] + "\n\n...TRUNCATED"
+		}
+		logicGraph = map[string]any{
 			"version": 1,
 			"symbols": symbols,
 			"edges":   edges,
-		},
+		}
+	}
+
+	return sourceSummary{
+		Abstract:   abstract,
+		Overview:   overview,
+		Content:    content,
+		LogicGraph: logicGraph,
 	}
 }
 

@@ -36,6 +36,7 @@ type LanguageDescriber interface {
 var (
 	reFunc   = regexp.MustCompile(`(?m)(?:export\s+)?function\s+([A-Za-z_]\w*)\s*\(`)
 	reClass  = regexp.MustCompile(`(?m)(?:export\s+)?class\s+([A-Za-z_]\w*)`)
+	reMethod = regexp.MustCompile(`(?m)^\s*(?:public\s+|private\s+|protected\s+)?([A-Za-z_]\w*)\s*\(`)
 	reImport = regexp.MustCompile(`(?m)^\s*import\s+.*?from\s+['"]([^'"]+)['"]`)
 	reCalls  = regexp.MustCompile(`([A-Za-z_]\w*)\s*\(`)
 )
@@ -45,9 +46,24 @@ func BaseExtract(source string) FileGraph {
 	for _, m := range reFunc.FindAllStringSubmatch(source, -1) {
 		symbols = append(symbols, LogicSymbol{ID: "fn:" + m[1], Name: m[1], Kind: "fn", Exported: true})
 	}
+
+	seenClass := ""
 	for _, m := range reClass.FindAllStringSubmatch(source, -1) {
-		symbols = append(symbols, LogicSymbol{ID: "cls:" + m[1], Name: m[1], Kind: "cls", Exported: true})
+		name := m[1]
+		symbols = append(symbols, LogicSymbol{ID: "cls:" + name, Name: name, Kind: "cls", Exported: true})
+		seenClass = name
 	}
+
+	if seenClass != "" {
+		for _, m := range reMethod.FindAllStringSubmatch(source, -1) {
+			n := m[1]
+			if n == "if" || n == "for" || n == "while" || n == "switch" || n == "catch" || n == "function" || n == "return" {
+				continue
+			}
+			symbols = append(symbols, LogicSymbol{ID: "mtd:" + seenClass + "." + n, Name: n, Kind: "mtd", Exported: true})
+		}
+	}
+
 	idsByName := map[string]string{}
 	for _, s := range symbols {
 		idsByName[s.Name] = s.ID
@@ -78,11 +94,24 @@ func BaseExtract(source string) FileGraph {
 	})
 	return FileGraph{
 		FileSummary:        "File graph extracted.",
-		Symbols:            symbols,
+		Symbols:            dedupeSymbols(symbols),
 		Edges:              dedupeEdges(edges),
 		Imports:            imports,
 		SymbolDescriptions: descs,
 	}
+}
+
+func dedupeSymbols(in []LogicSymbol) []LogicSymbol {
+	seen := map[string]bool{}
+	var out []LogicSymbol
+	for _, s := range in {
+		if seen[s.ID] {
+			continue
+		}
+		seen[s.ID] = true
+		out = append(out, s)
+	}
+	return out
 }
 
 func CompareSymbols(a, b LogicSymbol) bool { return a.ID < b.ID }

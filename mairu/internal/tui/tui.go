@@ -200,7 +200,7 @@ func initialModel(a *agent.Agent, sessionName string) model {
 }
 
 func Start(a *agent.Agent, sessionName string) error {
-	p := tea.NewProgram(initialModel(a, sessionName), tea.WithAltScreen())
+	p := tea.NewProgram(initialModel(a, sessionName), tea.WithAltScreen(), tea.WithMouseCellMotion())
 	_, err := p.Run()
 	return err
 }
@@ -333,6 +333,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.recomputeLayout()
 		m.renderMessages()
 		m.autoScroll()
+
+	case tea.MouseMsg:
+		if msg.Action == tea.MouseActionPress {
+			if msg.Button == tea.MouseButtonWheelUp {
+				m.followMode = false
+			} else if msg.Button == tea.MouseButtonWheelDown {
+				if m.viewport.AtBottom() {
+					m.followMode = true
+				}
+			}
+		}
 
 	case tea.KeyMsg:
 		switch msg.Type {

@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"mairu/internal/prompts"
-	"math"
 	"strings"
+
+	"mairu/internal/llm"
 )
 
 var ErrModerationRejected = errors.New("content rejected by moderation policy")
@@ -91,6 +91,46 @@ func (s *AppService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 	if input.Owner == "" {
 		input.Owner = "agent"
 	}
+
+	// Router logic for deduplication
+	if s.searchBackend != nil && s.llmClient != nil {
+		searchRes, err := s.searchBackend.Search(SearchOptions{
+			Query:        input.Content,
+			Project:      input.Project,
+			Store:        "memory",
+			TopK:         5,
+			WeightVector: 1.0,
+		})
+		if err == nil && searchRes["memories"] != nil {
+			items := toAnyMapSlice(searchRes["memories"])
+			var candidates []llm.RouterCandidate
+			for _, item := range items {
+				id, _ := item["id"].(string)
+				content, _ := item["content"].(string)
+				score, _ := item["_score"].(float64)
+				if id != "" && content != "" {
+					candidates = append(candidates, llm.RouterCandidate{ID: id, Content: content, Score: score})
+				}
+			}
+			action, err := llm.DecideMemoryAction(context.Background(), s.llmClient, input.Content, candidates)
+			if err == nil {
+				if action.Action == "skip" {
+					return Memory{ID: "skipped"}, fmt.Errorf("skipped: %s", action.Reason)
+				}
+				if action.Action == "update" && action.TargetID != "" {
+					updated, err := s.UpdateMemory(MemoryUpdateInput{
+						ID:         action.TargetID,
+						Content:    action.MergedContent,
+						Importance: input.Importance,
+					})
+					if err == nil {
+						return updated, nil
+					}
+				}
+			}
+		}
+	}
+
 	m := ModerateContent(input.Content)
 	input.ModerationStatus = m.Status
 	input.ModerationReasons = m.Reasons
@@ -165,6 +205,45 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 	if strings.TrimSpace(input.URI) == "" || strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Abstract) == "" {
 		return ContextNode{}, fmt.Errorf("uri, name, and abstract are required")
 	}
+
+	// Router logic for deduplication
+	if s.searchBackend != nil && s.llmClient != nil {
+		searchRes, err := s.searchBackend.Search(SearchOptions{
+			Query:        input.Abstract,
+			Project:      input.Project,
+			Store:        "node",
+			TopK:         5,
+			WeightVector: 1.0,
+		})
+		if err == nil && searchRes["contextNodes"] != nil {
+			items := toAnyMapSlice(searchRes["contextNodes"])
+			var candidates []llm.RouterCandidate
+			for _, item := range items {
+				uri, _ := item["uri"].(string)
+				abstract, _ := item["abstract"].(string)
+				score, _ := item["_score"].(float64)
+				if uri != "" && abstract != "" {
+					candidates = append(candidates, llm.RouterCandidate{ID: uri, Content: abstract, Score: score})
+				}
+			}
+			action, err := llm.DecideContextAction(context.Background(), s.llmClient, input.URI, input.Name, input.Abstract, candidates)
+			if err == nil {
+				if action.Action == "skip" {
+					return ContextNode{URI: "skipped"}, fmt.Errorf("skipped: %s", action.Reason)
+				}
+				if action.Action == "update" && action.TargetID != "" {
+					updated, err := s.UpdateContextNode(ContextUpdateInput{
+						URI:      action.TargetID,
+						Abstract: action.MergedContent,
+					})
+					if err == nil {
+						return updated, nil
+					}
+				}
+			}
+		}
+	}
+
 	m := ModerateContent(input.Name + ": " + input.Abstract + "\n" + input.Content)
 	input.ModerationStatus = m.Status
 	input.ModerationReasons = m.Reasons
@@ -243,310 +322,10 @@ func (s *AppService) ClusterStats() map[string]any {
 	}
 }
 
-func (s *AppService) VibeQuery(prompt, project string, topK int) (VibeQueryResult, error) {
-	if strings.TrimSpace(prompt) == "" {
-		return VibeQueryResult{}, fmt.Errorf("prompt is required")
-	}
-
-	if s.llmClient != nil {
-		if sys, err := prompts.Get("vibe_query_planner", nil); err == nil {
-			res, err := s.llmClient.GenerateJSON(context.Background(), sys, prompt)
-			if err == nil {
-				b, _ := json.Marshal(res)
-				var plan struct {
-					Reasoning string `json:"reasoning"`
-					Queries   []struct {
-						Store string `json:"store"`
-						Query string `json:"query"`
-					} `json:"queries"`
-				}
-				if err := json.Unmarshal(b, &plan); err == nil && len(plan.Queries) > 0 {
-					var results []VibeSearchGroup
-					for _, q := range plan.Queries {
-						search, _ := s.Search(SearchOptions{
-							Query:   q.Query,
-							Project: project,
-							Store:   q.Store,
-							TopK:    topK,
-						})
-						var items []map[string]any
-						if q.Store == "memory" {
-							items = toAnyMapSlice(search["memories"])
-						} else if q.Store == "skill" {
-							items = toAnyMapSlice(search["skills"])
-						} else {
-							items = toAnyMapSlice(search["contextNodes"])
-						}
-						results = append(results, VibeSearchGroup{Store: q.Store, Query: q.Query, Items: items})
-					}
-					return VibeQueryResult{Reasoning: plan.Reasoning, Results: results}, nil
-				}
-			}
-		}
-	}
-
-	search, err := s.Search(SearchOptions{
-		Query:   prompt,
-		Project: project,
-		Store:   "all",
-		TopK:    topK,
-	})
-	if err != nil {
-		return VibeQueryResult{}, err
-	}
-	return VibeQueryResult{
-		Reasoning: "Queried memories, skills, and context nodes with the same prompt for broad recall.",
-		Results: []VibeSearchGroup{
-			{Store: "memory", Query: prompt, Items: toAnyMapSlice(search["memories"])},
-			{Store: "skill", Query: prompt, Items: toAnyMapSlice(search["skills"])},
-			{Store: "node", Query: prompt, Items: toAnyMapSlice(search["contextNodes"])},
-		},
-	}, nil
-}
-
-func (s *AppService) PlanVibeMutation(prompt, project string, topK int) (VibeMutationPlan, error) {
-	if strings.TrimSpace(prompt) == "" {
-		return VibeMutationPlan{}, fmt.Errorf("prompt is required")
-	}
-	if topK <= 0 {
-		topK = 5
-	}
-
-	if s.llmClient != nil {
-		if sys, err := prompts.Get("vibe_mutation_planner", nil); err == nil {
-			res, err := s.llmClient.GenerateJSON(context.Background(), sys, prompt)
-			if err == nil {
-				b, _ := json.Marshal(res)
-				var llmPlan VibeMutationPlan
-				if err := json.Unmarshal(b, &llmPlan); err == nil && len(llmPlan.Operations) > 0 {
-					return llmPlan, nil
-				}
-			}
-		}
-	}
-
-	plan := VibeMutationPlan{
-		Reasoning: "Generated a conservative mutation plan from plain-English intent.",
-	}
-	search, err := s.Search(SearchOptions{
-		Query:   prompt,
-		Project: project,
-		Store:   "memories",
-		TopK:    topK,
-	})
-	if err == nil {
-		if existing, ok := bestMemoryMatch(search["memories"], prompt); ok {
-			plan.Reasoning = "Existing memory is highly similar, so route to update instead of duplicate create."
-			plan.Operations = append(plan.Operations, VibeMutationOp{
-				Op:          "update_memory",
-				Target:      existing.ID,
-				Description: "Update the closest matching memory with refined content.",
-				Data: map[string]any{
-					"id":       existing.ID,
-					"content":  prompt,
-					"category": "observation",
-					"owner":    "agent",
-				},
-			})
-			return plan, nil
-		}
-	}
-
-	lower := strings.ToLower(prompt)
-	switch {
-	case strings.Contains(lower, "remember"):
-		plan.Operations = append(plan.Operations, VibeMutationOp{
-			Op:          "create_memory",
-			Description: "Store the statement as a durable memory.",
-			Data: map[string]any{
-				"content":    prompt,
-				"category":   "observation",
-				"owner":      "agent",
-				"importance": 5,
-				"project":    project,
-			},
-		})
-	case strings.Contains(lower, "skill"):
-		plan.Operations = append(plan.Operations, VibeMutationOp{
-			Op:          "create_skill",
-			Description: "Create a skill from the prompt.",
-			Data: map[string]any{
-				"name":        "Derived Skill",
-				"description": prompt,
-				"project":     project,
-			},
-		})
-	default:
-		plan.Operations = append(plan.Operations, VibeMutationOp{
-			Op:          "create_memory",
-			Description: "Default to storing prompt as an observation memory.",
-			Data: map[string]any{
-				"content":    prompt,
-				"category":   "observation",
-				"owner":      "agent",
-				"importance": 4,
-				"project":    project,
-			},
-		})
-	}
-	return plan, nil
-}
-
-func (s *AppService) ExecuteVibeMutation(ops []VibeMutationOp, project string) ([]map[string]any, error) {
-	results := make([]map[string]any, 0, len(ops))
-	for _, op := range ops {
-		switch op.Op {
-		case "create_memory":
-			content, _ := op.Data["content"].(string)
-			if content == "" {
-				results = append(results, map[string]any{"op": op.Op, "error": "missing content"})
-				continue
-			}
-			importance := intFromAny(op.Data["importance"], 5)
-			mem, err := s.CreateMemory(MemoryCreateInput{
-				Project:    firstString(op.Data["project"], project),
-				Content:    content,
-				Category:   firstString(op.Data["category"], "observation"),
-				Owner:      firstString(op.Data["owner"], "agent"),
-				Importance: importance,
-			})
-			if err != nil {
-				results = append(results, map[string]any{"op": op.Op, "error": err.Error()})
-				continue
-			}
-			results = append(results, map[string]any{"op": op.Op, "result": "created memory " + mem.ID})
-		case "update_memory":
-			id := firstString(op.Data["id"], op.Target)
-			if id == "" {
-				results = append(results, map[string]any{"op": op.Op, "error": "missing id"})
-				continue
-			}
-			updated, err := s.UpdateMemory(MemoryUpdateInput{
-				ID:         id,
-				Content:    firstString(op.Data["content"], ""),
-				Category:   firstString(op.Data["category"], ""),
-				Owner:      firstString(op.Data["owner"], ""),
-				Importance: intFromAny(op.Data["importance"], 0),
-			})
-			if err != nil {
-				results = append(results, map[string]any{"op": op.Op, "error": err.Error()})
-				continue
-			}
-			results = append(results, map[string]any{"op": op.Op, "result": "updated memory " + updated.ID})
-		case "create_skill":
-			skill, err := s.CreateSkill(SkillCreateInput{
-				Project:     firstString(op.Data["project"], project),
-				Name:        firstString(op.Data["name"], "Derived Skill"),
-				Description: firstString(op.Data["description"], ""),
-			})
-			if err != nil {
-				results = append(results, map[string]any{"op": op.Op, "error": err.Error()})
-				continue
-			}
-			results = append(results, map[string]any{"op": op.Op, "result": "created skill " + skill.ID})
-		default:
-			results = append(results, map[string]any{"op": op.Op, "error": "unsupported op"})
-		}
-	}
-	return results, nil
-}
-
-type memorySearchHit struct {
-	ID      string
-	Content string
-}
-
-func bestMemoryMatch(raw any, prompt string) (memorySearchHit, bool) {
-	items := toAnyMapSlice(raw)
-	best := memorySearchHit{}
-	bestScore := 0.0
-	for _, item := range items {
-		id, _ := item["id"].(string)
-		content, _ := item["content"].(string)
-		if id == "" || strings.TrimSpace(content) == "" {
-			continue
-		}
-		score := textSimilarity(content, prompt)
-		if score > bestScore {
-			bestScore = score
-			best = memorySearchHit{ID: id, Content: content}
-		}
-	}
-	return best, bestScore >= 0.85
-}
-
-func textSimilarity(a, b string) float64 {
-	setA := tokenSet(a)
-	setB := tokenSet(b)
-	if len(setA) == 0 || len(setB) == 0 {
-		return 0
-	}
-	inter := 0
-	for token := range setA {
-		if _, ok := setB[token]; ok {
-			inter++
-		}
-	}
-	union := len(setA) + len(setB) - inter
-	if union == 0 {
-		return 0
-	}
-	return float64(inter) / math.Max(float64(union), 1)
-}
-
-func tokenSet(s string) map[string]struct{} {
-	out := map[string]struct{}{}
-	for _, token := range strings.Fields(strings.ToLower(s)) {
-		token = strings.Trim(token, ".,:;!?()[]{}\"'`")
-		if token == "" {
-			continue
-		}
-		out[token] = struct{}{}
-	}
-	return out
-}
-
 func (s *AppService) ListModerationQueue(limit int) ([]ModerationEvent, error) {
 	return s.repo.ListModerationQueue(context.Background(), limit)
 }
 
 func (s *AppService) ReviewModeration(input ModerationReviewInput) error {
 	return s.repo.ReviewModeration(context.Background(), input)
-}
-
-func toAnyMapSlice(v any) []map[string]any {
-	if v == nil {
-		return []map[string]any{}
-	}
-	if direct, ok := v.([]map[string]any); ok {
-		return direct
-	}
-	out := []map[string]any{}
-	switch arr := v.(type) {
-	case []any:
-		for _, item := range arr {
-			if m, ok := item.(map[string]any); ok {
-				out = append(out, m)
-			}
-		}
-	}
-	return out
-}
-
-func firstString(v any, fallback string) string {
-	if s, ok := v.(string); ok && strings.TrimSpace(s) != "" {
-		return s
-	}
-	return fallback
-}
-
-func intFromAny(v any, fallback int) int {
-	switch n := v.(type) {
-	case int:
-		return n
-	case float64:
-		return int(n)
-	default:
-		return fallback
-	}
 }
