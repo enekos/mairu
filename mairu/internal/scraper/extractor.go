@@ -9,7 +9,7 @@ import (
 	"github.com/go-shiori/go-readability"
 )
 
-func ExtractContent(html string, selector string) ExtractedContent {
+func ExtractContent(html string, selector string, pageURL string) ExtractedContent {
 	// Parse HTML with goquery
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
@@ -33,7 +33,10 @@ func ExtractContent(html string, selector string) ExtractedContent {
 	}
 
 	// Readability fallback structure
-	parsedURL, _ := url.Parse("http://localhost") // readability requires a URL sometimes, but it's just for base
+	parsedURL, _ := url.Parse(pageURL)
+	if parsedURL == nil {
+		parsedURL, _ = url.Parse("http://localhost")
+	}
 	article, err := readability.FromReader(strings.NewReader(htmlForReadability), parsedURL)
 
 	var contentHtml string

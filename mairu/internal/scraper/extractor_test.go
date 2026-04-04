@@ -20,7 +20,7 @@ func TestExtractContent(t *testing.T) {
 		</html>
 	`
 
-	res := ExtractContent(html, "")
+	res := ExtractContent(html, "", "")
 
 	if res.Title != "Test Page" && res.Title != "Main Heading" {
 		t.Errorf("expected title 'Test Page', got %q", res.Title)
@@ -49,7 +49,7 @@ func TestExtractContentWithSelector(t *testing.T) {
 		</html>
 	`
 
-	res := ExtractContent(html, ".content")
+	res := ExtractContent(html, ".content", "")
 
 	if !strings.Contains(res.Markdown, "This is what we want.") {
 		t.Errorf("expected markdown to contain target content")

@@ -78,7 +78,7 @@ func SetupRouter(apiKey, meiliURL, meiliAPIKey string) (*gin.Engine, error) {
 			})
 			if err != nil {
 				log.Printf("failed to init agent: %v\n", err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize agent: " + err.Error()})
+				ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "failed to initialize agent: " + err.Error()})
 				return
 			}
 			defer ag.Close()

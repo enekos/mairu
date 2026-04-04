@@ -16,6 +16,10 @@ var webCmd = &cobra.Command{
 		meiliURL, _ := cmd.Flags().GetString("meili-url")
 		meiliAPIKey, _ := cmd.Flags().GetString("meili-api-key")
 		apiKey := GetAPIKey()
+		if apiKey == "" {
+			fmt.Println("Error: Gemini API key not found. Please run 'mairu setup' or set GEMINI_API_KEY environment variable.")
+			os.Exit(1)
+		}
 		fmt.Printf("Starting Mairu web interface on port %d...\n", port)
 		if err := web.StartServer(port, apiKey, meiliURL, meiliAPIKey); err != nil {
 			fmt.Printf("Error starting web server: %v\n", err)

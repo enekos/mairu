@@ -125,13 +125,19 @@ export async function connectWs(sessionName?: string, forceReconnect = false) {
   }
 
   connectionState.set("connecting");
+
+  try {
+    await loadSessions();
+    await loadSessionMessages(activeSession);
+  } catch (err) {
+    console.error("Failed to load initial session data", err);
+  }
+
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${protocol}//${window.location.host}/api/chat?session=${encodeURIComponent(activeSession)}`);
 
   ws.onopen = () => {
     connectionState.set("connected");
-    void loadSessions();
-    void loadSessionMessages(activeSession);
   };
 
   ws.onclose = () => {

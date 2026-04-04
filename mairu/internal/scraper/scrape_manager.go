@@ -15,7 +15,7 @@ func ScrapeAndIngest(ctx context.Context, options ScrapeOptions, storeFn NodeSto
 	result := &ScrapeResult{}
 	for page := range out {
 		result.PagesTotal++
-		content := ExtractContent(page.HTML, options.Selector)
+		content := ExtractContent(page.HTML, options.Selector, page.URL)
 		if content.Markdown == "" {
 			result.PagesSkipped++
 			continue
