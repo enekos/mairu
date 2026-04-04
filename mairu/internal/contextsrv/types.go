@@ -128,7 +128,7 @@ type SearchOptions struct {
 }
 
 type VibeQueryResult struct {
-	Reasoning string             `json:"reasoning"`
+	Reasoning string            `json:"reasoning"`
 	Results   []VibeSearchGroup `json:"results"`
 }
 
@@ -139,8 +139,8 @@ type VibeSearchGroup struct {
 }
 
 type VibeMutationPlan struct {
-	Reasoning  string            `json:"reasoning"`
-	Operations []VibeMutationOp  `json:"operations"`
+	Reasoning  string           `json:"reasoning"`
+	Operations []VibeMutationOp `json:"operations"`
 }
 
 type VibeMutationOp struct {

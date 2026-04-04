@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/atotto/clipboard"
@@ -58,6 +59,12 @@ type model struct {
 	chatPaneWidth int
 	sidebarWidth  int
 	panesHeight   int
+
+	followMode       bool
+	sidebarMode      string // "session" or "explore"
+	selectedMessage  int
+	messageLineStart []int
+	toolLog          []string
 }
 
 type agentStreamMsg agent.AgentEvent
@@ -83,9 +90,9 @@ var (
 			Padding(0, 1)
 
 	sidebarPaneStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(colorSystem).
-			Padding(0, 1)
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorSystem).
+				Padding(0, 1)
 
 	sidebarHeaderStyle = lipgloss.NewStyle().Foreground(colorPrompt).Bold(true)
 	sidebarLabelStyle  = lipgloss.NewStyle().Foreground(colorSystem)
@@ -135,14 +142,17 @@ func initialModel(a *agent.Agent, sessionName string) model {
 	l.SetShowTitle(true)
 
 	m := model{
-		textarea:   ta,
-		messages:   msgs,
-		viewport:   vp,
-		err:        nil,
-		agent:      a,
-		spinner:    s,
-		mdRenderer: r,
-		listModel:  l,
+		textarea:        ta,
+		messages:        msgs,
+		viewport:        vp,
+		err:             nil,
+		agent:           a,
+		spinner:         s,
+		mdRenderer:      r,
+		listModel:       l,
+		followMode:      true,
+		sidebarMode:     "session",
+		selectedMessage: -1,
 	}
 	m.renderMessages()
 	return m
@@ -238,12 +248,61 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.listModel.SetSize(msg.Width, msg.Height)
 		m.recomputeLayout()
 		m.renderMessages()
-		m.viewport.GotoBottom()
+		m.autoScroll()
 
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
+		case tea.KeyPgUp:
+			m.viewport.HalfViewUp()
+			m.followMode = false
+			return m, nil
+		case tea.KeyPgDown:
+			m.viewport.HalfViewDown()
+			m.followMode = false
+			return m, nil
+		case tea.KeyHome:
+			m.viewport.GotoTop()
+			m.followMode = false
+			return m, nil
+		case tea.KeyEnd:
+			m.followMode = true
+			m.viewport.GotoBottom()
+			return m, nil
+		case tea.KeyCtrlF:
+			m.followMode = !m.followMode
+			if m.followMode {
+				m.viewport.GotoBottom()
+				m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Follow mode enabled."})
+			} else {
+				m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Follow mode paused. Use End or Ctrl+F to resume."})
+			}
+			m.renderMessages()
+			m.autoScroll()
+			return m, nil
+		case tea.KeyCtrlE:
+			if m.sidebarMode == "session" {
+				m.sidebarMode = "explore"
+				m.selectedMessage = clampMessageIndex(len(m.messages)-1, 0, len(m.messages))
+			} else {
+				m.sidebarMode = "session"
+			}
+			return m, nil
+		case tea.KeyCtrlJ:
+			if m.sidebarMode == "explore" {
+				m.selectedMessage = clampMessageIndex(m.selectedMessage, 1, len(m.messages))
+				m.jumpToSelectedMessage()
+				m.followMode = false
+				return m, nil
+			}
+		case tea.KeyCtrlK:
+			if m.sidebarMode == "explore" {
+				m.selectedMessage = clampMessageIndex(m.selectedMessage, -1, len(m.messages))
+				m.jumpToSelectedMessage()
+				m.followMode = false
+				return m, nil
+			}
 		case tea.KeyCtrlP:
 			models := []string{
 				"gemini-3.1-flash-lite-preview",
@@ -266,12 +325,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.agent.SetModel(newMod)
 			m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Switched model to: " + newMod})
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			return m, nil
 		case tea.KeyCtrlL:
 			m.messages = []ChatMessage{{Role: "System", Content: "Terminal cleared."}}
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			return m, nil
 		case tea.KeyEnter:
 			if msg.Alt {
@@ -370,26 +429,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case "/help":
 					helpText := `**Available Commands:**
-- ` + "`" + `/help` + "`" + `: Show this help message
-- ` + "`" + `/clear` + "`" + `: Clear the terminal screen (or Ctrl+L)
-- ` + "`" + `/copy` + "`" + `: Copy last response to clipboard
-- ` + "`" + `/models` + "`" + `: Open model selector
-- ` + "`" + `/model <name>` + "`" + `: Switch to a specific model
-- ` + "`" + `/sessions` + "`" + `: Open session selector
-- ` + "`" + `/session <name>` + "`" + `: Load a specific session
-- ` + "`" + `/memory <search|store> <text>` + "`" + `: Interact with contextfs memory
-- ` + "`" + `/node <search|ls> <text|uri>` + "`" + `: Interact with contextfs nodes
-- ` + "`" + `/vibe <query>` + "`" + `: Run contextfs vibe-query
-- ` + "`" + `/remember <text>` + "`" + `: Run contextfs vibe-mutation
-- ` + "`" + `/save <name>` + "`" + `: Save the current session
-- ` + "`" + `/fork <name>` + "`" + `: Fork the current session to a new name
-- ` + "`" + `/reset` + "`" + ` / ` + "`" + `/new` + "`" + `: Start a fresh session and clear context
-- ` + "`" + `/compact` + "`" + `: Summarize history to save tokens
-- ` + "`" + `/export <file>` + "`" + `: Export conversation to a file
-- ` + "`" + `/exit` + "`" + ` / ` + "`" + `/quit` + "`" + `: Exit Mairu`
+- /help: Show this help message
+- /clear: Clear the terminal screen (or Ctrl+L)
+- /copy: Copy last response to clipboard
+- /models: Open model selector
+- /model <name>: Switch to a specific model
+- /sessions: Open session selector
+- /session <name>: Load a specific session
+- /memory <search|store> <text>: Interact with contextfs memory
+- /node <search|ls> <text|uri>: Interact with contextfs nodes
+- /vibe <query>: Run contextfs vibe-query
+- /remember <text>: Run contextfs vibe-mutation
+- /save <name>: Save the current session
+- /fork <name>: Fork the current session to a new name
+- /reset or /new: Start a fresh session and clear context
+- /compact: Summarize history to save tokens
+- /export <file>: Export conversation to a file
+- /explore: Toggle explore sidebar (message navigator + tool drilldown)
+- /jump <n>: Jump to message number n
+- /exit or /quit: Exit Mairu
+
+**Navigation**
+- PgUp/PgDown: Scroll chat by half-page
+- Home/End: Jump top/bottom
+- Ctrl+F: Toggle follow mode during streaming
+- Ctrl+E: Toggle session/explore sidebar
+- Ctrl+J / Ctrl+K: Next/previous message (explore mode)`
 					m.messages = append(m.messages, ChatMessage{Role: "System", Content: helpText})
 					m.renderMessages()
-					m.viewport.GotoBottom()
+					m.autoScroll()
 					return m, nil
 				case "/fork":
 					if len(cmdParts) > 1 {
@@ -610,7 +678,39 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /model <name>"})
 					}
 					m.renderMessages()
-					m.viewport.GotoBottom()
+					m.autoScroll()
+					return m, nil
+				case "/explore":
+					if m.sidebarMode == "session" {
+						m.sidebarMode = "explore"
+						m.selectedMessage = clampMessageIndex(len(m.messages)-1, 0, len(m.messages))
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Explore sidebar enabled. Use Ctrl+J / Ctrl+K to jump between messages."})
+					} else {
+						m.sidebarMode = "session"
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Explore sidebar hidden."})
+					}
+					m.renderMessages()
+					m.autoScroll()
+					return m, nil
+				case "/jump":
+					if len(cmdParts) > 1 {
+						idx, err := strconv.Atoi(cmdParts[1])
+						if err != nil {
+							m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /jump <message-number>"})
+						} else {
+							target := idx - 1
+							if target < 0 || target >= len(m.messages) {
+								m.messages = append(m.messages, ChatMessage{Role: "Error", Content: fmt.Sprintf("Message %d is out of range.", idx)})
+							} else {
+								m.selectedMessage = target
+								m.jumpToSelectedMessage()
+								m.followMode = false
+							}
+						}
+					} else {
+						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /jump <message-number>"})
+					}
+					m.renderMessages()
 					return m, nil
 				case "/sessions":
 					m.listType = "session"
@@ -644,12 +744,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /session <name>"})
 					}
 					m.renderMessages()
-					m.viewport.GotoBottom()
+					m.autoScroll()
 					return m, nil
 				default:
 					m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Unknown command: " + command + "\nType /help for a list of commands."})
 					m.renderMessages()
-					m.viewport.GotoBottom()
+					m.autoScroll()
 					return m, nil
 				}
 			}
@@ -662,9 +762,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.viewport.Height = newHeight
 
+			m.followMode = true
 			m.messages = append(m.messages, ChatMessage{Role: "You", Content: v})
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 
 			m.thinking = true
 			m.currentResponse = ""
@@ -684,46 +785,51 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.toolEvents = []string{}
 			m.activeStream = nil
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 		} else if msg.Type == "text" {
 			m.currentResponse += msg.Content
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "diff" {
 			m.messages = append(m.messages, ChatMessage{Role: "Diff", Content: msg.Content})
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "status" {
 			m.toolEvents = append(m.toolEvents, msg.Content)
+			m.pushToolLog("status", msg.Content)
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_call" {
 			argsStr := ""
 			for k, v := range msg.ToolArgs {
 				argsStr += fmt.Sprintf("%s=%v ", k, v)
 			}
-			m.toolEvents = append(m.toolEvents, fmt.Sprintf("▶ %s(%s)", msg.ToolName, strings.TrimSpace(argsStr)))
+			toolLine := fmt.Sprintf("▶ %s(%s)", msg.ToolName, strings.TrimSpace(argsStr))
+			m.toolEvents = append(m.toolEvents, toolLine)
+			m.pushToolLog("call", toolLine)
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_result" {
 			resStr := fmt.Sprintf("%v", msg.ToolResult)
 			if len(resStr) > 80 {
 				resStr = strings.ReplaceAll(resStr[:80], "\n", " ") + "..."
 			}
-			m.toolEvents = append(m.toolEvents, fmt.Sprintf("✔ %s", resStr))
+			eventLine := fmt.Sprintf("✔ %s", resStr)
+			m.toolEvents = append(m.toolEvents, eventLine)
+			m.pushToolLog("result", fmt.Sprintf("%s => %v", msg.ToolName, msg.ToolResult))
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "error" {
 			m.thinking = false
 			m.messages = append(m.messages, ChatMessage{Role: "Error", Content: msg.Content})
 			m.activeStream = nil
 			m.renderMessages()
-			m.viewport.GotoBottom()
+			m.autoScroll()
 		}
 
 	case errMsg:
@@ -739,7 +845,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.textarea.Height() != lines {
 		m.textarea.SetHeight(lines)
 		m.recomputeLayout()
-		m.viewport.GotoBottom()
+		m.autoScroll()
 	}
 
 	return m, tea.Batch(cmds...)
@@ -747,38 +853,59 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *model) renderMessages() {
 	var sb strings.Builder
-	for _, msg := range m.messages {
-		if msg.Role == "System" {
+	starts := make([]int, len(m.messages))
+	line := 0
+
+	for idx, msg := range m.messages {
+		starts[idx] = line
+		header := fmt.Sprintf("#%d", idx+1)
+		var chunk string
+
+		switch msg.Role {
+		case "System":
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			sb.WriteString(systemStyle.Render(rendered) + "\n")
-		} else if msg.Role == "You" {
-			sb.WriteString(userStyle.Render("○ You") + "\n" + msg.Content + "\n\n")
-		} else if msg.Role == "Error" {
-			sb.WriteString(errorStyle.Render("✗ Error") + "\n" + msg.Content + "\n\n")
-		} else if msg.Role == "Diff" {
+			chunk = systemStyle.Render("◇ System "+header) + "\n" + systemStyle.Render(rendered) + "\n"
+		case "You":
+			chunk = userStyle.Render("○ You "+header) + "\n" + msg.Content + "\n\n"
+		case "Error":
+			chunk = errorStyle.Render("✗ Error "+header) + "\n" + msg.Content + "\n\n"
+		case "Diff":
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			sb.WriteString(rendered + "\n")
-		} else {
+			chunk = sidebarLabelStyle.Render("⎇ Diff "+header) + "\n" + rendered + "\n"
+		default:
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			sb.WriteString(agentStyle.Render("● Mairu") + "\n" + rendered + "\n")
+			chunk = agentStyle.Render("● Mairu "+header) + "\n" + rendered + "\n"
 		}
+
+		sb.WriteString(chunk)
+		line += strings.Count(chunk, "\n")
 	}
 
 	if m.thinking {
+		var chunk string
 		if m.currentResponse != "" {
 			rendered, _ := m.mdRenderer.Render(m.currentResponse)
-			sb.WriteString(agentStyle.Render("● Mairu") + "\n" + rendered + "\n")
+			chunk = agentStyle.Render("● Mairu (streaming)") + "\n" + rendered + "\n"
 		} else {
-			sb.WriteString(agentStyle.Render("● Mairu") + "\n\n")
+			chunk = agentStyle.Render("● Mairu (streaming)") + "\n\n"
 		}
+		sb.WriteString(chunk)
+		line += strings.Count(chunk, "\n")
 		if len(m.toolEvents) > 0 {
 			for _, e := range m.toolEvents {
-				sb.WriteString(toolStyle.Render(e) + "\n")
+				eventChunk := toolStyle.Render(e) + "\n"
+				sb.WriteString(eventChunk)
+				line += strings.Count(eventChunk, "\n")
 			}
 			sb.WriteString("\n")
+			line++
 		}
 	}
 
+	m.messageLineStart = starts
+	if m.selectedMessage < 0 && len(m.messages) > 0 {
+		m.selectedMessage = len(m.messages) - 1
+	}
 	m.viewport.SetContent(sb.String())
 }
 
@@ -879,6 +1006,10 @@ func (m *model) recomputeLayout() {
 
 func (m model) renderSidebar() string {
 	stats := computeSessionStats(m.messages, m.currentResponse, m.toolEvents, m.thinking, m.agent.GetModelName())
+	if m.sidebarMode == "explore" {
+		return m.renderExploreSidebar(stats)
+	}
+
 	var sb strings.Builder
 	sb.WriteString(sidebarHeaderStyle.Render("Session"))
 	sb.WriteString("\n")
@@ -922,7 +1053,84 @@ func (m model) renderSidebar() string {
 	return sb.String()
 }
 
+func (m model) renderExploreSidebar(stats sessionStats) string {
+	var sb strings.Builder
+	sb.WriteString(sidebarHeaderStyle.Render("Explore"))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("%s %d / %d\n", sidebarLabelStyle.Render("Selected:"), m.selectedMessage+1, len(m.messages)))
+	sb.WriteString(fmt.Sprintf("%s %s\n\n", sidebarLabelStyle.Render("Follow mode:"), boolLabel(m.followMode)))
+
+	sb.WriteString(sidebarHeaderStyle.Render("Messages"))
+	sb.WriteString("\n")
+	start := len(m.messages) - 12
+	if start < 0 {
+		start = 0
+	}
+	for i := start; i < len(m.messages); i++ {
+		msg := m.messages[i]
+		prefix := " "
+		if i == m.selectedMessage {
+			prefix = ">"
+		}
+		sb.WriteString(fmt.Sprintf("%s #%d %-6s %s\n",
+			prefix,
+			i+1,
+			msg.Role,
+			previewText(msg.Content, 28),
+		))
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(sidebarHeaderStyle.Render("Tool Drilldown"))
+	sb.WriteString("\n")
+	sb.WriteString(fmt.Sprintf("%s events:%d calls:%d results:%d\n",
+		sidebarLabelStyle.Render("Stats:"),
+		stats.ToolEvents,
+		stats.ToolCalls,
+		stats.ToolResults,
+	))
+	logStart := len(m.toolLog) - 6
+	if logStart < 0 {
+		logStart = 0
+	}
+	for _, entry := range m.toolLog[logStart:] {
+		sb.WriteString("• " + previewText(entry, 60) + "\n")
+	}
+
+	sb.WriteString("\n")
+	sb.WriteString(sidebarLabelStyle.Render("Ctrl+J/Ctrl+K navigate  ·  /jump <n>"))
+	return sb.String()
+}
+
 func (m model) renderFooter() string {
-	footer := "Ctrl+C quit  ·  Ctrl+L clear  ·  Ctrl+P model cycle  ·  /help commands"
+	footer := "PgUp/PgDn scroll  ·  Home/End top-bottom  ·  Ctrl+F follow  ·  Ctrl+E explore  ·  /help"
 	return footerStyle.Render(footer)
+}
+
+func (m *model) autoScroll() {
+	if m.followMode {
+		m.viewport.GotoBottom()
+	}
+}
+
+func (m *model) jumpToSelectedMessage() {
+	if m.selectedMessage < 0 || m.selectedMessage >= len(m.messageLineStart) {
+		return
+	}
+	m.viewport.SetYOffset(m.messageLineStart[m.selectedMessage])
+}
+
+func (m *model) pushToolLog(kind, content string) {
+	entry := fmt.Sprintf("%s: %s", kind, strings.TrimSpace(content))
+	m.toolLog = append(m.toolLog, entry)
+	if len(m.toolLog) > 200 {
+		m.toolLog = m.toolLog[len(m.toolLog)-200:]
+	}
+}
+
+func boolLabel(v bool) string {
+	if v {
+		return "on"
+	}
+	return "off"
 }

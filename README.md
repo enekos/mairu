@@ -1,5 +1,7 @@
 # mairu
 
+![mairu logo](mairu.png)
+
 Unified monorepo for:
 
 - the **Mairu coding agent** (Go, TUI + web)

@@ -790,7 +790,7 @@ export class MeilisearchDB {
     try {
       const index = this.client.index(CONTEXT_INDEX);
       const doc = await index.getDocument(this.uriToId(uri));
-      const { _vectors, id, ...rest } = doc as any;
+      const { _vectors, id: _id, ...rest } = doc as any;
       delete rest.ancestors;
       return rest as AgentContextNode;
     } catch (e: any) {
@@ -885,7 +885,7 @@ export class MeilisearchDB {
       .map((n: any) => {
         const nodeAncestors: string[] = n.ancestors || [];
         const depth = nodeAncestors.length - rootDepth;
-        const { _vectors, _rankingScore, _formatted, _matchesPosition, id, ...rest } = n;
+        const { _vectors, _rankingScore, _formatted, _matchesPosition, id: _id, ...rest } = n;
         delete rest.ancestors;
         return { ...rest, depth } as AgentContextNode & { depth: number };
       })
@@ -923,7 +923,7 @@ export class MeilisearchDB {
       .map((n: any) => {
         const nodeAncestors: string[] = n.ancestors || [];
         const depth = nodeAncestors.length;
-        const { ancestors: _, _vectors, _rankingScore, _formatted, _matchesPosition, id, ...rest } = n;
+        const { ancestors: _, _vectors, _rankingScore, _formatted, _matchesPosition, id: _id, ...rest } = n;
         return { ...rest, depth } as AgentContextNode & { depth: number };
       })
       .sort((a: any, b: any) => a.depth - b.depth);
@@ -950,7 +950,7 @@ export class MeilisearchDB {
     try {
       const index = this.client.index(CONTEXT_INDEX);
       const doc = await index.getDocument(this.uriToId(uri));
-      const { _vectors, id, ...rest } = doc as any;
+      const { _vectors, id: _id, ...rest } = doc as any;
       return rest as AgentContextNode & { ancestors?: string[] };
     } catch (e: any) {
       if ((e?.code === "document_not_found" || e?.cause?.code === "document_not_found")) return null;
