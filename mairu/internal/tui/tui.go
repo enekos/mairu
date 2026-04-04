@@ -200,7 +200,7 @@ func initialModel(a *agent.Agent, sessionName string) model {
 }
 
 func Start(a *agent.Agent, sessionName string) error {
-	p := tea.NewProgram(initialModel(a, sessionName), tea.WithAltScreen(), tea.WithMouseCellMotion())
+	p := tea.NewProgram(initialModel(a, sessionName), tea.WithAltScreen(), tea.WithMouseAllMotion())
 	_, err := p.Run()
 	return err
 }
