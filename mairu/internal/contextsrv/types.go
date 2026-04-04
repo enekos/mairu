@@ -6,11 +6,26 @@ import (
 )
 
 const (
+	StoreMemories     = "memories"
+	StoreMemory       = "memory"
+	StoreSkill        = "skill"
+	StoreSkills       = "skills"
+	StoreContextNodes = "contextNodes"
+	StoreContext      = "context"
+	StoreAll          = "all"
+	StoreNode         = "node"
+
+	IndexMemories = "contextfs_memories"
+	IndexSkills   = "contextfs_skills"
+	IndexNodes    = "contextfs_context_nodes"
+	IndexSymbols  = "contextfs_symbols"
+
 	ModerationStatusClean       = "clean"
 	ModerationStatusFlaggedSoft = "flagged_soft"
 	ModerationStatusRejectHard  = "reject_hard"
 )
 
+// Memory represents an atomic piece of knowledge stored by an agent or user.
 type Memory struct {
 	ID                string    `json:"id"`
 	Project           string    `json:"project"`
@@ -25,6 +40,7 @@ type Memory struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+// Skill represents a capability or tool available to agents.
 type Skill struct {
 	ID                string    `json:"id"`
 	Project           string    `json:"project"`
@@ -37,6 +53,7 @@ type Skill struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+// ContextNode represents a hierarchical piece of knowledge or code context.
 type ContextNode struct {
 	URI               string    `json:"uri"`
 	Project           string    `json:"project"`
@@ -52,6 +69,7 @@ type ContextNode struct {
 	UpdatedAt         time.Time `json:"updated_at"`
 }
 
+// MemoryCreateInput holds the data required to create a new Memory.
 type MemoryCreateInput struct {
 	Project           string
 	Content           string

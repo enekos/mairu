@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .DEFAULT_GOAL := help
 
-.PHONY: help install install-dashboard setup build typecheck lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web
+.PHONY: help install install-dashboard setup build lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web
 .PHONY: meili-up meili-down meili-status meili-clean setup-no-docker dev-no-docker mairu-no-docker
 
 help:
@@ -11,10 +11,9 @@ help:
 	@echo "Core:"
 	@echo "  make install            Install root Bun dependencies"
 	@echo "  make install-dashboard  Install dashboard dependencies"
-	@echo "  make build              Build TypeScript output"
-	@echo "  make typecheck          Run TypeScript typecheck"
-	@echo "  make lint               Run oxlint"
-	@echo "  make test               Run Vitest suite"
+	@echo "  make build              Build Go output"
+	@echo "  make lint               Run Go vet"
+	@echo "  make test               Run Go tests"
 	@echo "  make clean              Remove dist artifacts"
 	@echo
 	@echo "Runtime:"
@@ -42,16 +41,13 @@ setup:
 	bun run setup
 
 build:
-	bun run build
-
-typecheck:
-	bun run typecheck
+	bun run mairu:build
 
 lint:
-	bun run lint
+	go vet -C mairu ./...
 
 test:
-	bun run test
+	go test -C mairu ./...
 
 clean:
 	bun run clean
@@ -72,16 +68,16 @@ mairu-web:
 	bun run mairu:web
 
 meili-up:
-	./mairu/contextfs/scripts/meili-local.sh up
+	./mairu/scripts/meili-local.sh up
 
 meili-down:
-	./mairu/contextfs/scripts/meili-local.sh down
+	./mairu/scripts/meili-local.sh down
 
 meili-status:
-	./mairu/contextfs/scripts/meili-local.sh status
+	./mairu/scripts/meili-local.sh status
 
 meili-clean:
-	./mairu/contextfs/scripts/meili-local.sh clean
+	./mairu/scripts/meili-local.sh clean
 
 setup-no-docker: install install-dashboard meili-up setup
 

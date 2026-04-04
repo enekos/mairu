@@ -19,12 +19,12 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 		searchRes, err := s.searchBackend.Search(SearchOptions{
 			Query:        input.Abstract,
 			Project:      input.Project,
-			Store:        "node",
+			Store:        StoreNode,
 			TopK:         5,
 			WeightVector: 1.0,
 		})
-		if err == nil && searchRes["contextNodes"] != nil {
-			items := toAnyMapSlice(searchRes["contextNodes"])
+		if err == nil && searchRes[StoreContextNodes] != nil {
+			items := toAnyMapSlice(searchRes[StoreContextNodes])
 			var candidates []llm.RouterCandidate
 			for _, item := range items {
 				uri, _ := item["uri"].(string)

@@ -100,13 +100,13 @@ func (s *AppService) Dashboard(limit int, project string) (map[string]any, error
 	}
 	return map[string]any{
 		"counts": map[string]int{
-			"skills":       len(skills),
-			"memories":     len(memories),
-			"contextNodes": len(contextNodes),
+			StoreSkills:       len(skills),
+			StoreMemories:     len(memories),
+			StoreContextNodes: len(contextNodes),
 		},
-		"skills":       skills,
-		"memories":     memories,
-		"contextNodes": contextNodes,
+		StoreSkills:       skills,
+		StoreMemories:     memories,
+		StoreContextNodes: contextNodes,
 	}, nil
 }
 
@@ -117,7 +117,7 @@ func (s *AppService) ClusterStats() map[string]any {
 	return map[string]any{
 		"ok":      true,
 		"service": "contextsrv",
-		"indexes": []string{"contextfs_memories", "contextfs_skills", "contextfs_context_nodes"},
+		"indexes": []string{IndexMemories, IndexSkills, IndexNodes},
 	}
 }
 

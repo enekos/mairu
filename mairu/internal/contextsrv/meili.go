@@ -10,12 +10,6 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 )
 
-const (
-	meiliMemoriesIndex = "contextfs_memories"
-	meiliSkillsIndex   = "contextfs_skills"
-	meiliNodesIndex    = "contextfs_context_nodes"
-	meiliSymbolsIndex  = "contextfs_symbols"
-)
 
 type MeiliIndexer struct {
 	client   meilisearch.ServiceManager
@@ -30,7 +24,7 @@ func NewMeiliIndexer(host, apiKey string, embedder Embedder) *MeiliIndexer {
 }
 
 func (m *MeiliIndexer) EnsureIndexes() error {
-	indexes := []string{meiliMemoriesIndex, meiliSkillsIndex, meiliNodesIndex, meiliSymbolsIndex}
+	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols}
 	for _, idx := range indexes {
 		_, _ = m.client.CreateIndex(&meilisearch.IndexConfig{
 			Uid:        idx,
@@ -77,13 +71,13 @@ func decodePayload(raw []byte) (map[string]any, error) {
 func indexFromEntity(entityType string) (string, error) {
 	switch entityType {
 	case "memory":
-		return meiliMemoriesIndex, nil
+		return IndexMemories, nil
 	case "skill":
-		return meiliSkillsIndex, nil
+		return IndexSkills, nil
 	case "context_node":
-		return meiliNodesIndex, nil
+		return IndexNodes, nil
 	case "symbol":
-		return meiliSymbolsIndex, nil
+		return IndexSymbols, nil
 	default:
 		return "", fmt.Errorf("unsupported entity type %q", entityType)
 	}
@@ -111,21 +105,21 @@ func (m *MeiliIndexer) Search(opts SearchOptions) (map[string]any, error) {
 	}
 
 	if store == "all" || store == "memories" {
-		res, err := m.searchIndex(meiliMemoriesIndex, opts, []string{"content"}, topK, queryEmbedding)
+		res, err := m.searchIndex(IndexMemories, opts, []string{"content"}, topK, queryEmbedding)
 		if err != nil {
 			return nil, err
 		}
 		out["memories"] = res
 	}
 	if store == "all" || store == "skills" {
-		res, err := m.searchIndex(meiliSkillsIndex, opts, []string{"name", "description"}, topK, queryEmbedding)
+		res, err := m.searchIndex(IndexSkills, opts, []string{"name", "description"}, topK, queryEmbedding)
 		if err != nil {
 			return nil, err
 		}
 		out["skills"] = res
 	}
 	if store == "all" || store == "context" {
-		res, err := m.searchIndex(meiliNodesIndex, opts, []string{"name", "abstract", "content"}, topK, queryEmbedding)
+		res, err := m.searchIndex(IndexNodes, opts, []string{"name", "abstract", "content"}, topK, queryEmbedding)
 		if err != nil {
 			return nil, err
 		}
@@ -209,9 +203,9 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 
 func defaultsForIndex(index string) hybridWeights {
 	switch index {
-	case meiliMemoriesIndex:
+	case IndexMemories:
 		return defaultMemoryWeights()
-	case meiliSkillsIndex:
+	case IndexSkills:
 		return defaultSkillWeights()
 	default:
 		return defaultContextWeights()
@@ -228,7 +222,7 @@ func (m *MeiliIndexer) ClusterStats() map[string]any {
 		}
 	}
 	indexes := map[string]any{}
-	for _, uid := range []string{meiliMemoriesIndex, meiliSkillsIndex, meiliNodesIndex, meiliSymbolsIndex} {
+	for _, uid := range []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols} {
 		docCount := 0
 		if idx, ok := stats.Indexes[uid]; ok {
 			docCount = int(idx.NumberOfDocuments)

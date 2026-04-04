@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -21,11 +22,14 @@ type upsertCall struct {
 }
 
 type managerStub struct {
+	mu      sync.Mutex
 	upserts []upsertCall
 	deletes []string
 }
 
 func (m *managerStub) UpsertFileContextNode(_ context.Context, uri, name, abstractText, overviewText, content, parentURI, project string, metadata map[string]any) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.upserts = append(m.upserts, upsertCall{
 		URI: uri, Name: name, Abstract: abstractText, Overview: overviewText, Content: content, Parent: parentURI, Project: project, Metadata: metadata,
 	})
@@ -33,6 +37,8 @@ func (m *managerStub) UpsertFileContextNode(_ context.Context, uri, name, abstra
 }
 
 func (m *managerStub) DeleteContextNode(_ context.Context, uri string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.deletes = append(m.deletes, uri)
 	return nil
 }

@@ -20,7 +20,7 @@ func (s *parityStubService) Health() map[string]any {
 	return map[string]any{"ok": true, "service": "contextsrv"}
 }
 func (s *parityStubService) ClusterStats() map[string]any {
-	return map[string]any{"ok": true, "indexes": []string{"contextfs_memories", "contextfs_skills", "contextfs_context_nodes"}}
+	return map[string]any{"ok": true, "indexes": []string{IndexMemories, IndexSkills, IndexNodes}}
 }
 func (s *parityStubService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 	fixed := time.Date(2026, 4, 4, 12, 0, 0, 0, time.UTC)
@@ -71,13 +71,13 @@ func (s *parityStubService) DeleteContextNode(uri string) error { return nil }
 func (s *parityStubService) Search(opts SearchOptions) (map[string]any, error) {
 	s.lastSearch = opts
 	return map[string]any{
-		"memories":     []map[string]any{},
-		"skills":       []map[string]any{},
-		"contextNodes": []map[string]any{},
+		StoreMemories:     []map[string]any{},
+		StoreSkills:       []map[string]any{},
+		StoreContextNodes: []map[string]any{},
 	}, nil
 }
 func (s *parityStubService) Dashboard(limit int, project string) (map[string]any, error) {
-	return map[string]any{"skills": []any{}, "memories": []any{}, "contextNodes": []any{}}, nil
+	return map[string]any{StoreSkills: []any{}, StoreMemories: []any{}, StoreContextNodes: []any{}}, nil
 }
 func (s *parityStubService) VibeQuery(prompt, project string, topK int) (VibeQueryResult, error) {
 	return VibeQueryResult{Reasoning: "ok", Results: []VibeSearchGroup{}}, nil

@@ -24,16 +24,16 @@ func (r *PostgresRepository) SearchText(ctx context.Context, opts SearchOptions)
 	queryTokens := tokenizeForSearch(opts.Query)
 	if len(queryTokens) == 0 {
 		return map[string]any{
-			"memories":     []map[string]any{},
-			"skills":       []map[string]any{},
-			"contextNodes": []map[string]any{},
+			StoreMemories:     []map[string]any{},
+			StoreSkills:       []map[string]any{},
+			StoreContextNodes: []map[string]any{},
 		}, nil
 	}
 
 	q := "%" + strings.ToLower(opts.Query) + "%"
 	out := map[string]any{}
 
-	if store == "all" || store == "memories" {
+	if store == StoreAll || store == StoreMemories {
 		rows, err := r.db.QueryContext(ctx, `
 			SELECT id, content, importance, created_at
 			FROM memories
@@ -63,10 +63,10 @@ func (r *PostgresRepository) SearchText(ctx context.Context, opts SearchOptions)
 			items = append(items, scoredDoc{score: score, doc: doc})
 		}
 		rows.Close()
-		out["memories"] = finalizeScoredDocs(items, topK, opts.MinScore)
+		out[StoreMemories] = finalizeScoredDocs(items, topK, opts.MinScore)
 	}
 
-	if store == "all" || store == "skills" {
+	if store == StoreAll || store == StoreSkills {
 		rows, err := r.db.QueryContext(ctx, `
 			SELECT id, name, description, created_at
 			FROM skills
@@ -98,10 +98,10 @@ func (r *PostgresRepository) SearchText(ctx context.Context, opts SearchOptions)
 			items = append(items, scoredDoc{score: score, doc: doc})
 		}
 		rows.Close()
-		out["skills"] = finalizeScoredDocs(items, topK, opts.MinScore)
+		out[StoreSkills] = finalizeScoredDocs(items, topK, opts.MinScore)
 	}
 
-	if store == "all" || store == "context" {
+	if store == StoreAll || store == StoreContext {
 		rows, err := r.db.QueryContext(ctx, `
 			SELECT uri, name, abstract, content, created_at
 			FROM context_nodes
@@ -134,7 +134,7 @@ func (r *PostgresRepository) SearchText(ctx context.Context, opts SearchOptions)
 			items = append(items, scoredDoc{score: score, doc: doc})
 		}
 		rows.Close()
-		out["contextNodes"] = finalizeScoredDocs(items, topK, opts.MinScore)
+		out[StoreContextNodes] = finalizeScoredDocs(items, topK, opts.MinScore)
 	}
 	return out, nil
 }

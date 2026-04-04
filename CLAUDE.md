@@ -4,13 +4,13 @@ A dynamic context and memory storage system for coding agents. Provides native h
 
 ## Tech Stack
 
-- **Runtime:** Bun 1+, TypeScript (ES2022, CommonJS)
+- **Runtime:** Go 1.25+
 - **Database:** Meilisearch 1.12+ (Docker)
 - **Search:** Native hybrid — vector cosine similarity + full-text + app-side re-ranking (importance, recency decay)
 - **Embeddings:** Google Gemini (`gemini-embedding-001`, 3072 dims)
 - **Frontend:** Svelte 5 + Vite
-- **Testing:** Vitest
-- **Linting:** oxlint
+- **Testing:** Go testing (`go test`)
+- **Linting:** Go vet (`go vet`)
 
 ## Setup
 
@@ -28,13 +28,10 @@ bun run setup           # create Meilisearch indexes (destructive — drops and 
 |---|---|
 | `docker compose up -d` | Start Meilisearch container |
 | `docker compose down` | Stop Meilisearch container |
-| `bun run link` | Build and install `context-cli` globally via `bun link` |
-| `bun run build` | Compile TypeScript → `dist/` |
-| `bun run typecheck` | Type-check without emit |
-| `bun run lint` | Run oxlint on `mairu/contextfs/src/` |
-| `bun run test` | Run Vitest tests once |
-| `bun run test:watch` | Vitest in watch mode |
-| `bun run clean` | Remove `dist/` |
+| `make build` | Compile Go binary to `mairu/bin/` |
+| `make test` | Run Go tests |
+| `make lint` | Run go vet |
+| `make clean` | Remove `mairu/bin/` |
 | `bun run setup` | Init/reset Meilisearch indexes |
 | `bun run dashboard:api` | Start REST API on port 8787 |
 | `bun run dashboard:dev` | Start Svelte dev server on port 5173 |
@@ -91,21 +88,21 @@ Weights (vector, keyword, recency, importance) are defined in `scorer.ts`.
 
 | File | Role |
 |---|---|
-| `mairu/contextfs/src/storage/meilisearchDB.ts` | DB layer: CRUD, hybrid search (vector + full-text + re-ranking), tree queries |
-| `mairu/contextfs/src/storage/contextManager.ts` | High-level API used by CLI |
-| `mairu/contextfs/src/storage/embedder.ts` | Gemini embedding calls |
-| `mairu/contextfs/src/storage/scorer.ts` | Hybrid weight definitions |
-| `mairu/contextfs/src/llm/llmRouter.ts` | LLM-powered deduplication (CREATE / UPDATE / SKIP) |
-| `mairu/contextfs/src/llm/ingestor.ts` | Free-form text → structured context nodes |
-| `mairu/contextfs/src/llm/vibeEngine.ts` | LLM-driven free-text query planning and mutation planning |
-| `mairu/contextfs/src/cli.ts` | CLI entry point |
-| `mairu/contextfs/src/dashboardApi.ts` | REST API for dashboard |
-| `mairu/contextfs/src/eval/evaluate.ts` | Evaluation harness entry point |
-| `mairu/contextfs/src/daemon.ts` | File watcher daemon: parallel processing, persistent cache, NL content assembly |
-| `mairu/contextfs/src/ast/languageDescriber.ts` | Pluggable interface for language-specific AST extraction + shared types/utilities |
-| `mairu/contextfs/src/ast/typescriptDescriber.ts` | TypeScript/JS implementation of LanguageDescriber (ts-morph based) |
-| `mairu/contextfs/src/ast/nlDescriber.ts` | AST-to-English engine: converts function bodies to numbered NL descriptions |
-| `mairu/contextfs/src/ast/nlEnricher.ts` | Post-enrichment pass: injects cross-function context into NL descriptions |
+| `mairu/internal/db/meilisearchDB.go` | DB layer: CRUD, hybrid search (vector + full-text + re-ranking), tree queries |
+| `mairu/internal/contextsrv/service.go` | High-level API used by CLI |
+| `mairu/internal/llm/embedder.go` | Gemini embedding calls |
+| `mairu/internal/contextsrv/scorer.go` | Hybrid weight definitions |
+| `mairu/internal/llm/router.go` | LLM-powered deduplication (CREATE / UPDATE / SKIP) |
+| `mairu/internal/llm/ingestor.go` | Free-form text → structured context nodes |
+| `mairu/internal/contextsrv/vibe.go` | LLM-driven free-text query planning and mutation planning |
+| `mairu/cmd/mairu/main.go` | CLI entry point |
+| `mairu/internal/web/server.go` | REST API for dashboard |
+| `mairu/internal/eval/evaluate.go` | Evaluation harness entry point |
+| `mairu/internal/daemon/daemon.go` | File watcher daemon: parallel processing, persistent cache, NL content assembly |
+| `mairu/internal/ast/language_describer.go` | Pluggable interface for language-specific AST extraction + shared types/utilities |
+| `mairu/internal/ast/typescript_describer.go` | TypeScript/JS implementation of LanguageDescriber (tree-sitter based) |
+| `mairu/internal/ast/nl_describer.go` | AST-to-English engine: converts function bodies to numbered NL descriptions |
+| `mairu/internal/ast/nl_enricher.go` | Post-enrichment pass: injects cross-function context into NL descriptions |
 
 ### AST Ingestion (Daemon)
 
@@ -131,7 +128,7 @@ The daemon watches a directory for TS/JS file changes and produces human-readabl
 - **Persistent hash cache** — `.contextfs-cache.json` persists fingerprint/content/payload hashes so daemon restarts skip unchanged files
 - **Triple-layer dedup** — file stat fingerprint → content SHA1 → payload SHA1 prevents unnecessary re-indexing
 
-**Pluggable interface** — `LanguageDescriber` is designed for future language support. Currently only TypeScript/JS (via ts-morph). To add a new language, implement the interface with `languageId`, `extensions`, and `extractFileGraph()`.
+**Pluggable interface** — `LanguageDescriber` is designed for future language support. Currently only TypeScript/JS (via tree-sitter). To add a new language, implement the interface with `languageId`, `extensions`, and `extractFileGraph()`.
 
 ### Hierarchical Context (Tree Queries)
 

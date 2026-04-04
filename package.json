@@ -1,57 +1,30 @@
 {
   "name": "mairu",
   "version": "2.0.0",
-  "description": "Mairu monorepo: Go coding agent, context server, and TypeScript context engine with dashboard.",
+  "description": "Mairu monorepo: Go coding agent, context server, and context engine with dashboard.",
   "license": "ISC",
   "private": false,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE",
-    "CHANGELOG.md"
-  ],
-  "bin": {
-    "mairu-context": "dist/cli.js",
-    "context-cli": "dist/cli.js",
-    "ctx": "dist/cli.js"
-  },
   "engines": {
     "bun": ">=1"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
-  },
   "scripts": {
-    "clean": "rm -rf dist mairu/bin",
-    "build": "bun run mairu:build && tsc",
+    "clean": "rm -rf mairu/bin",
+    "build": "bun run mairu:build",
     "mairu:build": "mkdir -p mairu/bin && go build -C mairu -o bin/mairu-agent ./cmd/mairu",
-    "context:build": "bun run mairu:build",
-    "context:test": "go test -C mairu ./...",
     "mairu:web": "./mairu/bin/mairu-agent web -p 8080",
     "mairu:context-server": "bun run mairu:build && ./mairu/bin/mairu-agent context-server -p 8788",
     "mairu:dashboard": "bun run mairu:build && docker compose up -d meilisearch && bun run mairu:web",
-    "typecheck": "tsc --noEmit",
     "setup": "bun run mairu:build && ./mairu/bin/mairu-agent setup",
     "eval:retrieval": "bun run mairu:build && ./mairu/bin/mairu-agent eval:retrieval",
     "eval:seed": "bun run mairu:build && ./mairu/bin/mairu-agent seed",
     "eval:full": "bun run eval:retrieval",
-    "eval:ablation": "echo 'Ablation eval not supported in Go'",
     "dashboard:api": "bun run mairu:context-server",
     "dashboard:dev": "bun run --cwd mairu/ui dev",
     "dashboard": "bun run --parallel dashboard:api dashboard:dev",
     "dashboard:build": "bun run --cwd mairu/ui build",
-    "sync:notion": "bun mairu/contextfs/src/notionSync.ts",
     "test": "go test -C mairu ./...",
     "test:coverage": "go test -C mairu -cover ./...",
-    "test:watch": "echo 'Watch not natively supported for Go tests'",
-    "lint": "oxlint mairu/contextfs/src && go vet -C mairu ./...",
-    "link": "bun run build && bun link",
-    "prepublishOnly": "bun run clean && bun run build"
+    "lint": "go vet -C mairu ./..."
   },
   "keywords": [
     "agents",
@@ -63,27 +36,6 @@
     "semantic-search"
   ],
   "author": "",
-  "dependencies": {
-    "@google/genai": "^1.45.0",
-    "@modelcontextprotocol/sdk": "^1.28.0",
-    "@mozilla/readability": "^0.6.0",
-    "@repomix/tree-sitter-wasms": "^0.1.16",
-    "chokidar": "^5.0.0",
-    "commander": "^14.0.3",
-    "dotenv": "^17.3.1",
-    "linkedom": "^0.18.12",
-    "meilisearch": "^0.57.0",
-    "playwright": "^1.58.2",
-    "turndown": "^7.2.2",
-    "web-tree-sitter": "^0.26.7"
-  },
-  "devDependencies": {
-    "@types/mozilla-readability": "^0.2.1",
-    "@types/node": "^22.0.0",
-    "@types/turndown": "^5.0.6",
-    "@vitest/coverage-v8": "^2.0.0",
-    "oxlint": "^1.56.0",
-    "typescript": "^5.0.0",
-    "vitest": "^2.0.0"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
