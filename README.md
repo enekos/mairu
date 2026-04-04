@@ -18,8 +18,8 @@ Unified monorepo for:
 │   ├── scripts/             # Local Meilisearch helper script
 │   └── ui/                  # Unified Mairu dashboard UI (Svelte) & Go app frontend
 ├── docs/                    # Specs and project docs
-├── package.json             # Monorepo task runner scripts
-└── Makefile                 # Dev shortcuts
+├── package.json             # UI-only Bun scripts
+└── Makefile                 # Go + monorepo dev workflows
 ```
 
 ## Requirements
@@ -57,13 +57,44 @@ make mairu-web        # Mairu agent web UI
 
 | Command | Description |
 |---|---|
-| `bun run build` | Build Go `mairu-agent` binary |
-| `bun run test` | Run Go test suite |
-| `bun run lint` | Run Go vet |
-| `bun run setup` | Initialize/reset Meilisearch indexes (destructive) |
-| `bun run dashboard` | Run context server + unified Mairu dashboard UI |
-| `bun run mairu:build` | Build Go `mairu-agent` binary |
-| `bun run mairu:web` | Launch Mairu web UI |
+| `make mairu-build` | Build Go `mairu-agent` binary |
+| `make test-go` | Run Go test suite |
+| `make lint-go` | Run Go lint (`golangci-lint` or fallback `go vet`) |
+| `make check-go` | Run Go fmt check + lint + tests |
+| `make check-go-ci` | Run CI-grade Go checks (fmt + lint + race) |
+| `make install-hooks` | Install local pre-commit hook (`make check-go`) |
+| `make setup` | Initialize/reset Meilisearch indexes (destructive) |
+| `make dashboard` | Run context server + unified Mairu dashboard UI |
+| `make mairu-web` | Launch Mairu web UI |
+| `bun run dashboard:dev` | Run UI-only dev server |
+| `bun run dashboard:build` | Build UI-only frontend bundle |
+
+### Go Dev Tooling
+
+For stricter linting, install `golangci-lint` once:
+
+```bash
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+```
+
+If `golangci-lint` is not installed, the tooling falls back to `go vet`.
+
+Useful commands:
+
+```bash
+make fmt-go
+make fmt-go-check
+make test-go-race
+make test-go-cover
+make check-go
+make check-go-ci
+```
+
+Optional pre-commit hook:
+
+```bash
+make install-hooks
+```
 
 ## Local Meilisearch (No Docker)
 
@@ -81,7 +112,7 @@ Script path: `mairu/scripts/meili-local.sh`.
 With the latest features, the Go CLI implements the ContextFS API fully via the `mairu-agent` binary:
 
 ```bash
-bun run mairu:build
+make mairu-build
 
 # Context Server APIs
 ./mairu/bin/mairu-agent memory search "auth token" -P my-project -k 5

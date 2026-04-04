@@ -8,23 +8,9 @@
     "bun": ">=1"
   },
   "scripts": {
-    "clean": "rm -rf mairu/bin",
-    "build": "bun run mairu:build",
-    "mairu:build": "mkdir -p mairu/bin && go build -C mairu -o bin/mairu-agent ./cmd/mairu",
-    "mairu:web": "./mairu/bin/mairu-agent web -p 8080",
-    "mairu:context-server": "bun run mairu:build && ./mairu/bin/mairu-agent context-server -p 8788",
-    "mairu:dashboard": "bun run mairu:build && docker compose up -d meilisearch && bun run mairu:web",
-    "setup": "bun run mairu:build && ./mairu/bin/mairu-agent setup",
-    "eval:retrieval": "bun run mairu:build && ./mairu/bin/mairu-agent eval:retrieval",
-    "eval:seed": "bun run mairu:build && ./mairu/bin/mairu-agent seed",
-    "eval:full": "bun run eval:retrieval",
-    "dashboard:api": "bun run mairu:context-server",
     "dashboard:dev": "bun run --cwd mairu/ui dev",
-    "dashboard": "bun run --parallel dashboard:api dashboard:dev",
     "dashboard:build": "bun run --cwd mairu/ui build",
-    "test": "go test -C mairu ./...",
-    "test:coverage": "go test -C mairu -cover ./...",
-    "lint": "go vet -C mairu ./..."
+    "dashboard:check": "bun run --cwd mairu/ui check"
   },
   "keywords": [
     "agents",

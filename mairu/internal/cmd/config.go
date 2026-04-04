@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Config represents the local CLI configuration settings.
 type Config struct {
 	GeminiAPIKey string `json:"gemini_api_key"`
 }
@@ -23,6 +24,7 @@ func getConfigPath() (string, error) {
 	return filepath.Join(configDir, "config.json"), nil
 }
 
+// SaveConfig persists the given configuration to the local filesystem.
 func SaveConfig(cfg Config) error {
 	path, err := getConfigPath()
 	if err != nil {
@@ -35,6 +37,7 @@ func SaveConfig(cfg Config) error {
 	return os.WriteFile(path, data, 0600)
 }
 
+// LoadConfig retrieves the configuration from the local filesystem.
 func LoadConfig() (Config, error) {
 	var cfg Config
 	path, err := getConfigPath()
@@ -52,6 +55,7 @@ func LoadConfig() (Config, error) {
 	return cfg, err
 }
 
+// GetAPIKey looks up the Gemini API key, preferring environment variables over config.
 func GetAPIKey() string {
 	if key := os.Getenv("GEMINI_API_KEY"); key != "" {
 		return cleanAPIKey(key)

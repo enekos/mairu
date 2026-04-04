@@ -3,6 +3,8 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 .PHONY: help install install-dashboard setup build lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web
+.PHONY: fmt-go fmt-go-check lint-go test-go test-go-race test-go-cover check-go check-go-ci install-hooks
+.PHONY: eval-retrieval eval-seed
 .PHONY: meili-up meili-down meili-status meili-clean setup-no-docker dev-no-docker mairu-no-docker
 
 help:
@@ -14,6 +16,10 @@ help:
 	@echo "  make build              Build Go output"
 	@echo "  make lint               Run Go vet"
 	@echo "  make test               Run Go tests"
+	@echo "  make fmt-go             Format Go code"
+	@echo "  make check-go           Run fmt check + lint + tests"
+	@echo "  make check-go-ci        Run CI-grade Go checks (includes race)"
+	@echo "  make install-hooks      Install local git pre-commit hook"
 	@echo "  make clean              Remove dist artifacts"
 	@echo
 	@echo "Runtime:"
@@ -38,34 +44,74 @@ install-dashboard:
 	bun install --cwd mairu/ui
 
 setup:
-	bun run setup
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent setup
 
 build:
-	bun run mairu:build
+	$(MAKE) mairu-build
 
 lint:
-	go vet -C mairu ./...
+	$(MAKE) lint-go
 
 test:
-	go test -C mairu ./...
+	$(MAKE) test-go
+
+fmt-go:
+	./mairu/scripts/go-dev.sh fmt
+
+fmt-go-check:
+	./mairu/scripts/go-dev.sh fmt-check
+
+lint-go:
+	./mairu/scripts/go-dev.sh lint
+
+test-go:
+	./mairu/scripts/go-dev.sh test
+
+test-go-race:
+	./mairu/scripts/go-dev.sh test-race
+
+test-go-cover:
+	./mairu/scripts/go-dev.sh coverage
+
+check-go:
+	./mairu/scripts/go-dev.sh check
+
+check-go-ci:
+	./mairu/scripts/go-dev.sh check-ci
+
+install-hooks:
+	./scripts/install-hooks.sh
 
 clean:
-	bun run clean
+	rm -rf mairu/bin
 
 dashboard-api:
-	bun run dashboard:api
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent context-server -p 8788
 
 dashboard-dev:
-	bun run dashboard:dev
+	bun run --cwd mairu/ui dev
 
 dashboard:
-	bun run dashboard
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent context-server -p 8788 & bun run --cwd mairu/ui dev
 
 mairu-build:
-	bun run mairu:build
+	mkdir -p mairu/bin
+	go build -C mairu -o bin/mairu-agent ./cmd/mairu
 
 mairu-web:
-	bun run mairu:web
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent web -p 8080
+
+eval-retrieval:
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent eval:retrieval
+
+eval-seed:
+	$(MAKE) mairu-build
+	./mairu/bin/mairu-agent seed
 
 meili-up:
 	./mairu/scripts/meili-local.sh up
@@ -82,7 +128,7 @@ meili-clean:
 setup-no-docker: install install-dashboard meili-up setup
 
 dev-no-docker: meili-up
-	bun run dashboard
+	$(MAKE) dashboard
 
 mairu-no-docker: meili-up mairu-build
 	./mairu/bin/mairu-agent web -p 8080

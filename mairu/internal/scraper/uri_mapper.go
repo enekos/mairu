@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+const URIPrefix = "contextfs://scraped/"
+
 func domainSlug(host string) string {
 	host = strings.ToLower(host)
 	host = strings.TrimPrefix(host, "www.")
@@ -32,7 +34,7 @@ var nonAlnumRegex = regexp.MustCompile(`[^a-z0-9]+`)
 func URLToURI(rawURL string, sectionHeading ...string) string {
 	parsed, err := url.Parse(rawURL)
 	if err != nil {
-		return "contextfs://scraped/invalid"
+		return URIPrefix + "invalid"
 	}
 	slug := domainSlug(parsed.Host)
 
@@ -44,7 +46,7 @@ func URLToURI(rawURL string, sectionHeading ...string) string {
 		}
 	}
 
-	base := "contextfs://scraped/" + slug
+	base := URIPrefix + slug
 	if len(validParts) > 0 {
 		base += "/" + strings.Join(validParts, "/")
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strings"
+
+	"mairu/internal/prompts"
 )
 
 type LLMClient interface {
@@ -50,23 +52,13 @@ func DecideMemoryAction(ctx context.Context, client LLMClient, newContent string
 	}
 	candidateList := strings.Join(list, "\n---\n")
 
-	prompt := fmt.Sprintf(`You are managing an AI agent's memory database. Decide what to do with new incoming information.
-
-NEW INFORMATION:
-%s
-
-EXISTING SIMILAR MEMORIES:
-%s
-
-Rules:
-- "create": the new information is genuinely new, adds detail not captured by any existing memory
-- "update": an existing memory should be enriched/corrected. Provide merged content that combines both into one complete sentence/fact. Use the ID of the single best matching memory as targetId.
-- "skip": the new information is already fully captured by an existing memory
-
-Respond with ONLY a JSON object:
-- {"action":"create"}
-- {"action":"update","targetId":"<exact id>","mergedContent":"<merged text>"}
-- {"action":"skip","reason":"<brief reason>"}`, newContent, candidateList)
+	prompt := prompts.Render("router_memory_action", struct {
+		NewContent    string
+		CandidateList string
+	}{
+		NewContent:    newContent,
+		CandidateList: candidateList,
+	})
 
 	decision, err := client.GenerateJSON(ctx, "system", prompt)
 	if err != nil {
@@ -112,25 +104,17 @@ func DecideContextAction(ctx context.Context, client LLMClient, uri, name, abstr
 	}
 	candidateList := strings.Join(list, "\n---\n")
 
-	prompt := fmt.Sprintf(`You are managing a hierarchical context database for a software project. Decide what to do with a new context node.
-
-NEW NODE:
-URI: %s
-NAME: %s
-ABSTRACT: %s
-
-EXISTING SIMILAR NODES:
-%s
-
-Rules:
-- "create": the new node covers genuinely new territory
-- "update": an existing node should have its abstract enriched. Provide merged abstract as mergedContent. Use the existing node's URI as targetId.
-- "skip": the new node is already fully covered by an existing node
-
-Respond with ONLY a JSON object:
-- {"action":"create"}
-- {"action":"update","targetId":"<exact uri>","mergedContent":"<merged abstract>"}
-- {"action":"skip","reason":"<brief reason>"}`, uri, name, abstract, candidateList)
+	prompt := prompts.Render("router_context_action", struct {
+		URI           string
+		Name          string
+		Abstract      string
+		CandidateList string
+	}{
+		URI:           uri,
+		Name:          name,
+		Abstract:      abstract,
+		CandidateList: candidateList,
+	})
 
 	decision, err := client.GenerateJSON(ctx, "system", prompt)
 	if err != nil {

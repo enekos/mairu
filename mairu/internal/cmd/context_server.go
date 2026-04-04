@@ -30,9 +30,15 @@ var contextServerCmd = &cobra.Command{
 		cfg := contextsrv.LoadConfig()
 		cfg.Port = port
 		cfg.PostgresDSN = pgDSN
-		cfg.MeiliURL = meiliURL
-		cfg.MeiliAPIKey = meiliAPIKey
-		cfg.AuthToken = authToken
+		if meiliURL != "" {
+			cfg.MeiliURL = meiliURL
+		}
+		if meiliAPIKey != "" {
+			cfg.MeiliAPIKey = meiliAPIKey
+		}
+		if authToken != "" {
+			cfg.AuthToken = authToken
+		}
 		cfg.EnableProjector = enableProjector
 
 		app, err := contextsrv.NewApp(cfg)

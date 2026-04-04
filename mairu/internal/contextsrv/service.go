@@ -87,9 +87,18 @@ func (s *AppService) Health() map[string]any {
 // Search performs a search across memories, skills, and/or context nodes.
 func (s *AppService) Search(opts SearchOptions) (map[string]any, error) {
 	if s.searchBackend != nil {
-		if out, err := s.searchBackend.Search(opts); err == nil {
+		out, err := s.searchBackend.Search(opts)
+		if err == nil {
 			return out, nil
 		}
+		// Log the underlying search error but fall through to DB search.
+		// (In a real app, use a logger; here we can return it if repo is nil)
+		if s.repo == nil {
+			return nil, err
+		}
+	}
+	if s.repo == nil {
+		return nil, errors.New("no search backend and no repository configured")
 	}
 	return s.repo.SearchText(context.Background(), opts)
 }

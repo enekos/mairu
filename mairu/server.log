@@ -1,0 +1,36 @@
+Starting context server on port 8788...
+
+
+[31m2026/04/04 22:03:36 [Recovery] 2026/04/04 - 22:03:36 panic recovered:
+runtime error: invalid memory address or nil pointer dereference
+/opt/homebrew/Cellar/go/1.25.1/libexec/src/runtime/panic.go:262 (0x100d59587)
+	panicmem: panic(memoryError)
+/opt/homebrew/Cellar/go/1.25.1/libexec/src/runtime/signal_unix.go:925 (0x100d59558)
+	sigpanic: panicmem()
+/Users/enekosarasola/contextfs/mairu/internal/contextsrv/service_context.go:65 (0x101a6f084)
+	(*AppService).CreateContextNode: out, err := s.repo.CreateContextNode(context.Background(), input)
+/Users/enekosarasola/contextfs/mairu/internal/contextsrv/handler_context.go:24 (0x101a60617)
+	(*Handler).createContext: out, err := h.svc.CreateContextNode(ContextCreateInput{
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 (0x10185f673)
+	(*Context).Next: c.handlers[c.index](c)
+/Users/enekosarasola/contextfs/mairu/internal/contextsrv/server.go:22 (0x101a6de47)
+	NewHandler.func1: c.Next()
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 (0x10185f673)
+	(*Context).Next: c.handlers[c.index](c)
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/recovery.go:90 (0x10186d3af)
+	CustomRecoveryWithWriter.func1: c.Next()
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/context.go:192 (0x10185f673)
+	(*Context).Next: c.handlers[c.index](c)
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:722 (0x10186b717)
+	(*Engine).handleHTTPRequest: c.Next()
+/Users/enekosarasola/go/pkg/mod/github.com/gin-gonic/gin@v1.12.0/gin.go:672 (0x10186b1bb)
+	(*Engine).ServeHTTP: c.Next()
+/Users/enekosarasola/contextfs/mairu/internal/contextsrv/server.go:110 (0x101a6e067)
+	(*Handler).ServeHTTP: h.engine.ServeHTTP(w, r)
+/opt/homebrew/Cellar/go/1.25.1/libexec/src/net/http/server.go:3340 (0x100fd3b7f)
+	serverHandler.ServeHTTP: handler.ServeHTTP(rw, req)
+/opt/homebrew/Cellar/go/1.25.1/libexec/src/net/http/server.go:2109 (0x100fb5ce7)
+	(*conn).serve: handler.ServeHTTP(rw, req)
+/opt/homebrew/Cellar/go/1.25.1/libexec/src/runtime/asm_arm64.s:1268 (0x100d5f5e3)
+	goexit: MOVD	R0, R0	// NOP
+[0m

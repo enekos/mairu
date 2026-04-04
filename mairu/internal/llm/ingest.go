@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"mairu/internal/core"
+	"mairu/internal/prompts"
 )
 
 const (
@@ -74,7 +75,13 @@ func ParseTextIntoContextNodes(ctx context.Context, gen ContentGenerator, model,
 		baseURI = "contextfs://ingested"
 	}
 
-	prompt := fmt.Sprintf("Extract context nodes as a JSON array for base URI %s.\nTEXT:\n%s", baseURI, text)
+	prompt := prompts.Render("ingest_context_nodes", struct {
+		BaseURI string
+		Text    string
+	}{
+		BaseURI: baseURI,
+		Text:    text,
+	})
 	raw, err := generateWithRetry(ctx, gen, model, prompt, 1)
 	if err != nil {
 		return nil, err

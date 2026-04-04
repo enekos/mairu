@@ -10,7 +10,6 @@ import (
 	"github.com/meilisearch/meilisearch-go"
 )
 
-
 type MeiliIndexer struct {
 	client   meilisearch.ServiceManager
 	embedder Embedder

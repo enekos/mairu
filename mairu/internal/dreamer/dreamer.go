@@ -7,13 +7,21 @@ import (
 	"time"
 
 	"mairu/internal/core"
+	"mairu/internal/prompts"
 )
 
 func BuildPrompt(goal string, context []string) string {
-	if len(context) == 0 {
-		return "Goal: " + goal
+	contextBlock := ""
+	if len(context) > 0 {
+		contextBlock = "- " + strings.Join(context, "\n- ")
 	}
-	return "Goal: " + goal + "\nContext:\n- " + strings.Join(context, "\n- ")
+	return prompts.Render("dreamer_build_prompt", struct {
+		Goal         string
+		ContextBlock string
+	}{
+		Goal:         goal,
+		ContextBlock: contextBlock,
+	})
 }
 
 const (
@@ -136,7 +144,13 @@ func (e *Engine) DeductionPass(project string) error {
 		for i, c := range similar {
 			candidateList = append(candidateList, fmt.Sprintf("[%d] ID: %s | Created: %s | Content: %s", i, c.ID, c.CreatedAt.Format(time.RFC3339), c.Content))
 		}
-		prompt := "Memory consolidation decisions.\nSource: " + memory.Content + "\nCandidates:\n" + strings.Join(candidateList, "\n")
+		prompt := prompts.Render("dreamer_deduction", struct {
+			Source     string
+			Candidates string
+		}{
+			Source:     memory.Content,
+			Candidates: strings.Join(candidateList, "\n"),
+		})
 		text, err := e.LLM.Generate(prompt)
 		if err != nil {
 			continue
@@ -222,7 +236,11 @@ func (e *Engine) InductionPass(project string) error {
 		for i, m := range cluster {
 			memberLines = append(memberLines, fmt.Sprintf("[%d] (%s, importance: %d): %s", i, m.Category, m.Importance, m.Content))
 		}
-		prompt := "Pattern extraction.\nMemories:\n" + strings.Join(memberLines, "\n")
+		prompt := prompts.Render("dreamer_induction", struct {
+			Memories string
+		}{
+			Memories: strings.Join(memberLines, "\n"),
+		})
 		text, err := e.LLM.Generate(prompt)
 		if err != nil {
 			continue
