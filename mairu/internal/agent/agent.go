@@ -65,11 +65,15 @@ func (a *Agent) SetModel(modelName string) {
 }
 
 type AgentEvent struct {
-	Type       string         `json:"Type"` // "text", "status", "error", "done", "tool_call", "tool_result"
+	Type       string         `json:"Type"` // "text", "status", "error", "done", "tool_call", "tool_result", "log"
 	Content    string         `json:"Content"`
 	ToolName   string         `json:"ToolName,omitempty"`
 	ToolArgs   map[string]any `json:"ToolArgs,omitempty"`
 	ToolResult map[string]any `json:"ToolResult,omitempty"`
+}
+
+func (a *Agent) emitLog(outChan chan<- AgentEvent, format string, args ...any) {
+	outChan <- AgentEvent{Type: "log", Content: fmt.Sprintf(format, args...)}
 }
 
 func (a *Agent) loadContextFiles() string {
@@ -107,8 +111,10 @@ func (a *Agent) loadContextFiles() string {
 func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 	defer close(outChan)
 
+	a.emitLog(outChan, "Agent RunStream started")
 	if err := a.CompactContext(); err != nil {
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Warning: Failed to compact context: %v", err)}
+		a.emitLog(outChan, "Failed to compact context: %v", err)
 	}
 
 	fullPrompt := prompt
@@ -124,13 +130,16 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 		systemPrompt += fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
 
 		fullPrompt = systemPrompt + "\n\nUser Request: " + prompt
+		a.emitLog(outChan, "Initialized new session with context length: %d chars", len(systemPrompt))
 	}
 
+	a.emitLog(outChan, "Sending prompt to LLM (length: %d)", len(fullPrompt))
 	a.processLoopStream(fullPrompt, outChan)
 }
 
 func (a *Agent) processLoopStream(input string, outChan chan<- AgentEvent) {
 	iter := a.llm.ChatStream(context.Background(), input)
+	a.emitLog(outChan, "LLM ChatStream established")
 	a.handleIterator(iter, outChan)
 }
 
@@ -147,6 +156,10 @@ func (a *Agent) handleIterator(iter *genai.GenerateContentResponseIterator, outC
 
 		if len(resp.Candidates) == 0 {
 			continue
+		}
+
+		if resp.UsageMetadata != nil {
+			a.emitLog(outChan, "Token Usage: prompt=%d, candidates=%d, total=%d", resp.UsageMetadata.PromptTokenCount, resp.UsageMetadata.CandidatesTokenCount, resp.UsageMetadata.TotalTokenCount)
 		}
 
 		var functionCalls []genai.FunctionCall
@@ -167,11 +180,13 @@ func (a *Agent) handleIterator(iter *genai.GenerateContentResponseIterator, outC
 				wg.Add(1)
 				go func(idx int, fc genai.FunctionCall) {
 					defer wg.Done()
+					a.emitLog(outChan, "Executing tool call: %s", fc.Name)
 					res := a.executeToolCall(fc, outChan)
 					results[idx] = llm.FunctionResponsePayload{
 						Name:     fc.Name,
 						Response: res,
 					}
+					a.emitLog(outChan, "Tool call %s completed", fc.Name)
 				}(i, funcCall)
 			}
 			wg.Wait()
@@ -185,6 +200,7 @@ func (a *Agent) handleIterator(iter *genai.GenerateContentResponseIterator, outC
 }
 
 func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- AgentEvent) map[string]any {
+	a.emitLog(outChan, "Tool args for %s: %v", funcCall.Name, funcCall.Args)
 	outChan <- AgentEvent{
 		Type:     "tool_call",
 		Content:  fmt.Sprintf("🔧 Tool Call: %s", funcCall.Name),
@@ -399,6 +415,8 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 		ToolName:   funcCall.Name,
 		ToolResult: result,
 	}
+
+	a.emitLog(outChan, "Tool %s result: %v", funcCall.Name, result)
 
 	return result
 }

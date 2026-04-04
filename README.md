@@ -36,6 +36,14 @@ Unified monorepo for:
 
 ## Quickstart
 
+The easiest way to set up Mairu locally (without Docker) is using the bootstrap script:
+
+```bash
+./bootstrap.sh
+```
+
+If you prefer to set up manually:
+
 ```bash
 cp .env.example .env
 bun install

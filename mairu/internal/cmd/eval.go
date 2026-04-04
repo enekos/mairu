@@ -44,10 +44,25 @@ var evalCmd = &cobra.Command{
 
 		// embedder logic
 		// we don't strictly need embedder if we just search, but meili needs it.
+
+		pgDSN := os.Getenv("CONTEXT_SERVER_POSTGRES_DSN")
+		if pgDSN == "" {
+			pgDSN = "postgres://localhost/mairudb?sslmode=disable"
+		}
+		repo, err := contextsrv.NewPostgresRepository(pgDSN)
+		if err != nil {
+			return fmt.Errorf("failed to connect to db: %w", err)
+		}
+
 		meili := contextsrv.NewMeiliIndexer(meiliURL, meiliKey, nil)
-		svc := contextsrv.NewServiceWithSearch(nil, meili, nil)
+		svc := contextsrv.NewServiceWithSearch(repo, meili, nil)
 
 		_ = eval.SeedFixtures(ctx, svc, dataset.Fixtures)
+
+		// Run projector once to sync fixtures to Meilisearch
+		projector := contextsrv.NewProjector(repo, meili, nil)
+		_, _ = projector.RunOnce(ctx, 100)
+
 		defer eval.CleanupFixtures(ctx, svc, dataset.Fixtures)
 
 		searchFunc := func(ctx context.Context, domain, query string, topK int) ([]eval.RetrievalResult, error) {
