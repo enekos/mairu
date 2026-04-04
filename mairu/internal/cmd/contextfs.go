@@ -26,6 +26,9 @@ func init() {
 	rootCmd.AddCommand(newVibeMutationAliasCmd())
 	rootCmd.AddCommand(newIngestCmd())
 	rootCmd.AddCommand(newScrapeCmd())
+	rootCmd.AddCommand(newSummarizeCmd())
+	rootCmd.AddCommand(newFlushCmd())
+	rootCmd.AddCommand(newNudgeCmd())
 }
 
 func contextServerURL() string {
@@ -737,6 +740,69 @@ func newVibeMutationAliasCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vibe-mutation [prompt]",
 		Short: "Alias for vibe mutation",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
+				return fmt.Errorf("prompt is required")
+			}
+			k, _ := cmd.Flags().GetInt("k")
+			return runVibeMutation(project, args[0], k)
+		},
+	}
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name")
+	cmd.Flags().IntP("k", "k", 5, "Top K results")
+	return cmd
+}
+
+func newSummarizeCmd() *cobra.Command {
+	var project string
+	cmd := &cobra.Command{
+		Use:   "summarize <query>",
+		Short: "Summarize using vibe query",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			k, _ := cmd.Flags().GetInt("k")
+			out, err := contextPost("/api/vibe/query", map[string]any{
+				"prompt":  args[0],
+				"project": project,
+				"topK":    k,
+			})
+			if err != nil {
+				return err
+			}
+			printJSON(out)
+			return nil
+		},
+	}
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name")
+	cmd.Flags().IntP("k", "k", 5, "Top K results")
+	return cmd
+}
+
+func newFlushCmd() *cobra.Command {
+	var project string
+	cmd := &cobra.Command{
+		Use:   "flush [prompt]",
+		Short: "Flush transcript into durable facts",
+		Args:  cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
+				return fmt.Errorf("prompt is required")
+			}
+			k, _ := cmd.Flags().GetInt("k")
+			return runVibeMutation(project, args[0], k)
+		},
+	}
+	cmd.Flags().StringVarP(&project, "project", "P", "", "Project name")
+	cmd.Flags().IntP("k", "k", 5, "Top K results")
+	return cmd
+}
+
+func newNudgeCmd() *cobra.Command {
+	var project string
+	cmd := &cobra.Command{
+		Use:   "nudge [prompt]",
+		Short: "Suggest mutations from transcript",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
