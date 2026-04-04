@@ -105,6 +105,31 @@ func effectiveWeights(opts SearchOptions, defaults hybridWeights) hybridWeights 
 	}
 }
 
+func scoreWithMeiliRanking(rankingScore float64, createdAt time.Time, importance int, opts SearchOptions, defaults hybridWeights) float64 {
+	weights := effectiveWeights(opts, defaults)
+
+	// rankingScore is the Meilisearch combined vector+keyword score, already normalized.
+	// But it only represents the "vector + keyword" portion of our weights.
+	// So we add recency and importance on top.
+	score := rankingScore
+
+	recencyScore := scoreRecency(createdAt, opts.RecencyScale, opts.RecencyDecay)
+	importanceScore := 0.0
+	if importance > 0 {
+		importanceScore = float64(importance) / 10.0
+	}
+
+	if weights.recency > 0 {
+		score += recencyScore * weights.recency
+	}
+	if weights.importance > 0 {
+		score += importanceScore * weights.importance
+	}
+	// Add AI quality function boost if we ever index ai_quality_score
+
+	return score
+}
+
 func scoreKeyword(fields map[string]string, tokens []string, fieldBoosts map[string]float64) float64 {
 	if len(tokens) == 0 {
 		return 0

@@ -215,6 +215,7 @@ func SetupRouter(apiKey, meiliURL, meiliAPIKey string) (*gin.Engine, error) {
 			api.POST("/context", forward)
 			api.PUT("/context", forward)
 			api.DELETE("/context", forward)
+			api.POST("/context/restore", forward)
 			api.POST("/vibe/query", forward)
 			api.POST("/vibe/mutation/plan", forward)
 			api.POST("/vibe/mutation/execute", forward)

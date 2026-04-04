@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/list"
@@ -46,7 +48,7 @@ type model struct {
 	spinner  spinner.Model
 
 	currentResponse string
-	toolEvents      []string
+	toolEvents      []toolEvent
 	mdRenderer      *glamour.TermRenderer
 	activeStream    chan agent.AgentEvent
 
@@ -76,6 +78,12 @@ type agentStreamMsg agent.AgentEvent
 type SlashCommand struct {
 	Name        string
 	Description string
+}
+
+type toolEvent struct {
+	Kind  string
+	Title string
+	Lines []string
 }
 
 var allSlashCommands = []SlashCommand{
@@ -124,6 +132,31 @@ var (
 	systemStyle = lipgloss.NewStyle().Foreground(colorSystem).Italic(true)
 	toolStyle   = lipgloss.NewStyle().Foreground(colorTool).Italic(true)
 	errorStyle  = lipgloss.NewStyle().Foreground(colorError).Bold(true)
+
+	toolCallBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorTool).
+				Background(lipgloss.Color("#1f2a22")).
+				Padding(0, 1).
+				MarginTop(0).
+				MarginBottom(1)
+	toolResultBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(colorPrompt).
+				Background(lipgloss.Color("#1c2630")).
+				Padding(0, 1).
+				MarginBottom(1)
+	toolStatusBoxStyle = lipgloss.NewStyle().
+				Border(lipgloss.NormalBorder()).
+				BorderForeground(colorSystem).
+				Background(lipgloss.Color("#1f2125")).
+				Padding(0, 1).
+				MarginBottom(1)
+	toolCallTitleStyle   = lipgloss.NewStyle().Foreground(colorTool).Bold(true)
+	toolResultTitleStyle = lipgloss.NewStyle().Foreground(colorPrompt).Bold(true)
+	toolStatusTitleStyle = lipgloss.NewStyle().Foreground(colorSystem).Bold(true)
+	toolFieldKeyStyle    = lipgloss.NewStyle().Foreground(colorPrompt).Bold(true)
+	toolFieldValueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#d8dee9"))
 
 	chatPaneStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -898,7 +931,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.thinking = true
 			m.currentResponse = ""
-			m.toolEvents = []string{}
+			m.toolEvents = nil
 
 			m.activeStream = make(chan agent.AgentEvent)
 			go m.agent.RunStream(v, m.activeStream)
@@ -911,7 +944,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.thinking = false
 			m.messages = append(m.messages, ChatMessage{Role: "Mairu", Content: m.currentResponse})
 			m.currentResponse = ""
-			m.toolEvents = []string{}
+			m.toolEvents = nil
 			m.activeStream = nil
 			m.renderMessages()
 			m.autoScroll()
@@ -931,30 +964,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Don't show log events in main chat, just background sidebar
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "status" {
-			m.toolEvents = append(m.toolEvents, msg.Content)
-			m.pushToolLog("status", msg.Content)
+			ev := buildToolStatusEvent(msg.Content)
+			m.toolEvents = append(m.toolEvents, ev)
+			m.pushToolLog("status", ev.Title)
 			m.renderMessages()
 			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_call" {
-			argsStr := ""
-			for k, v := range msg.ToolArgs {
-				argsStr += fmt.Sprintf("%s=%v ", k, v)
-			}
-			toolLine := fmt.Sprintf("▶ %s(%s)", msg.ToolName, strings.TrimSpace(argsStr))
-			m.toolEvents = append(m.toolEvents, toolLine)
-			m.pushToolLog("call", toolLine)
+			ev := buildToolCallEvent(msg.ToolName, msg.ToolArgs)
+			m.toolEvents = append(m.toolEvents, ev)
+			m.pushToolLog("call", ev.Title)
 			m.renderMessages()
 			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_result" {
-			resStr := fmt.Sprintf("%v", msg.ToolResult)
-			if len(resStr) > 80 {
-				resStr = strings.ReplaceAll(resStr[:80], "\n", " ") + "..."
-			}
-			eventLine := fmt.Sprintf("✔ %s", resStr)
-			m.toolEvents = append(m.toolEvents, eventLine)
-			m.pushToolLog("result", fmt.Sprintf("%s => %v", msg.ToolName, msg.ToolResult))
+			ev := buildToolResultEvent(msg.ToolName, msg.ToolResult)
+			m.toolEvents = append(m.toolEvents, ev)
+			m.pushToolLog("result", ev.Title)
 			m.renderMessages()
 			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
@@ -1027,7 +1053,7 @@ func (m *model) renderMessages() {
 		line += strings.Count(chunk, "\n")
 		if len(m.toolEvents) > 0 {
 			for _, e := range m.toolEvents {
-				eventChunk := toolStyle.Render(e) + "\n"
+				eventChunk := renderToolEventBox(e) + "\n"
 				sb.WriteString(eventChunk)
 				line += strings.Count(eventChunk, "\n")
 			}
@@ -1186,7 +1212,7 @@ func (m model) renderSidebar() string {
 			start = 0
 		}
 		for _, e := range m.toolEvents[start:] {
-			sb.WriteString("• " + e + "\n")
+			sb.WriteString("• " + previewText(e.Title, 44) + "\n")
 		}
 	}
 
@@ -1286,6 +1312,116 @@ func (m *model) pushToolLog(kind, content string) {
 	m.toolLog = append(m.toolLog, entry)
 	if len(m.toolLog) > 200 {
 		m.toolLog = m.toolLog[len(m.toolLog)-200:]
+	}
+}
+
+func buildToolCallEvent(toolName string, args map[string]any) toolEvent {
+	lines := formatToolFields(args, 120)
+	if len(lines) == 0 {
+		lines = []string{"(no args)"}
+	}
+	return toolEvent{
+		Kind:  "call",
+		Title: fmt.Sprintf("Tool call: %s", toolName),
+		Lines: lines,
+	}
+}
+
+func buildToolResultEvent(toolName string, result map[string]any) toolEvent {
+	lines := formatToolFields(result, 120)
+	if len(lines) == 0 {
+		lines = []string{"(no result payload)"}
+	}
+	return toolEvent{
+		Kind:  "result",
+		Title: fmt.Sprintf("Tool result: %s", toolName),
+		Lines: lines,
+	}
+}
+
+func buildToolStatusEvent(raw string) toolEvent {
+	return toolEvent{
+		Kind:  "status",
+		Title: sanitizeStatusText(raw),
+	}
+}
+
+func sanitizeStatusText(raw string) string {
+	cleaned := strings.TrimSpace(raw)
+	cleaned = strings.TrimLeftFunc(cleaned, func(r rune) bool {
+		return unicode.IsSymbol(r) || unicode.IsPunct(r) || unicode.IsSpace(r) || unicode.IsMark(r)
+	})
+	return strings.TrimSpace(cleaned)
+}
+
+func formatToolFields(data map[string]any, maxValueLen int) []string {
+	if len(data) == 0 {
+		return nil
+	}
+	const maxFields = 8
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	lines := make([]string, 0, len(keys))
+	for idx, k := range keys {
+		if idx >= maxFields {
+			remaining := len(keys) - maxFields
+			fieldWord := "fields"
+			if remaining == 1 {
+				fieldWord = "field"
+			}
+			lines = append(lines, fmt.Sprintf("... and %d more %s", remaining, fieldWord))
+			break
+		}
+		lines = append(lines, fmt.Sprintf("%s: %s", k, previewToolValue(data[k], maxValueLen)))
+	}
+	return lines
+}
+
+func previewToolValue(v any, maxLen int) string {
+	s := strings.TrimSpace(strings.ReplaceAll(fmt.Sprintf("%v", v), "\n", " "))
+	if maxLen > 3 && len(s) > maxLen {
+		return s[:maxLen-3] + "..."
+	}
+	return s
+}
+
+func renderToolEventBox(ev toolEvent) string {
+	var body strings.Builder
+	switch ev.Kind {
+	case "call":
+		body.WriteString(toolCallTitleStyle.Render(ev.Title))
+	case "result":
+		body.WriteString(toolResultTitleStyle.Render(ev.Title))
+	default:
+		body.WriteString(toolStatusTitleStyle.Render(ev.Title))
+	}
+	if len(ev.Lines) > 0 {
+		for _, line := range ev.Lines {
+			body.WriteString("\n")
+			body.WriteString("  ")
+			colon := strings.Index(line, ": ")
+			if colon > 0 && !strings.HasPrefix(line, "... and ") {
+				key := line[:colon]
+				value := line[colon+2:]
+				body.WriteString(toolFieldKeyStyle.Render(key + ": "))
+				body.WriteString(toolFieldValueStyle.Render(value))
+			} else {
+				body.WriteString(toolFieldValueStyle.Render(line))
+			}
+		}
+	}
+
+	switch ev.Kind {
+	case "call":
+		return toolCallBoxStyle.Render(body.String())
+	case "result":
+		return toolResultBoxStyle.Render(body.String())
+	default:
+		return toolStatusBoxStyle.Render(body.String())
 	}
 }
 

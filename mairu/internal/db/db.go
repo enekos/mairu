@@ -16,7 +16,7 @@ const (
 )
 
 type DB struct {
-	client *meilisearch.Client
+	client meilisearch.ServiceManager
 	root   string
 }
 
@@ -32,10 +32,7 @@ func InitDB(projectRoot string, cfg ...Config) (*DB, error) {
 	}
 	host, apiKey := resolveMeiliConfig(provided.MeiliURL, provided.MeiliAPIKey)
 
-	client := meilisearch.NewClient(meilisearch.ClientConfig{
-		Host:   host,
-		APIKey: apiKey,
-	})
+	client := meilisearch.New(host, meilisearch.WithAPIKey(apiKey))
 
 	db := &DB{
 		client: client,
@@ -110,7 +107,7 @@ func (db *DB) InsertSymbol(id, fileID, name, kind string, exported bool, startRo
 		"end_col":   endCol,
 	}
 
-	_, err := db.client.Index(symbolsIndexName).AddDocuments([]map[string]interface{}{document})
+	_, err := db.client.Index(symbolsIndexName).AddDocuments([]map[string]interface{}{document}, nil)
 	return err
 }
 

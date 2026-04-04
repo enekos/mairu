@@ -641,7 +641,21 @@ func newNodeCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(searchCmd, storeCmd, addCmd, lsCmd, listCmd, readCmd, subtreeCmd, pathCmd, updateCmd, deleteCmd)
+	restoreCmd := &cobra.Command{
+		Use:   "restore <uri>",
+		Short: "Restore node",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			out, err := contextPost("/api/context/restore", map[string]string{"uri": args[0]})
+			if err != nil {
+				return err
+			}
+			printJSON(out)
+			return nil
+		},
+	}
+
+	cmd.AddCommand(searchCmd, storeCmd, addCmd, lsCmd, listCmd, readCmd, subtreeCmd, pathCmd, updateCmd, deleteCmd, restoreCmd)
 	return cmd
 }
 

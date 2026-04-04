@@ -1,7 +1,5 @@
 package tui
 
-import "strings"
-
 type sessionStats struct {
 	Model                string
 	StreamState          string
@@ -21,7 +19,7 @@ type sessionStats struct {
 func computeSessionStats(
 	messages []ChatMessage,
 	currentResponse string,
-	toolEvents []string,
+	toolEvents []toolEvent,
 	thinking bool,
 	modelName string,
 ) sessionStats {
@@ -56,11 +54,10 @@ func computeSessionStats(
 	}
 
 	for _, e := range toolEvents {
-		trimmed := strings.TrimSpace(e)
-		if strings.HasPrefix(trimmed, "▶") {
+		if e.Kind == "call" {
 			stats.ToolCalls++
 		}
-		if strings.HasPrefix(trimmed, "✔") {
+		if e.Kind == "result" {
 			stats.ToolResults++
 		}
 	}

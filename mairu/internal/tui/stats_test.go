@@ -11,10 +11,10 @@ func TestComputeSessionStats_CountsAndEstimates(t *testing.T) {
 		{Role: "Diff", Content: "```diff\n+ a\n```"},
 		{Role: "You", Content: "Please summarize this file."},
 	}
-	toolEvents := []string{
-		"▶ read_file(path=main.go)",
-		"✔ {status:ok}",
-		"note: processing",
+	toolEvents := []toolEvent{
+		{Kind: "call", Title: "Tool call: read_file"},
+		{Kind: "result", Title: "Tool result: read_file"},
+		{Kind: "status", Title: "Processing"},
 	}
 
 	stats := computeSessionStats(messages, "Partial reply", toolEvents, true, "gemini-3.1-pro-preview")

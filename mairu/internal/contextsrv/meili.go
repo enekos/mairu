@@ -18,16 +18,13 @@ const (
 )
 
 type MeiliIndexer struct {
-	client   *meilisearch.Client
+	client   meilisearch.ServiceManager
 	embedder Embedder
 }
 
 func NewMeiliIndexer(host, apiKey string, embedder Embedder) *MeiliIndexer {
 	return &MeiliIndexer{
-		client: meilisearch.NewClient(meilisearch.ClientConfig{
-			Host:   host,
-			APIKey: apiKey,
-		}),
+		client:   meilisearch.New(host, meilisearch.WithAPIKey(apiKey)),
 		embedder: embedder,
 	}
 }
@@ -56,7 +53,7 @@ func (m *MeiliIndexer) Upsert(entityType string, payload map[string]any) error {
 			}
 		}
 	}
-	_, err = m.client.Index(idx).AddDocuments([]map[string]any{payload})
+	_, err = m.client.Index(idx).AddDocuments([]map[string]any{payload}, nil)
 	return err
 }
 
@@ -65,7 +62,7 @@ func (m *MeiliIndexer) Delete(entityType, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = m.client.Index(idx).DeleteDocument(id)
+	_, err = m.client.Index(idx).DeleteDocument(id, nil)
 	return err
 }
 
@@ -142,24 +139,37 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 	if fetchLimit < 20 {
 		fetchLimit = 20
 	}
+
+	defaults := defaultsForIndex(index)
+	weights := effectiveWeights(opts, defaults)
+
+	semanticRatio := 0.5
+	if weights.vector+weights.keyword > 0 {
+		semanticRatio = weights.vector / (weights.vector + weights.keyword)
+	}
+
 	req := &meilisearch.SearchRequest{
 		Limit:            int64(fetchLimit),
 		ShowRankingScore: true,
 	}
+
 	if opts.Project != "" {
 		req.Filter = fmt.Sprintf(`project = "%s"`, escapeFilterValue(opts.Project))
 	}
+
 	if len(queryEmbedding) > 0 {
-		emb64 := make([]float64, len(queryEmbedding))
-		for i, v := range queryEmbedding {
-			emb64[i] = float64(v)
+		req.Vector = queryEmbedding
+		req.Hybrid = &meilisearch.SearchRequestHybrid{
+			SemanticRatio: float64(semanticRatio),
+			Embedder:      "default",
 		}
-		req.Vector = emb64
 	}
+
 	resp, err := m.client.Index(index).Search(opts.Query, req)
 	if err != nil {
 		return nil, err
 	}
+
 	queryTokens := tokenizeForSearch(opts.Query)
 	items := []scoredDoc{}
 	for _, hit := range resp.Hits {
@@ -168,21 +178,30 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 		if err := json.Unmarshal(raw, &doc); err != nil {
 			continue
 		}
+
 		createdAt := parseDocTime(doc["created_at"])
 		importance := parseDocInt(doc["importance"])
-		fieldValues := map[string]string{}
-		for _, field := range fields {
-			if v, ok := doc[field].(string); ok {
-				fieldValues[field] = v
-			}
+
+		var rankingScore float64
+		if rs, ok := doc["_rankingScore"].(float64); ok {
+			rankingScore = rs
 		}
-		score := scoreHybrid(fieldValues, queryTokens, createdAt, importance, opts, defaultsForIndex(index))
+
+		score := scoreWithMeiliRanking(rankingScore, createdAt, importance, opts, defaults)
 		doc["_score"] = score
+
 		if opts.Highlight {
+			fieldValues := map[string]string{}
+			for _, field := range fields {
+				if v, ok := doc[field].(string); ok {
+					fieldValues[field] = v
+				}
+			}
 			if h := highlightsForFields(fieldValues, queryTokens); len(h) > 0 {
 				doc["_highlight"] = h
 			}
 		}
+
 		items = append(items, scoredDoc{score: score, doc: doc})
 	}
 	return finalizeScoredDocs(items, limit, opts.MinScore), nil
