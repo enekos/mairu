@@ -23,14 +23,15 @@ var contextServerCmd = &cobra.Command{
 		meiliURL, _ := cmd.Flags().GetString("meili-url")
 		meiliAPIKey, _ := cmd.Flags().GetString("meili-api-key")
 
-		app, err := contextsrv.NewApp(contextsrv.Config{
-			Port:            port,
-			PostgresDSN:     pgDSN,
-			MeiliURL:        meiliURL,
-			MeiliAPIKey:     meiliAPIKey,
-			AuthToken:       authToken,
-			EnableProjector: enableProjector,
-		})
+		cfg := contextsrv.LoadConfig()
+		cfg.Port = port
+		cfg.PostgresDSN = pgDSN
+		cfg.MeiliURL = meiliURL
+		cfg.MeiliAPIKey = meiliAPIKey
+		cfg.AuthToken = authToken
+		cfg.EnableProjector = enableProjector
+
+		app, err := contextsrv.NewApp(cfg)
 		if err != nil {
 			fmt.Printf("failed to initialize context server: %v\n", err)
 			os.Exit(1)

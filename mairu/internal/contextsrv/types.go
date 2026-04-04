@@ -111,21 +111,21 @@ type ContextUpdateInput struct {
 }
 
 type SearchOptions struct {
-	Query         string  `json:"query"`
-	Project       string  `json:"project"`
-	Store         string  `json:"store"`
-	TopK          int     `json:"topK"`
-	MinScore      float64 `json:"minScore"`
-	Highlight     bool    `json:"highlight"`
+	Query         string             `json:"query"`
+	Project       string             `json:"project"`
+	Store         string             `json:"store"`
+	TopK          int                `json:"topK"`
+	MinScore      float64            `json:"minScore"`
+	Highlight     bool               `json:"highlight"`
 	FieldBoosts   map[string]float64 `json:"fieldBoosts"`
-	Fuzziness     string  `json:"fuzziness"`
-	PhraseBoost   float64 `json:"phraseBoost"`
-	WeightVector  float64 `json:"weightVector"`
-	WeightKeyword float64 `json:"weightKeyword"`
-	WeightRecency float64 `json:"weightRecency"`
-	WeightImp     float64 `json:"weightImportance"`
-	RecencyScale  string  `json:"recencyScale"`
-	RecencyDecay  float64 `json:"recencyDecay"`
+	Fuzziness     string             `json:"fuzziness"`
+	PhraseBoost   float64            `json:"phraseBoost"`
+	WeightVector  float64            `json:"weightVector"`
+	WeightKeyword float64            `json:"weightKeyword"`
+	WeightRecency float64            `json:"weightRecency"`
+	WeightImp     float64            `json:"weightImportance"`
+	RecencyScale  string             `json:"recencyScale"`
+	RecencyDecay  float64            `json:"recencyDecay"`
 }
 
 type VibeQueryResult struct {

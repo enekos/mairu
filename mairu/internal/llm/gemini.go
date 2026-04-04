@@ -125,3 +125,15 @@ func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string) 
 	}
 	return nil, fmt.Errorf("unexpected part type")
 }
+
+func (g *GeminiProvider) GenerateContent(ctx context.Context, modelName, prompt string) (string, error) {
+	model := g.client.GenerativeModel(modelName)
+	res, err := model.GenerateContent(ctx, genai.Text(prompt))
+	if err != nil {
+		return "", err
+	}
+	if len(res.Candidates) > 0 && len(res.Candidates[0].Content.Parts) > 0 {
+		return fmt.Sprintf("%v", res.Candidates[0].Content.Parts[0]), nil
+	}
+	return "", fmt.Errorf("no content generated")
+}

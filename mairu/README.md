@@ -34,10 +34,16 @@ go build -C mairu -o bin/mairu-agent ./cmd/mairu
 ./mairu/bin/mairu-agent node search "authentication architecture" -P my-project -k 5
 ./mairu/bin/mairu-agent vibe query "how does auth work?" -P my-project -k 5
 ./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project -k 5
+
+# File/Knowledge Ingestion
+./mairu/bin/mairu-agent ingest README.md -P my-project -y
+
+# Background context processing
+./mairu/bin/mairu-agent daemon ./src -P my-project
 ```
 
 ## Notes
 
 - The TypeScript context engine now lives at `mairu/contextfs/`.
 - The unified dashboard UI lives at `mairu/ui/`.
-- Core ContextFS workflows (`memory`, `skill`, `node`, `vibe`, `vibe-query`, `vibe-mutation`) are native Go commands in `mairu` CLI.
+- Core ContextFS workflows (`memory`, `skill`, `node`, `vibe`, `vibe-query`, `vibe-mutation`, `ingest`, `daemon`) are native Go commands in `mairu` CLI.

@@ -15,10 +15,29 @@ type Config struct {
 	PostgresDSN     string
 	MeiliURL        string
 	MeiliAPIKey     string
+	GeminiAPIKey    string
 	AuthToken       string
 	EnableProjector bool
 	ProjectorEvery  time.Duration
 	ProjectorBatch  int
+}
+
+// LoadConfig creates a Config with defaults and environment variables overrides.
+func LoadConfig() Config {
+	cfg := Config{
+		Port:           8788,
+		PostgresDSN:    os.Getenv("CONTEXT_SERVER_POSTGRES_DSN"),
+		MeiliURL:       os.Getenv("MEILI_URL"),
+		MeiliAPIKey:    os.Getenv("MEILI_API_KEY"),
+		GeminiAPIKey:   os.Getenv("GEMINI_API_KEY"),
+		AuthToken:      os.Getenv("CONTEXT_AUTH_TOKEN"),
+		ProjectorEvery: 3 * time.Second,
+		ProjectorBatch: 50,
+	}
+	if cfg.MeiliURL == "" {
+		cfg.MeiliURL = "http://localhost:7700"
+	}
+	return cfg
 }
 
 type App struct {
@@ -29,26 +48,8 @@ type App struct {
 }
 
 func NewApp(cfg Config) (*App, error) {
-	if cfg.Port == 0 {
-		cfg.Port = 8788
-	}
 	if cfg.PostgresDSN == "" {
-		cfg.PostgresDSN = os.Getenv("CONTEXT_SERVER_POSTGRES_DSN")
-	}
-	if cfg.PostgresDSN == "" {
-		return nil, fmt.Errorf("CONTEXT_SERVER_POSTGRES_DSN is required")
-	}
-	if cfg.MeiliURL == "" {
-		cfg.MeiliURL = os.Getenv("MEILI_URL")
-	}
-	if cfg.MeiliURL == "" {
-		cfg.MeiliURL = "http://localhost:7700"
-	}
-	if cfg.ProjectorEvery <= 0 {
-		cfg.ProjectorEvery = 3 * time.Second
-	}
-	if cfg.ProjectorBatch <= 0 {
-		cfg.ProjectorBatch = 50
+		return nil, fmt.Errorf("PostgresDSN is required")
 	}
 
 	repo, err := NewPostgresRepository(cfg.PostgresDSN)
@@ -56,10 +57,9 @@ func NewApp(cfg Config) (*App, error) {
 		return nil, err
 	}
 
-	geminiKey := os.Getenv("GEMINI_API_KEY")
 	var geminiClient *llm.GeminiProvider
-	if geminiKey != "" {
-		client, err := llm.NewGeminiProvider(context.Background(), geminiKey)
+	if cfg.GeminiAPIKey != "" {
+		client, err := llm.NewGeminiProvider(context.Background(), cfg.GeminiAPIKey)
 		if err == nil {
 			geminiClient = client
 		}
@@ -67,10 +67,12 @@ func NewApp(cfg Config) (*App, error) {
 
 	indexer := NewMeiliIndexer(cfg.MeiliURL, cfg.MeiliAPIKey, geminiClient)
 	_ = indexer.EnsureIndexes()
+
 	var llmClient LLMClient
 	if geminiClient != nil {
 		llmClient = geminiClient
 	}
+
 	svc := NewServiceWithSearch(repo, indexer, llmClient)
 	handler := NewHandler(svc, cfg.AuthToken)
 	srv := &http.Server{
@@ -78,6 +80,7 @@ func NewApp(cfg Config) (*App, error) {
 		Handler:           handler,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+
 	return &App{
 		cfg:       cfg,
 		repo:      repo,

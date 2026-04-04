@@ -197,3 +197,7 @@ func TestExecuteVibeMutation_SupportsNodeAndDeleteOps(t *testing.T) {
 		t.Fatalf("expected node delete for contextfs://demo/new, got %q", repo.deletedNodeURI)
 	}
 }
+
+func (l *vibeLLM) GenerateContent(ctx context.Context, model, prompt string) (string, error) {
+	return "", nil
+}

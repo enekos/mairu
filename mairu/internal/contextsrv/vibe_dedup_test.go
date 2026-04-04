@@ -58,7 +58,9 @@ func (m *mockRepo) SearchText(ctx context.Context, opts SearchOptions) (map[stri
 func (m *mockRepo) ListModerationQueue(ctx context.Context, limit int) ([]ModerationEvent, error) {
 	return []ModerationEvent{}, nil
 }
-func (m *mockRepo) ReviewModeration(ctx context.Context, input ModerationReviewInput) error { return nil }
+func (m *mockRepo) ReviewModeration(ctx context.Context, input ModerationReviewInput) error {
+	return nil
+}
 func (m *mockRepo) EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error {
 	return nil
 }

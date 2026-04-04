@@ -2,9 +2,9 @@ package contextsrv
 
 import (
 	"math"
-	"strconv"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )

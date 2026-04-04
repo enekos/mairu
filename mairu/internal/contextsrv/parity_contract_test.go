@@ -3,6 +3,7 @@ package contextsrv
 import (
 	"bytes"
 	"encoding/json"
+	"mairu/internal/llm"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,7 +16,9 @@ type parityStubService struct {
 	lastSearch SearchOptions
 }
 
-func (s *parityStubService) Health() map[string]any { return map[string]any{"ok": true, "service": "contextsrv"} }
+func (s *parityStubService) Health() map[string]any {
+	return map[string]any{"ok": true, "service": "contextsrv"}
+}
 func (s *parityStubService) ClusterStats() map[string]any {
 	return map[string]any{"ok": true, "indexes": []string{"contextfs_memories", "contextfs_skills", "contextfs_context_nodes"}}
 }
@@ -35,16 +38,24 @@ func (s *parityStubService) CreateMemory(input MemoryCreateInput) (Memory, error
 		UpdatedAt:         fixed,
 	}, nil
 }
-func (s *parityStubService) ListMemories(project string, limit int) ([]Memory, error) { return []Memory{}, nil }
-func (s *parityStubService) UpdateMemory(input MemoryUpdateInput) (Memory, error)      { return Memory{ID: input.ID}, nil }
-func (s *parityStubService) DeleteMemory(id string) error                               { return nil }
+func (s *parityStubService) ListMemories(project string, limit int) ([]Memory, error) {
+	return []Memory{}, nil
+}
+func (s *parityStubService) UpdateMemory(input MemoryUpdateInput) (Memory, error) {
+	return Memory{ID: input.ID}, nil
+}
+func (s *parityStubService) DeleteMemory(id string) error { return nil }
 
-func (s *parityStubService) CreateSkill(input SkillCreateInput) (Skill, error) { return Skill{ID: "skill_1"}, nil }
+func (s *parityStubService) CreateSkill(input SkillCreateInput) (Skill, error) {
+	return Skill{ID: "skill_1"}, nil
+}
 func (s *parityStubService) ListSkills(project string, limit int) ([]Skill, error) {
 	return []Skill{}, nil
 }
-func (s *parityStubService) UpdateSkill(input SkillUpdateInput) (Skill, error) { return Skill{ID: input.ID}, nil }
-func (s *parityStubService) DeleteSkill(id string) error                        { return nil }
+func (s *parityStubService) UpdateSkill(input SkillUpdateInput) (Skill, error) {
+	return Skill{ID: input.ID}, nil
+}
+func (s *parityStubService) DeleteSkill(id string) error { return nil }
 
 func (s *parityStubService) CreateContextNode(input ContextCreateInput) (ContextNode, error) {
 	return ContextNode{URI: input.URI}, nil
@@ -164,4 +175,8 @@ func assertJSONGolden(t *testing.T, name string, got []byte) {
 	if !bytes.Equal(gotNorm, wantNorm) {
 		t.Fatalf("golden mismatch for %s\n--- got ---\n%s\n--- want ---\n%s", name, gotNorm, wantNorm)
 	}
+}
+
+func (s *parityStubService) Ingest(text, baseURI string) ([]llm.ProposedContextNode, error) {
+	return nil, nil
 }

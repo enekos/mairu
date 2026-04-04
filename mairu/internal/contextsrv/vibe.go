@@ -11,6 +11,7 @@ import (
 
 type LLMClient interface {
 	GenerateJSON(ctx context.Context, system, user string) (map[string]any, error)
+	GenerateContent(ctx context.Context, model, prompt string) (string, error)
 }
 
 const (

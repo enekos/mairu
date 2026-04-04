@@ -113,7 +113,7 @@ func (p *Projector) processJob(ctx context.Context, job OutboxJob) error {
 		if err := json.Unmarshal(job.Payload, &payload); err != nil {
 			return fmt.Errorf("bad payload: %w", err)
 		}
-		
+
 		// Extract text to embed
 		var textToEmbed string
 		switch job.EntityType {
@@ -131,7 +131,7 @@ func (p *Projector) processJob(ctx context.Context, job OutboxJob) error {
 			content, _ := payload["content"].(string)
 			textToEmbed = name + "\n" + abstract + "\n" + content
 		}
-		
+
 		if textToEmbed != "" && p.embedder != nil {
 			emb, err := p.embedder.GetEmbedding(ctx, textToEmbed)
 			if err != nil {

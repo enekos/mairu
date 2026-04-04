@@ -16,8 +16,7 @@ Unified monorepo for:
 ├── mairu/
 │   ├── cmd/                 # Go entrypoint (mairu binary)
 │   ├── internal/            # Go agent + context-server internals
-│   ├── ui/                  # Mairu web UI (Go app frontend)
-│   ├── ui/                  # Unified Mairu dashboard UI (Svelte)
+│   ├── ui/                  # Unified Mairu dashboard UI (Svelte) & Go app frontend
 │   └── contextfs/
 │       ├── src/             # TypeScript context engine and API
 │       ├── scripts/         # Local Meilisearch helper script
@@ -31,7 +30,7 @@ Unified monorepo for:
 ## Requirements
 
 - Bun 1+
-- Go 1.21+
+- Go 1.25+
 - Docker (optional if using local Meilisearch fallback)
 - Gemini API key (unless `ALLOW_ZERO_EMBEDDINGS=true` for local-only testing)
 
@@ -92,10 +91,27 @@ mairu-context node search "architecture" -k 5 -P my-project
 mairu-context daemon . -P my-project
 ```
 
-## Mairu Binary
+## Go CLI Commands (Mairu Agent)
+
+With the latest features, the Go CLI implements the ContextFS API fully via the `mairu-agent` binary:
 
 ```bash
 bun run mairu:build
+
+# Context Server APIs
+./mairu/bin/mairu-agent memory search "auth token" -P my-project -k 5
+./mairu/bin/mairu-agent node search "authentication architecture" -P my-project -k 5
+
+# Vibe commands (LLM powered mutations and queries)
+./mairu/bin/mairu-agent vibe query "how does auth work?" -P my-project
+./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project
+
+# Advanced Tools (Daemon, Ingest & Scraper)
+./mairu/bin/mairu-agent daemon ./src -P my-project       # Watch a directory and parse AST
+./mairu/bin/mairu-agent ingest design.md -P my-project   # Ingest free-text notes
+./mairu/bin/mairu-agent scrape https://example.com       # Scrape web page and store context
+
+# Full TUI or Web Servers
 ./mairu/bin/mairu-agent tui
 ./mairu/bin/mairu-agent web -p 8080
 ./mairu/bin/mairu-agent context-server -p 8788

@@ -50,15 +50,15 @@ func TestScoreKeyword_RespectsFieldBoosts(t *testing.T) {
 
 func TestNormalizeStoreName(t *testing.T) {
 	cases := map[string]string{
-		"":            "all",
-		"all":         "all",
-		"memory":      "memories",
-		"memories":    "memories",
-		"skill":       "skills",
-		"skills":      "skills",
-		"node":        "context",
+		"":             "all",
+		"all":          "all",
+		"memory":       "memories",
+		"memories":     "memories",
+		"skill":        "skills",
+		"skills":       "skills",
+		"node":         "context",
 		"contextnodes": "context",
-		"unknown":     "all",
+		"unknown":      "all",
 	}
 	for in, expected := range cases {
 		got := normalizeStoreName(in)

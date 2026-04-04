@@ -3,6 +3,7 @@ package contextsrv
 import (
 	"bytes"
 	"encoding/json"
+	"mairu/internal/llm"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -195,4 +196,8 @@ func TestModerationQueueAPIContract(t *testing.T) {
 	if _, ok := out["items"]; !ok {
 		t.Fatalf("expected items key in response")
 	}
+}
+
+func (s *stubService) Ingest(text, baseURI string) ([]llm.ProposedContextNode, error) {
+	return nil, nil
 }
