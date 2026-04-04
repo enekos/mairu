@@ -37,6 +37,9 @@ func LoadConfig() Config {
 	if cfg.MeiliURL == "" {
 		cfg.MeiliURL = "http://localhost:7700"
 	}
+	if cfg.MeiliAPIKey == "" {
+		cfg.MeiliAPIKey = "contextfs-dev-key"
+	}
 	return cfg
 }
 

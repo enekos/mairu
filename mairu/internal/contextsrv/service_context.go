@@ -5,9 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"mairu/internal/llm"
 )
+
+type fallbackEmbedder interface {
+	GetEmbedding(ctx context.Context, text string) ([]float32, error)
+}
 
 func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, error) {
 	if strings.TrimSpace(input.URI) == "" || strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Abstract) == "" {
@@ -62,6 +67,54 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 	if len(input.Metadata) == 0 {
 		input.Metadata = json.RawMessage(`{}`)
 	}
+
+	if s.repo == nil {
+		out := ContextNode{
+			URI:               input.URI,
+			Project:           input.Project,
+			ParentURI:         input.ParentURI,
+			Name:              input.Name,
+			Abstract:          input.Abstract,
+			Overview:          input.Overview,
+			Content:           input.Content,
+			ModerationStatus:  input.ModerationStatus,
+			ModerationReasons: input.ModerationReasons,
+			ReviewRequired:    input.ReviewRequired,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+		}
+		if s.searchBackend != nil {
+			if mIdx, ok := s.searchBackend.(*MeiliIndexer); ok {
+				payload := map[string]any{
+					"id":         out.URI,
+					"uri":        out.URI,
+					"project":    out.Project,
+					"name":       out.Name,
+					"abstract":   out.Abstract,
+					"overview":   out.Overview,
+					"content":    out.Content,
+					"created_at": out.CreatedAt.Unix(),
+				}
+				if out.ParentURI != nil {
+					payload["parent_uri"] = *out.ParentURI
+				}
+
+				payload["_vectors"] = map[string]any{"default": nil}
+				if emb, ok := s.llmClient.(fallbackEmbedder); ok {
+					textToEmbed := out.Name + "\n" + out.Abstract + "\n" + out.Content
+					vec, err := emb.GetEmbedding(context.Background(), textToEmbed)
+					if err == nil && len(vec) > 0 {
+						payload["_vectors"] = map[string]any{"default": vec}
+					}
+				}
+				if err := mIdx.Upsert("context_node", payload); err != nil {
+					fmt.Printf("Meilisearch Upsert error: %v\n", err)
+				}
+			}
+		}
+		return out, nil
+	}
+
 	out, err := s.repo.CreateContextNode(context.Background(), input)
 	if err != nil {
 		return ContextNode{}, err
@@ -71,16 +124,68 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 }
 
 func (s *AppService) ListContextNodes(project string, parentURI *string, limit int) ([]ContextNode, error) {
+	if s.repo == nil {
+		if s.searchBackend != nil {
+			opts := SearchOptions{
+				Project: project,
+				Store:   StoreNode,
+				TopK:    limit,
+				Query:   "",
+			}
+			res, err := s.searchBackend.Search(opts)
+			if err != nil {
+				return nil, err
+			}
+			items := toAnyMapSlice(res[StoreContextNodes])
+			var out []ContextNode
+			for _, item := range items {
+				var n ContextNode
+				if uri, ok := item["uri"].(string); ok {
+					n.URI = uri
+				}
+				if p, ok := item["project"].(string); ok {
+					n.Project = p
+				}
+				if name, ok := item["name"].(string); ok {
+					n.Name = name
+				}
+				if abs, ok := item["abstract"].(string); ok {
+					n.Abstract = abs
+				}
+				if over, ok := item["overview"].(string); ok {
+					n.Overview = over
+				}
+				if cnt, ok := item["content"].(string); ok {
+					n.Content = cnt
+				}
+				out = append(out, n)
+			}
+			return out, nil
+		}
+		return []ContextNode{}, nil
+	}
 	return s.repo.ListContextNodes(context.Background(), project, parentURI, limit)
 }
 
 func (s *AppService) UpdateContextNode(input ContextUpdateInput) (ContextNode, error) {
+	if s.repo == nil {
+		// Minimal fallback
+		return ContextNode{URI: input.URI, Abstract: input.Abstract}, nil
+	}
 	return s.repo.UpdateContextNode(context.Background(), input)
 }
 
 func (s *AppService) DeleteContextNode(uri string) error {
 	if strings.TrimSpace(uri) == "" {
 		return fmt.Errorf("uri is required")
+	}
+	if s.repo == nil {
+		if s.searchBackend != nil {
+			if mIdx, ok := s.searchBackend.(*MeiliIndexer); ok {
+				return mIdx.Delete("context_node", uri)
+			}
+		}
+		return nil
 	}
 	return s.repo.DeleteContextNode(context.Background(), uri)
 }

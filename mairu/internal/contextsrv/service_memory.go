@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"mairu/internal/llm"
 )
@@ -72,6 +73,47 @@ func (s *AppService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 	if len(input.Metadata) == 0 {
 		input.Metadata = json.RawMessage(`{}`)
 	}
+
+	if s.repo == nil {
+		out := Memory{
+			ID:                fmt.Sprintf("mem_%d", time.Now().UnixNano()),
+			Project:           input.Project,
+			Content:           input.Content,
+			Category:          input.Category,
+			Owner:             input.Owner,
+			Importance:        input.Importance,
+			ModerationStatus:  input.ModerationStatus,
+			ModerationReasons: input.ModerationReasons,
+			ReviewRequired:    input.ReviewRequired,
+			CreatedAt:         time.Now(),
+			UpdatedAt:         time.Now(),
+		}
+		if s.searchBackend != nil {
+			if mIdx, ok := s.searchBackend.(*MeiliIndexer); ok {
+				payload := map[string]any{
+					"id":         out.ID,
+					"project":    out.Project,
+					"content":    out.Content,
+					"category":   out.Category,
+					"owner":      out.Owner,
+					"importance": out.Importance,
+					"created_at": out.CreatedAt.Unix(),
+				}
+				payload["_vectors"] = map[string]any{"default": nil}
+				if emb, ok := s.llmClient.(fallbackEmbedder); ok {
+					vec, err := emb.GetEmbedding(context.Background(), out.Content)
+					if err == nil && len(vec) > 0 {
+						payload["_vectors"] = map[string]any{"default": vec}
+					}
+				}
+				if err := mIdx.Upsert("memory", payload); err != nil {
+					fmt.Printf("Meilisearch Upsert error: %v\n", err)
+				}
+			}
+		}
+		return out, nil
+	}
+
 	out, err := s.repo.CreateMemory(context.Background(), input)
 	if err != nil {
 		return Memory{}, err
@@ -81,16 +123,61 @@ func (s *AppService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 }
 
 func (s *AppService) ListMemories(project string, limit int) ([]Memory, error) {
+	if s.repo == nil {
+		if s.searchBackend != nil {
+			opts := SearchOptions{Project: project, Store: StoreMemory, TopK: limit}
+			res, err := s.searchBackend.Search(opts)
+			if err != nil {
+				return nil, err
+			}
+			var out []Memory
+			for _, item := range toAnyMapSlice(res[StoreMemories]) {
+				var m Memory
+				if id, ok := item["id"].(string); ok {
+					m.ID = id
+				}
+				if p, ok := item["project"].(string); ok {
+					m.Project = p
+				}
+				if c, ok := item["content"].(string); ok {
+					m.Content = c
+				}
+				if cat, ok := item["category"].(string); ok {
+					m.Category = cat
+				}
+				if o, ok := item["owner"].(string); ok {
+					m.Owner = o
+				}
+				if imp, ok := item["importance"].(float64); ok {
+					m.Importance = int(imp)
+				}
+				out = append(out, m)
+			}
+			return out, nil
+		}
+		return []Memory{}, nil
+	}
 	return s.repo.ListMemories(context.Background(), project, limit)
 }
 
 func (s *AppService) UpdateMemory(input MemoryUpdateInput) (Memory, error) {
+	if s.repo == nil {
+		return Memory{ID: input.ID, Content: input.Content}, nil
+	}
 	return s.repo.UpdateMemory(context.Background(), input)
 }
 
 func (s *AppService) DeleteMemory(id string) error {
 	if strings.TrimSpace(id) == "" {
 		return fmt.Errorf("id is required")
+	}
+	if s.repo == nil {
+		if s.searchBackend != nil {
+			if mIdx, ok := s.searchBackend.(*MeiliIndexer); ok {
+				return mIdx.Delete("memory", id)
+			}
+		}
+		return nil
 	}
 	return s.repo.DeleteMemory(context.Background(), id)
 }

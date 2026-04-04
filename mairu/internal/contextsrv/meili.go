@@ -33,6 +33,18 @@ func (m *MeiliIndexer) EnsureIndexes() error {
 	return nil
 }
 
+func sanitizeMeiliID(raw string) string {
+	var sb strings.Builder
+	for _, r := range raw {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			sb.WriteRune(r)
+		} else {
+			sb.WriteString(fmt.Sprintf("_%x_", r))
+		}
+	}
+	return sb.String()
+}
+
 func (m *MeiliIndexer) Upsert(entityType string, payload map[string]any) error {
 	idx, err := indexFromEntity(entityType)
 	if err != nil {
@@ -42,8 +54,16 @@ func (m *MeiliIndexer) Upsert(entityType string, payload map[string]any) error {
 	case "context_node":
 		if _, ok := payload["id"]; !ok {
 			if uri, ok := payload["uri"].(string); ok && uri != "" {
-				payload["id"] = uri
+				payload["id"] = sanitizeMeiliID(uri)
 			}
+		} else {
+			if idStr, ok := payload["id"].(string); ok {
+				payload["id"] = sanitizeMeiliID(idStr)
+			}
+		}
+	default:
+		if idStr, ok := payload["id"].(string); ok {
+			payload["id"] = sanitizeMeiliID(idStr)
 		}
 	}
 	_, err = m.client.Index(idx).AddDocuments([]map[string]any{payload}, nil)
@@ -55,7 +75,7 @@ func (m *MeiliIndexer) Delete(entityType, id string) error {
 	if err != nil {
 		return err
 	}
-	_, err = m.client.Index(idx).DeleteDocument(id, nil)
+	_, err = m.client.Index(idx).DeleteDocument(sanitizeMeiliID(id), nil)
 	return err
 }
 
