@@ -21,6 +21,8 @@ export interface LogicSymbol {
   line: number;
   byteStart: number;
   byteEnd: number;
+  startLine: number;
+  endLine: number;
   contentHash: string;
   docstring?: string;
 }

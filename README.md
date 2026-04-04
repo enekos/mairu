@@ -125,6 +125,35 @@ bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --fail-below-mrr 
 
 Outputs: `avgRecallAtK`, `mrr`, `avgLatencyMs`, optional `perCase` details.
 
+## Mairu Agent
+
+`contextfs` includes **Mairu**, a blazing fast, graph-powered AI coding agent built in pure Golang. It integrates tightly with the `contextfs` Meilisearch backend for dense, typo-tolerant codebase retrieval.
+
+### Key Capabilities
+
+- **Live AST Graph & Surgical Reads:** Uses the `contextfs` graph to perform surgical reads on specific functions or classes rather than dumping entire files into context, saving massive amounts of tokens.
+- **Multi-Agent Dispatch:** The main agent can delegate tasks to sub-agents to research the codebase simultaneously.
+- **Terminal Native UI:** Rich Markdown rendering, real-time typing, and session memory powered by Bubbletea.
+- **Web UI:** Includes a web dashboard for interactive chats and codebase overview.
+
+### Usage
+
+Mairu requires Go 1.21+.
+
+```bash
+cd mairu
+go build -o mairu-agent cmd/mairu/main.go
+
+# Index your project
+./mairu-agent index
+
+# Start the interactive terminal UI
+./mairu-agent tui
+
+# Or start the web UI
+./mairu-agent web -p 8080
+```
+
 ## Dashboard
 
 ```bash
