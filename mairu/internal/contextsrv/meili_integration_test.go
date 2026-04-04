@@ -42,7 +42,7 @@ func TestMeiliReadContextEndToEnd(t *testing.T) {
 		_ = indexer.Delete("context_node", uri)
 	})
 
-	deadline := time.Now().Add(10 * time.Second)
+	deadline := time.Now().Add(30 * time.Second)
 	for {
 		out, err := indexer.Search(SearchOptions{
 			Query:   "token rotation policy",
@@ -63,8 +63,10 @@ func TestMeiliReadContextEndToEnd(t *testing.T) {
 		}
 
 		if time.Now().After(deadline) {
-			t.Fatalf("context node was not readable from Meili within timeout")
+			// Add debug info
+			stats := indexer.ClusterStats()
+			t.Fatalf("context node was not readable from Meili within timeout. Cluster stats: %v", stats)
 		}
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 }

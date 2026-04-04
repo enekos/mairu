@@ -23,6 +23,10 @@ var contextServerCmd = &cobra.Command{
 		meiliURL, _ := cmd.Flags().GetString("meili-url")
 		meiliAPIKey, _ := cmd.Flags().GetString("meili-api-key")
 
+		if pgDSN == "" {
+			pgDSN = os.Getenv("CONTEXT_SERVER_POSTGRES_DSN")
+		}
+
 		cfg := contextsrv.LoadConfig()
 		cfg.Port = port
 		cfg.PostgresDSN = pgDSN

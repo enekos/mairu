@@ -11,9 +11,9 @@
   $: score = data.node._hybrid_score ?? 0;
   $: dim = data.isSearchActive && !hasScore;
   
-  $: borderColor = hasScore ? scoreColor(score) : (selected ? '#3b82f6' : '#334155');
+  $: borderColor = hasScore ? scoreColor(score) : (selected ? '#3b82f6' : 'var(--border-main)');
   $: borderWidth = hasScore || selected ? '2px' : '1px';
-  $: bgColor = dim ? '#0f172a88' : '#1e293b';
+  $: bgColor = dim ? 'var(--bg-main)88' : 'var(--bg-card)';
   $: opacity = dim ? 0.4 : 1;
   $: boxShadow = hasScore ? `0 0 15px ${scoreColor(score)}44` : (selected ? '0 0 0 2px #3b82f644' : 'none');
 
@@ -51,7 +51,7 @@
     border-radius: 8px;
     border-style: solid;
     width: 280px;
-    color: #e2e8f0;
+    color: var(--text-main);
     font-family: monospace;
     transition: all 0.2s ease;
   }
@@ -73,14 +73,14 @@
   .node-score {
     font-size: 12px;
     font-weight: bold;
-    background: #0f172a;
+    background: var(--bg-main);
     padding: 2px 6px;
     border-radius: 4px;
   }
 
   .node-abstract {
     font-size: 11px;
-    color: #94a3b8;
+    color: var(--text-secondary);
     margin-bottom: 12px;
     display: -webkit-box;
     -webkit-line-clamp: 3;
@@ -99,8 +99,8 @@
     font-size: 10px;
     padding: 2px 6px;
     border-radius: 4px;
-    background: #334155;
-    color: #cbd5e1;
+    background: var(--border-main);
+    color: var(--text-dim);
     font-weight: bold;
   }
 
@@ -117,8 +117,8 @@
   }
   
   .uri-badge {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: var(--bg-card);
+    border: 1px solid var(--border-main);
     max-width: 150px;
     white-space: nowrap;
     overflow: hidden;

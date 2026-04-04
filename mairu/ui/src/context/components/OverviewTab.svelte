@@ -69,11 +69,11 @@
           {#each catEntries as [cat, count]}
             <div class="bar-row">
               <span class="bar-label">
-                <span class="bar-dot" style="background:{categoryColors[cat] || '#64748b'}"></span>
+                <span class="bar-dot" style="background:{categoryColors[cat] || 'var(--text-muted)'}"></span>
                 {cat}
               </span>
               <div class="bar-track">
-                <div class="bar-fill" style="width:{(count / catMax * 100).toFixed(0)}%;background:{categoryColors[cat] || '#64748b'}"></div>
+                <div class="bar-fill" style="width:{(count / catMax * 100).toFixed(0)}%;background:{categoryColors[cat] || 'var(--text-muted)'}"></div>
               </div>
               <span class="bar-count">{count}</span>
             </div>
@@ -119,7 +119,7 @@
     <ul class="recent-list">
       {#each memories.slice(0, 5) as m}
         <li>
-          <span class="cat-dot" style="background:{categoryColors[m.category] || '#64748b'}"></span>
+          <span class="cat-dot" style="background:{categoryColors[m.category] || 'var(--text-muted)'}"></span>
           <span class="recent-content">{m.content}</span>
           <span class="imp-pill {impColor(m.importance)}">{m.importance}</span>
           <span class="recent-date">{fmtDate(m.updated_at || m.created_at)}</span>
@@ -135,7 +135,7 @@
     <ul class="recent-list">
       {#each contextNodes.slice(0, 5) as c}
         <li>
-          <span class="cat-dot" style="background:#2563eb"></span>
+          <span class="cat-dot" style="background:var(--accent-blue)"></span>
           <span class="recent-content"><code>{c.uri}</code> — {c.abstract}</span>
           <span class="recent-date">{fmtDate(c.updated_at || c.created_at)}</span>
         </li>
@@ -151,11 +151,11 @@
   }
 
   .chart-card {
-    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
     padding: 18px 20px;
   }
   .chart-title {
-    font-size: 12px; color: #64748b; text-transform: uppercase;
+    font-size: 12px; color: var(--text-muted); text-transform: uppercase;
     letter-spacing: 0.05em; margin-bottom: 14px;
   }
 
@@ -164,18 +164,18 @@
   .bar-row { display: flex; align-items: center; gap: 10px; }
   .bar-label {
     display: flex; align-items: center; gap: 6px;
-    font-size: 12px; color: #94a3b8; width: 100px; flex-shrink: 0;
+    font-size: 12px; color: var(--text-secondary); width: 100px; flex-shrink: 0;
   }
   .bar-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .bar-track {
-    flex: 1; height: 6px; background: #0f172a; border-radius: 3px;
+    flex: 1; height: 6px; background: var(--bg-main); border-radius: 3px;
     overflow: hidden;
   }
   .bar-fill {
     height: 100%; border-radius: 3px; transition: width 0.3s ease;
     min-width: 2px;
   }
-  .bar-count { font-size: 12px; color: #64748b; width: 28px; text-align: right; }
+  .bar-count { font-size: 12px; color: var(--text-muted); width: 28px; text-align: right; }
 
   /* Importance histogram */
   .imp-chart {
@@ -186,7 +186,7 @@
     flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
   .imp-bar-track {
-    width: 100%; height: 70px; background: #0f172a; border-radius: 3px;
+    width: 100%; height: 70px; background: var(--bg-main); border-radius: 3px;
     overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end;
   }
   .imp-bar-fill {
@@ -195,19 +195,19 @@
   }
   .imp-bar-fill.imp-high { background: #22c55e; }
   .imp-bar-fill.imp-med { background: #f59e0b; }
-  .imp-bar-fill.imp-low { background: #475569; }
-  .imp-label { font-size: 11px; color: #64748b; }
-  .imp-count { font-size: 10px; color: #94a3b8; }
+  .imp-bar-fill.imp-low { background: var(--text-light); }
+  .imp-label { font-size: 11px; color: var(--text-muted); }
+  .imp-count { font-size: 10px; color: var(--text-secondary); }
 
   .owner-pills {
     display: flex; gap: 8px; margin-top: 14px; padding-top: 12px;
-    border-top: 1px solid #334155;
+    border-top: 1px solid var(--border-main);
   }
   .owner-pill {
-    font-size: 11px; color: #94a3b8; background: #0f172a;
-    padding: 3px 10px; border-radius: 12px; border: 1px solid #334155;
+    font-size: 11px; color: var(--text-secondary); background: var(--bg-main);
+    padding: 3px 10px; border-radius: 12px; border: 1px solid var(--border-main);
   }
-  .owner-pill strong { color: #e2e8f0; margin-left: 4px; }
+  .owner-pill strong { color: var(--text-main); margin-left: 4px; }
 
   .imp-pill {
     display: inline-block; width: 22px; height: 22px; border-radius: 50%;

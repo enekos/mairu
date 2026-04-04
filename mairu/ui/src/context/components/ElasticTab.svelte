@@ -143,21 +143,21 @@
   .elastic-header {
     display: flex; align-items: center; justify-content: space-between;
   }
-  .elastic-title { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+  .elastic-title { font-size: 18px; font-weight: 700; color: var(--text-bold); }
   .btn-refresh-sm {
-    background: #1e293b; border: 1px solid #334155; color: #94a3b8;
+    background: var(--bg-card); border: 1px solid var(--border-main); color: var(--text-secondary);
     padding: 6px 14px; border-radius: 7px; cursor: pointer; font-size: 12px;
   }
-  .btn-refresh-sm:hover { background: #334155; }
+  .btn-refresh-sm:hover { background: var(--border-main); }
 
   .elastic-error {
-    padding: 10px 14px; background: #450a0a; color: #fca5a5;
+    padding: 10px 14px; background: var(--bg-error); color: var(--text-error);
     border-radius: 8px; font-size: 13px;
   }
 
   .elastic-cluster {
     display: flex; gap: 24px; align-items: center; flex-wrap: wrap;
-    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
     padding: 20px 24px;
   }
 
@@ -173,57 +173,57 @@
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
-  .cluster-name { font-size: 16px; font-weight: 600; color: #f1f5f9; }
+  .cluster-name { font-size: 16px; font-weight: 600; color: var(--text-bold); }
   .cluster-status-text { font-size: 12px; font-weight: 700; letter-spacing: 0.05em; }
 
   .cluster-metrics {
     display: flex; gap: 28px; margin-left: auto;
   }
   .metric { text-align: center; }
-  .metric-val { font-size: 24px; font-weight: 700; color: #f1f5f9; }
-  .metric-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .metric-val { font-size: 24px; font-weight: 700; color: var(--text-bold); }
+  .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
 
   .elastic-subtitle {
-    font-size: 13px; color: #64748b; text-transform: uppercase;
+    font-size: 13px; color: var(--text-muted); text-transform: uppercase;
     letter-spacing: 0.05em;
   }
 
   .index-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 
   .index-card {
-    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
     padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;
     transition: border-color 0.15s;
   }
-  .index-card:hover { border-color: #475569; }
+  .index-card:hover { border-color: var(--text-light); }
 
   .index-card-header { display: flex; flex-direction: column; gap: 4px; }
   .index-badge {
-    font-size: 15px; font-weight: 600; color: #f1f5f9;
+    font-size: 15px; font-weight: 600; color: var(--text-bold);
   }
-  .index-name { font-size: 11px; color: #475569; }
+  .index-name { font-size: 11px; color: var(--text-light); }
 
   .index-stats { display: flex; gap: 20px; }
   .index-stat { }
-  .index-stat-val { font-size: 20px; font-weight: 700; color: #e2e8f0; }
-  .index-stat-label { font-size: 10px; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+  .index-stat-val { font-size: 20px; font-weight: 700; color: var(--text-main); }
+  .index-stat-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
 
   .index-bar-wrap {
-    height: 4px; background: #0f172a; border-radius: 2px; overflow: hidden;
+    height: 4px; background: var(--bg-main); border-radius: 2px; overflow: hidden;
   }
   .index-bar {
-    height: 100%; background: #6366f1; border-radius: 2px;
+    height: 100%; background: var(--accent-main); border-radius: 2px;
     transition: width 0.3s ease;
   }
 
   .elastic-total {
-    font-size: 13px; color: #64748b; text-align: center;
-    padding: 12px; background: #1e293b; border-radius: 8px;
-    border: 1px solid #334155;
+    font-size: 13px; color: var(--text-muted); text-align: center;
+    padding: 12px; background: var(--bg-card); border-radius: 8px;
+    border: 1px solid var(--border-main);
   }
-  .elastic-total strong { color: #a5b4fc; }
+  .elastic-total strong { color: var(--text-active); }
 
   .elastic-empty {
-    color: #475569; font-size: 14px; text-align: center; padding: 40px;
+    color: var(--text-light); font-size: 14px; text-align: center; padding: 40px;
   }
 </style>

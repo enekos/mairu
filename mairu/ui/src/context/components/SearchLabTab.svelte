@@ -112,7 +112,7 @@
               {#if row._type === "skill"}
                 <strong class="lab-card-title">{row.name}</strong>
               {:else if row._type === "memory"}
-                <span class="lab-type-cat" style="background:{categoryColors[row.category] || '#64748b'}">{row.category}</span>
+                <span class="lab-type-cat" style="background:{categoryColors[row.category] || 'var(--text-muted)'}">{row.category}</span>
                 <span class="lab-imp-badge {impColor(row.importance)}">{row.importance}</span>
               {:else}
                 <code class="lab-uri">{row.uri}</code>

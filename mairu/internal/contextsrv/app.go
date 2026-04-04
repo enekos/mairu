@@ -48,13 +48,13 @@ type App struct {
 }
 
 func NewApp(cfg Config) (*App, error) {
-	if cfg.PostgresDSN == "" {
-		return nil, fmt.Errorf("PostgresDSN is required")
-	}
-
-	repo, err := NewPostgresRepository(cfg.PostgresDSN)
-	if err != nil {
-		return nil, err
+	var repo *PostgresRepository
+	var err error
+	if cfg.PostgresDSN != "" {
+		repo, err = NewPostgresRepository(cfg.PostgresDSN)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var geminiClient *llm.GeminiProvider
@@ -81,16 +81,21 @@ func NewApp(cfg Config) (*App, error) {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
+	var projector *Projector
+	if repo != nil {
+		projector = NewProjector(repo, indexer, geminiClient)
+	}
+
 	return &App{
 		cfg:       cfg,
 		repo:      repo,
-		projector: NewProjector(repo, indexer, geminiClient),
+		projector: projector,
 		server:    srv,
 	}, nil
 }
 
 func (a *App) Start(ctx context.Context) error {
-	if a.cfg.EnableProjector {
+	if a.cfg.EnableProjector && a.projector != nil {
 		go a.runProjector(ctx)
 	}
 	return a.server.ListenAndServe()

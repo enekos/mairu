@@ -171,7 +171,7 @@
                 </div>
               </td>
               <td>
-                <span class="cat-badge" style="background:{categoryColors[row.category] || '#64748b'}">{row.category}</span>
+                <span class="cat-badge" style="background:{categoryColors[row.category] || 'var(--text-muted)'}">{row.category}</span>
                 <div class="owner-text">{row.owner}</div>
               </td>
               <td>

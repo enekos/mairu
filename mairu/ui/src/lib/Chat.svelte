@@ -72,8 +72,8 @@
   }
 </script>
 
-<div class="w-full max-w-2xl mx-auto h-full flex flex-col bg-slate-900 border-r border-slate-800">
-  <div class="h-14 border-b border-slate-800 flex items-center px-4 shrink-0 bg-slate-900/50 backdrop-blur-sm z-10 sticky top-0">
+<div class="w-full max-w-2xl mx-auto h-full flex flex-col bg-slate-50 border-r border-slate-200">
+  <div class="h-14 border-b border-slate-200 flex items-center px-4 shrink-0 bg-slate-50/50 backdrop-blur-sm z-10 sticky top-0">
     <h1 class="text-sm font-semibold tracking-wide flex items-center gap-2">
       Mairu Agent
       {#if $connectionState === "connected"}
@@ -83,10 +83,10 @@
       {/if}
     </h1>
     <div class="ml-auto flex items-center gap-2">
-      <label class="text-xs uppercase tracking-wider text-slate-500" for="session-select">Session</label>
+      <label class="text-xs uppercase tracking-wider text-slate-400" for="session-select">Session</label>
       <select
         id="session-select"
-        class="bg-slate-950 border border-slate-700 rounded-md px-2 py-1 text-xs text-slate-200 min-w-36"
+        class="bg-white border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 min-w-36"
         value={$currentSession}
         on:change={handleSessionSwitch}
         disabled={$isGenerating}
@@ -96,7 +96,7 @@
         {/each}
       </select>
       <button
-        class="p-1.5 rounded-md border border-slate-700 hover:border-slate-500 hover:text-slate-100 text-slate-400 transition-colors disabled:opacity-50"
+        class="p-1.5 rounded-md border border-slate-200 hover:border-slate-500 hover:text-slate-100 text-slate-400 transition-colors disabled:opacity-50"
         on:click={handleCreateSession}
         disabled={$isGenerating || creatingSession}
         title="Create session"
@@ -108,7 +108,7 @@
 
   <div class="flex-1 overflow-y-auto p-4 space-y-6" bind:this={messagesContainer}>
     {#if $messages.length === 0}
-      <div class="h-full flex flex-col items-center justify-center text-slate-500">
+      <div class="h-full flex flex-col items-center justify-center text-slate-400">
         <Bot size={48} class="mb-4 opacity-20" />
         <p>I am Mairu, your codebase agent.</p>
         <p class="text-sm opacity-70">How can I help you today?</p>
@@ -117,7 +117,7 @@
 
     {#each $messages as msg (msg.id)}
       <div class="flex flex-col gap-2">
-        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
           {#if msg.role === 'user'}
             <User size={14} class="text-indigo-400" /> You
           {:else if msg.role === 'assistant'}
@@ -131,8 +131,8 @@
           {#if msg.toolCalls && msg.toolCalls.length > 0}
             <div class="flex flex-col gap-2 my-2">
               {#each msg.toolCalls as tc}
-                <div class="flex flex-col text-xs bg-slate-800/40 border border-slate-700/50 rounded-md overflow-hidden font-mono">
-                  <button class="flex items-center gap-2 px-3 py-2 text-slate-300 hover:bg-slate-700/30 transition-colors" on:click={() => toggleTool(tc.id)}>
+                <div class="flex flex-col text-xs bg-slate-100/40 border border-slate-200/50 rounded-md overflow-hidden font-mono">
+                  <button class="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-700/30 transition-colors" on:click={() => toggleTool(tc.id)}>
                     {#if expandedTools[tc.id]}
                       <ChevronDown size={14} />
                     {:else}
@@ -140,7 +140,7 @@
                     {/if}
                     <Wrench size={12} class={tc.status === 'running' ? 'text-amber-400' : 'text-slate-400'} />
                     <span class="font-semibold">{tc.name}</span>
-                    <span class="flex-1 text-left text-slate-500 truncate">
+                    <span class="flex-1 text-left text-slate-400 truncate">
                       {JSON.stringify(tc.args)}
                     </span>
                     {#if tc.status === 'running'}
@@ -152,12 +152,12 @@
                     {/if}
                   </button>
                   {#if expandedTools[tc.id]}
-                    <div class="px-3 py-2 bg-slate-900/50 border-t border-slate-700/50 flex flex-col gap-2 overflow-x-auto">
+                    <div class="px-3 py-2 bg-slate-50/50 border-t border-slate-200/50 flex flex-col gap-2 overflow-x-auto">
                       <div class="text-slate-400">Args:</div>
-                      <pre class="text-slate-300">{JSON.stringify(tc.args, null, 2)}</pre>
+                      <pre class="text-slate-700">{JSON.stringify(tc.args, null, 2)}</pre>
                       {#if tc.result}
                         <div class="text-slate-400 mt-1">Result:</div>
-                        <pre class="text-slate-300 max-h-48 overflow-y-auto">{JSON.stringify(tc.result, null, 2)}</pre>
+                        <pre class="text-slate-700 max-h-48 overflow-y-auto">{JSON.stringify(tc.result, null, 2)}</pre>
                       {/if}
                     </div>
                   {/if}
@@ -168,24 +168,24 @@
           {#if msg.statuses && msg.statuses.length > 0}
             <div class="flex flex-col gap-1 my-2">
               {#each msg.statuses as status}
-                <div class="text-xs text-slate-400 bg-slate-800/50 rounded-md px-3 py-1.5 flex items-start gap-2 border border-slate-700/50 font-mono">
+                <div class="text-xs text-slate-400 bg-slate-100/50 rounded-md px-3 py-1.5 flex items-start gap-2 border border-slate-200/50 font-mono">
                   <Wrench size={12} class="mt-0.5 shrink-0" />
                   <span>{status}</span>
                 </div>
               {/each}
             </div>
           {/if}
-          <div class="prose prose-invert prose-sm max-w-none prose-pre:bg-slate-950 prose-pre:border prose-pre:border-slate-800 prose-a:text-indigo-400" 
+          <div class="prose prose-invert prose-sm max-w-none prose-pre:bg-white prose-pre:border prose-pre:border-slate-200 prose-a:text-indigo-400" 
                class:animate-pulse={$isGenerating && msg.id === $messages[$messages.length-1].id && !msg.content}
                style="word-wrap: break-word;">
             {#if msg.content}
               {@html renderMarkdown(msg.content)}
             {:else if $isGenerating && msg.id === $messages[$messages.length-1].id}
-              <span class="text-slate-500">Thinking...</span>
+              <span class="text-slate-400">Thinking...</span>
             {/if}
           </div>
         {:else if msg.role === 'user'}
-          <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl rounded-tl-sm p-4 text-slate-200">
+          <div class="bg-indigo-500/10 border border-indigo-500/20 rounded-xl rounded-tl-sm p-4 text-slate-800">
             {msg.content}
           </div>
         {:else}
@@ -197,14 +197,14 @@
     {/each}
   </div>
 
-  <div class="p-4 bg-slate-900 border-t border-slate-800 shrink-0">
-    <div class="relative bg-slate-950 rounded-xl border border-slate-800 focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
+  <div class="p-4 bg-slate-50 border-t border-slate-200 shrink-0">
+    <div class="relative bg-white rounded-xl border border-slate-200 focus-within:border-indigo-500/50 focus-within:ring-1 focus-within:ring-indigo-500/50 transition-all shadow-inner">
       <textarea
         bind:value={inputStr}
         on:keydown={handleKeydown}
         disabled={$isGenerating || $connectionState !== "connected"}
         placeholder={$connectionState === "connected" ? "Ask anything about your codebase..." : "Connecting..."}
-        class="w-full bg-transparent resize-none outline-none p-4 min-h-[56px] max-h-64 overflow-y-auto text-slate-200 disabled:opacity-50"
+        class="w-full bg-transparent resize-none outline-none p-4 min-h-[56px] max-h-64 overflow-y-auto text-slate-800 disabled:opacity-50"
         rows="1"
       ></textarea>
       
@@ -212,7 +212,7 @@
         <button 
           on:click={handleSend}
           disabled={!inputStr.trim() || $isGenerating || $connectionState !== "connected"}
-          class="p-2 rounded-lg bg-indigo-500 text-white disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500 transition-colors"
+          class="p-2 rounded-lg bg-indigo-500 text-white disabled:opacity-50 disabled:bg-slate-100 disabled:text-slate-400 transition-colors"
         >
           {#if $isGenerating}
             <Loader2 size={18} class="animate-spin" />
@@ -222,7 +222,7 @@
         </button>
       </div>
     </div>
-    <div class="text-[10px] text-center text-slate-500 mt-2">
+    <div class="text-[10px] text-center text-slate-400 mt-2">
       Press Enter to send, Shift+Enter for new line
     </div>
   </div>

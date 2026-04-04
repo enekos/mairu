@@ -41,9 +41,9 @@ func TestSessionNameFromQuery(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("POST", "/api/sessions", strings.NewReader(`{"name":"test-session"}`))
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	r.ServeHTTP(w, req)
-	
+
 	if w.Code == http.StatusNotFound {
 		t.Errorf("expected route to exist")
 	}

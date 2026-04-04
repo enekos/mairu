@@ -151,12 +151,12 @@
                 </div>
               </td>
               <td class="abstract-cell">
-                <div style="font-weight: 500; margin-bottom: 6px; color: #e2e8f0;">{row.abstract}</div>
+                <div style="font-weight: 500; margin-bottom: 6px; color: var(--text-main);">{row.abstract}</div>
                 {#if row.overview}
-                  <div style="margin-top: 8px; color: #cbd5e1; font-size: 12px;"><strong>Overview:</strong><br>{row.overview}</div>
+                  <div style="margin-top: 8px; color: var(--text-dim); font-size: 12px;"><strong>Overview:</strong><br>{row.overview}</div>
                 {/if}
                 {#if row.content}
-                  <div style="margin-top: 8px; color: #94a3b8; font-size: 12px;"><strong>Content:</strong><br>{row.content}</div>
+                  <div style="margin-top: 8px; color: var(--text-secondary); font-size: 12px;"><strong>Content:</strong><br>{row.content}</div>
                 {/if}
               </td>
               {#if hasSearchResults}

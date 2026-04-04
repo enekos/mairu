@@ -10,20 +10,7 @@ services:
     volumes:
       - meili_data:/meili_data
       
-  postgres:
-    image: postgres:15
-    container_name: contextfs-pg
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: mairu
-      POSTGRES_PASSWORD: mairupassword
-      POSTGRES_DB: mairudb
-    volumes:
-      - pg_data:/var/lib/postgresql/data
 
 volumes:
   meili_data:
-    driver: local
-  pg_data:
     driver: local

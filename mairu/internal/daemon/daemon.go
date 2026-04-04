@@ -207,25 +207,25 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		return nil
 	}
 	fp := fmt.Sprintf("%d:%d", st.Size(), st.ModTime().UnixMilli())
-	
+
 	d.mu.Lock()
 	existingFp := d.fileFingerprints[abs]
 	d.mu.Unlock()
-	
+
 	if existingFp == fp {
 		return nil
 	}
-	
+
 	raw, err := os.ReadFile(abs)
 	if err != nil {
 		return nil
 	}
 	contentHash := hashText(string(raw))
-	
+
 	d.mu.Lock()
 	existingContentHash := d.fileContentHashes[abs]
 	d.mu.Unlock()
-	
+
 	if existingContentHash == contentHash {
 		d.mu.Lock()
 		d.fileFingerprints[abs] = fp
@@ -241,11 +241,11 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		"logic_graph": summary.LogicGraph,
 	}
 	payloadHash := hashText(summary.Abstract + "\n" + summary.Overview + "\n" + summary.Content + "\n" + mustJSON(metadata))
-	
+
 	d.mu.Lock()
 	existingPayloadHash := d.nodePayloadHashes[abs]
 	d.mu.Unlock()
-	
+
 	if existingPayloadHash == payloadHash {
 		d.mu.Lock()
 		d.fileFingerprints[abs] = fp
@@ -253,7 +253,7 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		d.mu.Unlock()
 		return nil
 	}
-	
+
 	if err := d.manager.UpsertFileContextNode(
 		ctx,
 		d.fileToURI(abs),
@@ -267,13 +267,13 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 	); err != nil {
 		return err
 	}
-	
+
 	d.mu.Lock()
 	d.fileFingerprints[abs] = fp
 	d.fileContentHashes[abs] = contentHash
 	d.nodePayloadHashes[abs] = payloadHash
 	d.mu.Unlock()
-	
+
 	fmt.Printf("[Daemon] Updated AST context for %s\n", filepath.Base(abs))
 	return nil
 }

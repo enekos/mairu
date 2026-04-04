@@ -72,9 +72,9 @@
     position: relative;
     height: 600px;
     width: 100%;
-    border: 1px solid #1e293b;
+    border: 1px solid var(--bg-card);
     border-radius: 8px;
-    background: #0f172a;
+    background: var(--bg-main);
     display: flex;
     overflow: hidden;
   }
@@ -90,13 +90,13 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #64748b;
+    color: var(--text-muted);
   }
   
   .details-drawer {
     width: 400px;
-    background: #1e293b;
-    border-left: 1px solid #334155;
+    background: var(--bg-card);
+    border-left: 1px solid var(--border-main);
     display: flex;
     flex-direction: column;
     box-shadow: -5px 0 15px rgba(0,0,0,0.3);
@@ -111,9 +111,9 @@
   .tree-node {
     width: 100%;
     text-align: left;
-    background: #1e293b;
-    border: 1px solid #334155;
-    color: #cbd5e1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-main);
+    color: var(--text-dim);
     border-radius: 8px;
     padding: 8px 10px;
     cursor: pointer;
@@ -122,7 +122,7 @@
     gap: 8px;
   }
   .tree-node:hover {
-    border-color: #6366f1;
+    border-color: var(--accent-main);
   }
   .tree-name {
     overflow: hidden;
@@ -135,20 +135,20 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px;
-    border-bottom: 1px solid #334155;
-    background: #0f172a;
+    border-bottom: 1px solid var(--border-main);
+    background: var(--bg-main);
   }
   
   .drawer-header h3 {
     margin: 0;
-    color: #e2e8f0;
+    color: var(--text-main);
     font-size: 16px;
   }
   
   .close-btn {
     background: transparent;
     border: none;
-    color: #94a3b8;
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 16px;
   }
@@ -175,13 +175,13 @@
   .field .label {
     font-size: 11px;
     text-transform: uppercase;
-    color: #64748b;
+    color: var(--text-muted);
     font-weight: bold;
     letter-spacing: 0.5px;
   }
   
   .value {
-    color: #cbd5e1;
+    color: var(--text-dim);
     font-size: 13px;
     line-height: 1.5;
   }
@@ -189,14 +189,14 @@
   .uri-value {
     word-break: break-all;
     font-family: monospace;
-    background: #0f172a;
+    background: var(--bg-main);
     padding: 6px 8px;
     border-radius: 4px;
-    border: 1px solid #334155;
+    border: 1px solid var(--border-main);
   }
   
   .abstract-value {
-    background: #0f172a;
+    background: var(--bg-main);
     padding: 10px;
     border-radius: 6px;
     border-left: 3px solid #38bdf8;
@@ -204,10 +204,10 @@
   
   .pre-value {
     font-family: monospace;
-    background: #0f172a;
+    background: var(--bg-main);
     padding: 10px;
     border-radius: 6px;
-    border: 1px solid #334155;
+    border: 1px solid var(--border-main);
     white-space: pre-wrap;
     word-break: break-word;
     font-size: 12px;
@@ -227,9 +227,9 @@
   }
   
   .tag {
-    background: #0f172a;
-    border: 1px solid #334155;
-    color: #94a3b8;
+    background: var(--bg-main);
+    border: 1px solid var(--border-main);
+    color: var(--text-secondary);
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;

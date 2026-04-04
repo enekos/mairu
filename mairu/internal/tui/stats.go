@@ -1,5 +1,7 @@
 package tui
 
+import "strings"
+
 type sessionStats struct {
 	Model                string
 	StreamState          string
@@ -14,6 +16,14 @@ type sessionStats struct {
 	EstimatedUserTokens  int
 	EstimatedAgentTokens int
 	EstimatedTotalTokens int
+	ContextLimit         int
+}
+
+func getModelContextLimit(modelName string) int {
+	if strings.Contains(modelName, "pro") {
+		return 2000000
+	}
+	return 1000000
 }
 
 func computeSessionStats(
@@ -66,6 +76,7 @@ func computeSessionStats(
 	stats.EstimatedUserTokens = estimateTokenCount(userChars)
 	stats.EstimatedAgentTokens = estimateTokenCount(agentChars)
 	stats.EstimatedTotalTokens = stats.EstimatedUserTokens + stats.EstimatedAgentTokens
+	stats.ContextLimit = getModelContextLimit(modelName)
 
 	return stats
 }

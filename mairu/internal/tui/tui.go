@@ -3,12 +3,14 @@ package tui
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/atotto/clipboard"
@@ -39,13 +41,15 @@ func (i listItem) Description() string { return i.desc }
 func (i listItem) FilterValue() string { return i.title }
 
 type model struct {
-	viewport viewport.Model
-	messages []ChatMessage
-	textarea textarea.Model
-	err      error
-	agent    *agent.Agent
-	thinking bool
-	spinner  spinner.Model
+	showAnim  bool
+	animFrame int
+	viewport  viewport.Model
+	messages  []ChatMessage
+	textarea  textarea.Model
+	err       error
+	agent     *agent.Agent
+	thinking  bool
+	spinner   spinner.Model
 
 	currentResponse string
 	toolEvents      []toolEvent
@@ -72,6 +76,8 @@ type model struct {
 	autocompleteIndex int
 	filteredCommands  []SlashCommand
 }
+
+type animTickMsg time.Time
 
 type agentStreamMsg agent.AgentEvent
 
@@ -216,6 +222,8 @@ func initialModel(a *agent.Agent, sessionName string) model {
 	l.SetShowTitle(true)
 
 	m := model{
+		showAnim:        true,
+		animFrame:       0,
 		textarea:        ta,
 		messages:        msgs,
 		viewport:        vp,
@@ -238,8 +246,14 @@ func Start(a *agent.Agent, sessionName string) error {
 	return err
 }
 
+func tickAnim() tea.Cmd {
+	return tea.Tick(time.Millisecond*20, func(t time.Time) tea.Msg {
+		return animTickMsg(t)
+	})
+}
+
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textarea.Blink, m.spinner.Tick)
+	return tea.Batch(textarea.Blink, m.spinner.Tick, tickAnim())
 }
 
 func waitForStream(ch <-chan agent.AgentEvent) tea.Cmd {
@@ -359,6 +373,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg := msg.(type) {
+	case animTickMsg:
+		if m.showAnim {
+			m.animFrame++
+			if m.animFrame > 20 {
+				m.showAnim = false
+				m.recomputeLayout()
+				m.renderMessages()
+				return m, nil
+			}
+			return m, tickAnim()
+		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
@@ -1070,6 +1095,9 @@ func (m *model) renderMessages() {
 }
 
 func (m model) View() string {
+	if m.showAnim {
+		return m.renderAnimation()
+	}
 	if m.showList {
 		return m.listModel.View()
 	}
@@ -1201,7 +1229,11 @@ func (m model) renderSidebar() string {
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("%s %d\n", sidebarLabelStyle.Render("User:"), stats.EstimatedUserTokens))
 	sb.WriteString(fmt.Sprintf("%s %d\n", sidebarLabelStyle.Render("Mairu:"), stats.EstimatedAgentTokens))
-	sb.WriteString(fmt.Sprintf("%s %d\n", sidebarLabelStyle.Render("Total:"), stats.EstimatedTotalTokens))
+	sb.WriteString(fmt.Sprintf("%s %d / %dk\n", sidebarLabelStyle.Render("Total:"), stats.EstimatedTotalTokens, stats.ContextLimit/1000))
+
+	percent := float64(stats.EstimatedTotalTokens) / float64(stats.ContextLimit) * 100
+	bar := renderProgressBar(stats.EstimatedTotalTokens, stats.ContextLimit, 20)
+	sb.WriteString(fmt.Sprintf("%s %s %.1f%%\n", sidebarLabelStyle.Render("Usage:"), bar, percent))
 
 	if len(m.toolEvents) > 0 {
 		sb.WriteString("\n\n")
@@ -1430,4 +1462,73 @@ func boolLabel(v bool) string {
 		return "on"
 	}
 	return "off"
+}
+
+func renderProgressBar(current, total, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if total <= 0 {
+		total = 1
+	}
+	percent := float64(current) / float64(total)
+	if percent > 1.0 {
+		percent = 1.0
+	}
+	filledChars := int(float64(width) * percent)
+	emptyChars := width - filledChars
+	return lipgloss.NewStyle().Foreground(lipgloss.Color("#88c0d0")).Render(strings.Repeat("█", filledChars)) +
+		lipgloss.NewStyle().Foreground(lipgloss.Color("#4c566a")).Render(strings.Repeat("░", emptyChars))
+}
+
+func (m model) renderAnimation() string {
+	width, height := m.width, m.height
+	if width <= 0 || height <= 0 {
+		return ""
+	}
+	chars := []rune(" 010101¦|/:=+")
+	var sb strings.Builder
+
+	// t goes from 0.0 to 1.0 over the ~400ms
+	t := float64(m.animFrame) / 20.0
+
+	for y := 0; y < height; y++ {
+		for x := 0; x < width; x++ {
+			// Crazy noise that changes significantly with x, y, and t
+			crazyNoise := math.Sin(float64(x)*0.5+t*10.0) * math.Cos(float64(y)*0.8-t*5.0)
+
+			// t goes 0 to 1. Wave propagates downwards but with crazy edges
+			wave := t*1.5 - float64(y)/float64(height) + crazyNoise*0.3
+
+			idx := 0
+			// wave > 0 means the wave has reached this point
+			// wave < 0.8 means it's the "tail" of the wave
+			if wave > 0 && wave < 0.8 {
+				// Characters change constantly
+				randVal := math.Sin(float64(x*17 + y*31 + m.animFrame*43))
+				charIdx := int((randVal+1.0)*0.5*float64(len(chars)-1)) + 1
+
+				// Fade out the tail
+				if wave > 0.6 {
+					charIdx = charIdx / 3
+				} else if wave > 0.4 {
+					charIdx = charIdx / 2
+				}
+
+				idx = charIdx
+			}
+
+			if idx < 0 {
+				idx = 0
+			}
+			if idx >= len(chars) {
+				idx = len(chars) - 1
+			}
+			sb.WriteRune(chars[idx])
+		}
+		if y < height-1 {
+			sb.WriteString("\n")
+		}
+	}
+	return lipgloss.NewStyle().Foreground(colorTool).Render(sb.String())
 }

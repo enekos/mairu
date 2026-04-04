@@ -95,29 +95,29 @@ test("navigates unified dashboard tabs and runs core workflows", async ({ page }
   await page.getByRole("button", { name: "Overview" }).click();
   await expect(page.getByText("Memory Categories")).toBeVisible();
 
-  await page.getByRole("button", { name: /Skills/ }).click();
+  await page.getByRole("navigation").getByRole("button", { name: /Skills/ }).click();
   await page.getByRole("button", { name: "+ Add Skill" }).click();
   await page.getByPlaceholder("Skill name").fill("E2E Skill");
   await page.getByPlaceholder(/Description/).fill("Skill from e2e");
   await page.getByRole("button", { name: "Save skill" }).click();
 
-  await page.getByRole("button", { name: /Memories/ }).click();
+  await page.getByRole("navigation").getByRole("button", { name: /Memories/ }).click();
   await page.getByRole("button", { name: "+ Add Memory" }).click();
   await page.getByPlaceholder(/Memory content/).fill("Remember this");
   await page.getByRole("button", { name: "Save memory" }).click();
 
-  await page.getByRole("button", { name: /Context/ }).click();
+  await page.getByRole("navigation").getByRole("button", { name: /Context/ }).click();
   await page.getByRole("button", { name: "Graph" }).click();
   await expect(page.getByText("Root")).toBeVisible();
 
   await page.getByRole("button", { name: "Search Lab" }).click();
   await page.getByPlaceholder("Search query...").fill("mairu");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("results for")).toBeVisible();
 
   await page.getByRole("button", { name: "Vibe" }).click();
   await page.getByPlaceholder(/What do you want to find/).fill("find memory");
-  await page.getByRole("button", { name: "Search" }).click();
+  await page.getByRole("button", { name: "Search", exact: true }).click();
   await expect(page.getByText("Query executed")).toBeVisible();
 
   await page.getByRole("button", { name: "Mutation" }).click();

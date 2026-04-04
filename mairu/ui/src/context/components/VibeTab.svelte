@@ -210,7 +210,7 @@
                 <div class="vibe-item-body">
                   <div class="vibe-item-top">
                     {#if group.store === "memory"}
-                      <span class="lab-type-cat" style="background:{categoryColors[item.category] || '#64748b'}">{item.category}</span>
+                      <span class="lab-type-cat" style="background:{categoryColors[item.category] || 'var(--text-muted)'}">{item.category}</span>
                       <span class="lab-imp-badge {impColor(item.importance)}">{item.importance}</span>
                       {#if item.owner}<span class="vibe-item-owner">{item.owner}</span>{/if}
                     {:else if group.store === "skill"}
@@ -370,35 +370,35 @@
 <style>
   .vibe-section { display: flex; flex-direction: column; gap: 20px; }
 
-  .vibe-title { font-size: 18px; font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
-  .vibe-desc { font-size: 13px; color: #64748b; }
+  .vibe-title { font-size: 18px; font-weight: 700; color: var(--text-bold); margin-bottom: 4px; }
+  .vibe-desc { font-size: 13px; color: var(--text-muted); }
 
   .vibe-controls {
     display: flex; flex-direction: column; gap: 12px;
-    background: #1e293b; border: 1px solid #334155; border-radius: 12px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
     padding: 16px;
   }
 
   .vibe-mode-toggle { display: flex; gap: 2px; }
   .vibe-mode-toggle button {
-    background: none; border: 1px solid #334155; color: #94a3b8;
+    background: none; border: 1px solid var(--border-main); color: var(--text-secondary);
     padding: 6px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
     transition: all 0.15s;
   }
   .vibe-mode-toggle button:first-child { border-radius: 7px 0 0 7px; }
   .vibe-mode-toggle button:last-child { border-radius: 0 7px 7px 0; }
   .vibe-mode-toggle button.active {
-    background: #312e81; border-color: #4f46e5; color: #a5b4fc;
+    background: var(--bg-active); border-color: #4f46e5; color: var(--text-active);
   }
 
   .vibe-input-row { display: flex; gap: 12px; align-items: flex-start; }
 
   .vibe-input {
-    flex: 1; background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    flex: 1; background: var(--bg-main); border: 1px solid var(--border-main); color: var(--text-main);
     border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none;
     font-family: inherit; resize: vertical; min-height: 44px;
   }
-  .vibe-input:focus { border-color: #6366f1; }
+  .vibe-input:focus { border-color: var(--accent-main); }
   .vibe-input:disabled { opacity: 0.5; }
 
   .vibe-input-actions { display: flex; flex-direction: column; gap: 8px; min-width: 160px; }
@@ -406,10 +406,10 @@
   .vibe-opts { display: flex; gap: 8px; }
   .vibe-opts label {
     display: flex; flex-direction: column; gap: 2px;
-    font-size: 11px; color: #475569;
+    font-size: 11px; color: var(--text-light);
   }
   .vibe-opt-input {
-    background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    background: var(--bg-main); border: 1px solid var(--border-main); color: var(--text-main);
     border-radius: 5px; padding: 4px 6px; font-size: 12px; outline: none;
     width: 80px;
   }
@@ -420,27 +420,27 @@
   /* Error */
   .vibe-error {
     display: flex; align-items: center; gap: 12px;
-    padding: 10px 14px; background: #450a0a; color: #fca5a5;
+    padding: 10px 14px; background: var(--bg-error); color: var(--text-error);
     border-radius: 8px; font-size: 13px;
   }
-  .vibe-error button { margin-left: auto; background: none; border: none; color: #fca5a5; cursor: pointer; }
+  .vibe-error button { margin-left: auto; background: none; border: none; color: var(--text-error); cursor: pointer; }
 
   /* Reasoning */
   .vibe-reasoning {
     background: #1a1a2e; border: 1px solid #2d2b55;
     border-radius: 8px; padding: 12px 14px;
-    font-size: 13px; color: #a5b4fc; line-height: 1.5;
+    font-size: 13px; color: var(--text-active); line-height: 1.5;
   }
   .vibe-reasoning-label {
     display: inline-block; font-size: 10px; font-weight: 700;
     text-transform: uppercase; letter-spacing: 0.05em;
-    color: #6366f1; margin-right: 8px;
-    background: #312e81; padding: 2px 7px; border-radius: 4px;
+    color: var(--accent-main); margin-right: 8px;
+    background: var(--bg-active); padding: 2px 7px; border-radius: 4px;
   }
 
   .vibe-meta {
-    font-size: 12px; color: #475569;
-    padding: 4px 0; border-bottom: 1px solid #1e293b;
+    font-size: 12px; color: var(--text-light);
+    padding: 4px 0; border-bottom: 1px solid var(--bg-card);
   }
 
   /* Query result groups */
@@ -449,57 +449,57 @@
     display: flex; align-items: center; gap: 8px;
     padding: 8px 0 4px;
   }
-  .vibe-group-query { font-size: 12px; color: #818cf8; font-style: italic; }
-  .vibe-group-count { font-size: 11px; color: #475569; margin-left: auto; }
+  .vibe-group-query { font-size: 12px; color: var(--text-link); font-style: italic; }
+  .vibe-group-count { font-size: 11px; color: var(--text-light); margin-left: auto; }
 
-  .vibe-no-results { color: #475569; font-size: 13px; padding: 12px 0; }
+  .vibe-no-results { color: var(--text-light); font-size: 13px; padding: 12px 0; }
 
   .vibe-items { display: flex; flex-direction: column; gap: 8px; }
 
   .vibe-item {
     display: flex; gap: 12px;
-    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 10px;
     padding: 12px 14px; transition: border-color 0.15s;
   }
-  .vibe-item:hover { border-color: #475569; }
+  .vibe-item:hover { border-color: var(--text-light); }
 
-  .vibe-item-rank { font-size: 12px; font-weight: 700; color: #475569; min-width: 24px; padding-top: 2px; }
+  .vibe-item-rank { font-size: 12px; font-weight: 700; color: var(--text-light); min-width: 24px; padding-top: 2px; }
   .vibe-item-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
   .vibe-item-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .vibe-item-title { color: #f1f5f9; font-size: 13px; }
-  .vibe-item-owner { font-size: 11px; color: #475569; }
+  .vibe-item-title { color: var(--text-bold); font-size: 13px; }
+  .vibe-item-owner { font-size: 11px; color: var(--text-light); }
   .vibe-score { font-size: 12px; font-weight: 700; margin-left: auto; }
-  .vibe-item-content { font-size: 13px; color: #94a3b8; line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
-  .vibe-item-overview { margin-top: 4px; font-size: 12px; color: #64748b; white-space: pre-wrap; word-break: break-word; }
+  .vibe-item-content { font-size: 13px; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap; word-break: break-word; }
+  .vibe-item-overview { margin-top: 4px; font-size: 12px; color: var(--text-muted); white-space: pre-wrap; word-break: break-word; }
   .vibe-item-project {
-    display: inline-block; font-size: 10px; color: #64748b;
-    background: #0f172a; padding: 2px 6px; border-radius: 4px; width: fit-content;
+    display: inline-block; font-size: 10px; color: var(--text-muted);
+    background: var(--bg-main); padding: 2px 6px; border-radius: 4px; width: fit-content;
   }
 
   /* Mutation plan */
   .vibe-mutation-header {
     display: flex; align-items: center; justify-content: space-between;
     padding: 4px 0;
-    font-size: 13px; color: #94a3b8;
+    font-size: 13px; color: var(--text-secondary);
   }
   .vibe-select-all {
-    background: none; border: 1px solid #334155; color: #94a3b8;
+    background: none; border: 1px solid var(--border-main); color: var(--text-secondary);
     padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 12px;
   }
-  .vibe-select-all:hover { background: #334155; }
+  .vibe-select-all:hover { background: var(--border-main); }
 
   .vibe-ops { display: flex; flex-direction: column; gap: 8px; }
 
   .vibe-op {
     display: flex; gap: 12px; align-items: flex-start;
-    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 10px;
     padding: 12px 14px; transition: all 0.15s;
   }
   .vibe-op-selected { border-color: #4f46e5; background: #1e2640; }
   .vibe-op-executed { opacity: 0.7; }
 
   .vibe-op-check { display: flex; align-items: center; padding-top: 2px; cursor: pointer; }
-  .vibe-op-check input { accent-color: #6366f1; width: 16px; height: 16px; cursor: pointer; }
+  .vibe-op-check input { accent-color: var(--accent-main); width: 16px; height: 16px; cursor: pointer; }
 
   .vibe-op-badge {
     font-size: 18px; font-weight: 700; font-family: monospace;
@@ -509,83 +509,83 @@
   .vibe-op-body { flex: 1; display: flex; flex-direction: column; gap: 6px; }
   .vibe-op-top { display: flex; align-items: center; gap: 8px; }
   .vibe-op-type { font-size: 12px; font-weight: 700; font-family: monospace; }
-  .vibe-op-target { font-size: 11px; color: #818cf8; }
-  .vibe-op-desc { font-size: 13px; color: #cbd5e1; white-space: pre-wrap; word-break: break-word; }
+  .vibe-op-target { font-size: 11px; color: var(--text-link); }
+  .vibe-op-desc { font-size: 13px; color: var(--text-dim); white-space: pre-wrap; word-break: break-word; }
 
   .vibe-op-data {
     display: flex; flex-direction: column; gap: 2px;
-    background: #0f172a; border-radius: 6px; padding: 8px 10px;
+    background: var(--bg-main); border-radius: 6px; padding: 8px 10px;
     font-family: monospace; font-size: 12px;
   }
   .vibe-op-field { display: flex; gap: 6px; }
-  .vibe-op-field-key { color: #64748b; min-width: 80px; }
-  .vibe-op-field-val { color: #94a3b8; word-break: break-word; }
+  .vibe-op-field-key { color: var(--text-muted); min-width: 80px; }
+  .vibe-op-field-val { color: var(--text-secondary); word-break: break-word; }
 
   .vibe-op-result {
-    font-size: 12px; color: #86efac;
-    background: #0f2a1c; padding: 6px 10px; border-radius: 6px;
+    font-size: 12px; color: var(--text-success);
+    background: var(--bg-success); padding: 6px 10px; border-radius: 6px;
     margin-top: 4px;
   }
-  .vibe-op-error { color: #fca5a5; background: #2a0f0f; }
+  .vibe-op-error { color: var(--text-error); background: #2a0f0f; }
 
   .vibe-execute-bar {
     display: flex; align-items: center; gap: 16px;
     padding: 12px 0;
   }
   .vibe-execute-btn { padding: 10px 24px; font-size: 14px; }
-  .vibe-execute-hint { font-size: 12px; color: #475569; }
+  .vibe-execute-hint { font-size: 12px; color: var(--text-light); }
 
   .vibe-done-bar {
-    padding: 12px 16px; background: #0f2a1c; border: 1px solid #166534;
-    border-radius: 8px; color: #86efac; font-size: 13px; font-weight: 500;
+    padding: 12px 16px; background: var(--bg-success); border: 1px solid #166534;
+    border-radius: 8px; color: var(--text-success); font-size: 13px; font-weight: 500;
   }
 
   /* History */
   .vibe-history { display: flex; flex-direction: column; gap: 6px; }
   .vibe-history-title {
-    font-size: 12px; color: #475569; text-transform: uppercase;
+    font-size: 12px; color: var(--text-light); text-transform: uppercase;
     letter-spacing: 0.05em; margin-bottom: 4px;
   }
   .vibe-history-item {
     display: flex; align-items: center; gap: 10px;
-    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 8px;
     padding: 8px 12px; cursor: pointer; text-align: left;
     transition: border-color 0.15s; color: inherit;
   }
-  .vibe-history-item:hover { border-color: #475569; }
+  .vibe-history-item:hover { border-color: var(--text-light); }
   .vibe-history-mode {
     display: inline-flex; align-items: center; justify-content: center;
     width: 22px; height: 22px; border-radius: 5px;
     font-size: 11px; font-weight: 700;
-    background: #312e81; color: #a5b4fc;
+    background: var(--bg-active); color: var(--text-active);
   }
   .vibe-history-mutation { background: #3b1c0a; color: #fdba74; }
   .vibe-history-prompt {
-    font-size: 13px; color: #94a3b8;
+    font-size: 13px; color: var(--text-secondary);
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1;
   }
 
   /* Empty state */
   .vibe-empty {
     display: flex; flex-direction: column; align-items: center;
-    gap: 16px; padding: 48px 20px; text-align: center; color: #475569;
+    gap: 16px; padding: 48px 20px; text-align: center; color: var(--text-light);
   }
-  .vibe-empty-icon { font-size: 48px; color: #334155; font-family: monospace; font-weight: 700; }
+  .vibe-empty-icon { font-size: 48px; color: var(--border-main); font-family: monospace; font-weight: 700; }
   .vibe-empty p { font-size: 14px; }
   .vibe-empty kbd {
-    background: #1e293b; border: 1px solid #334155; border-radius: 4px;
-    padding: 1px 5px; font-size: 11px; color: #94a3b8;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 4px;
+    padding: 1px 5px; font-size: 11px; color: var(--text-secondary);
   }
 
   .vibe-examples {
     display: flex; flex-direction: column; gap: 6px; align-items: center;
     margin-top: 8px;
   }
-  .vibe-examples-title { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+  .vibe-examples-title { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
   .vibe-example {
-    background: #1e293b; border: 1px solid #334155; border-radius: 8px;
-    padding: 8px 16px; cursor: pointer; color: #818cf8; font-size: 13px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 8px;
+    padding: 8px 16px; cursor: pointer; color: var(--text-link); font-size: 13px;
     font-style: italic; transition: border-color 0.15s;
   }
-  .vibe-example:hover { border-color: #6366f1; }
+  .vibe-example:hover { border-color: var(--accent-main); }
 </style>

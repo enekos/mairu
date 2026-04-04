@@ -32,15 +32,15 @@ export function impColor(n: number): string {
 }
 
 export const categoryColors: Record<string, string> = {
-  profile: "#6366f1",
+  profile: "var(--accent-main)",
   preferences: "#8b5cf6",
   entities: "#0ea5e9",
   events: "#14b8a6",
   cases: "#f59e0b",
   patterns: "#f97316",
-  observation: "#64748b",
+  observation: "var(--text-muted)",
   reflection: "#a855f7",
   decision: "#ef4444",
   constraint: "#dc2626",
-  architecture: "#2563eb",
+  architecture: "var(--accent-blue)",
 };
