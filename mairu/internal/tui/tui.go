@@ -51,10 +51,11 @@ type model struct {
 	thinking  bool
 	spinner   spinner.Model
 
-	currentResponse string
-	toolEvents      []toolEvent
-	mdRenderer      *glamour.TermRenderer
-	activeStream    chan agent.AgentEvent
+	currentResponse   string
+	currentBashOutput string
+	toolEvents        []toolEvent
+	mdRenderer        *glamour.TermRenderer
+	activeStream      chan agent.AgentEvent
 
 	showList  bool
 	listModel list.Model
@@ -507,7 +508,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.renderMessages()
 				m.viewport.GotoBottom()
 
-				out, err := m.agent.RunBash(cmdStr, 60000)
+				out, err := m.agent.RunBash(cmdStr, 60000, nil)
 				if err != nil {
 					m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Command failed: " + err.Error() + "\n" + out})
 				} else {
@@ -522,7 +523,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.renderMessages()
 				m.viewport.GotoBottom()
 
-				out, err := m.agent.RunBash(cmdStr, 60000)
+				out, err := m.agent.RunBash(cmdStr, 60000, nil)
 				if err != nil {
 					v += fmt.Sprintf("\n\nCommand `!%s` failed: %v\nOutput: %s", cmdStr, err, out)
 				} else {
@@ -968,11 +969,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.thinking = false
 			m.messages = append(m.messages, ChatMessage{Role: "Mairu", Content: m.currentResponse})
 			m.currentResponse = ""
+			m.currentBashOutput = ""
 			m.toolEvents = nil
 			m.activeStream = nil
 			m.renderMessages()
 			m.autoScroll()
 		} else if msg.Type == "text" {
+			m.currentBashOutput = ""
 			m.currentResponse += msg.Content
 			m.renderMessages()
 			m.autoScroll()
@@ -987,14 +990,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.pushToolLog("log", msg.Content)
 			// Don't show log events in main chat, just background sidebar
 			cmds = append(cmds, waitForStream(m.activeStream))
+		} else if msg.Type == "bash_output" {
+			m.pushToolLog("bash", msg.Content)
+			m.currentBashOutput += msg.Content
+			if len(m.currentBashOutput) > 2000 {
+				m.currentBashOutput = m.currentBashOutput[len(m.currentBashOutput)-2000:]
+			}
+			m.renderMessages()
+			m.autoScroll()
+			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "status" {
 			ev := buildToolStatusEvent(msg.Content)
 			m.toolEvents = append(m.toolEvents, ev)
 			m.pushToolLog("status", ev.Title)
+			m.currentBashOutput = ""
 			m.renderMessages()
 			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_call" {
+			m.currentBashOutput = ""
 			ev := buildToolCallEvent(msg.ToolName, msg.ToolArgs)
 			m.toolEvents = append(m.toolEvents, ev)
 			m.pushToolLog("call", ev.Title)
@@ -1002,6 +1016,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.autoScroll()
 			cmds = append(cmds, waitForStream(m.activeStream))
 		} else if msg.Type == "tool_result" {
+			m.currentBashOutput = ""
 			ev := buildToolResultEvent(msg.ToolName, msg.ToolResult)
 			m.toolEvents = append(m.toolEvents, ev)
 			m.pushToolLog("result", ev.Title)
@@ -1083,6 +1098,11 @@ func (m *model) renderMessages() {
 			}
 			sb.WriteString("\n")
 			line++
+		}
+		if m.currentBashOutput != "" {
+			bashChunk := toolStatusBoxStyle.Render(toolStatusTitleStyle.Render("🖥️ Running Bash...")+"\n\n"+m.currentBashOutput) + "\n"
+			sb.WriteString(bashChunk)
+			line += strings.Count(bashChunk, "\n")
 		}
 	}
 

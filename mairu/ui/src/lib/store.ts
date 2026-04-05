@@ -1,7 +1,7 @@
 import { writable } from 'svelte/store';
 
 export type AgentEvent = {
-  Type: "text" | "status" | "error" | "done" | "tool_call" | "tool_result" | "log";
+  Type: "text" | "status" | "error" | "done" | "tool_call" | "tool_result" | "log" | "bash_output";
   Content: string;
   ToolName?: string;
   ToolArgs?: any;
@@ -20,6 +20,7 @@ export type Message = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
+  bashOutput: string;
   statuses: string[];
   logs: string[];
   toolCalls: ToolCall[];
@@ -76,6 +77,7 @@ async function loadSessionMessages(sessionName: string) {
           id: crypto.randomUUID(),
           role: "user",
           content: textParts,
+          bashOutput: "",
           statuses: [], logs: [], toolCalls: []
         });
       }
@@ -113,6 +115,7 @@ async function loadSessionMessages(sessionName: string) {
           id: crypto.randomUUID(),
           role: "assistant",
           content: textParts,
+          bashOutput: "",
           statuses: [], logs: [], toolCalls: toolCalls
         });
       }
@@ -219,6 +222,7 @@ export async function connectWs(sessionName?: string, forceReconnect = false) {
       messages.update(msgs => {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === currentMessageId) {
+          lastMsg.bashOutput = "";
           lastMsg.content += data.Content;
           return [...msgs];
         }
@@ -251,6 +255,7 @@ export async function connectWs(sessionName?: string, forceReconnect = false) {
       messages.update(msgs => {
         const lastMsg = msgs[msgs.length - 1];
         if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === currentMessageId) {
+          lastMsg.bashOutput = "";
           // Find the last tool call with matching name that is still running
           for (let i = lastMsg.toolCalls.length - 1; i >= 0; i--) {
             const tc = lastMsg.toolCalls[i];
@@ -265,15 +270,34 @@ export async function connectWs(sessionName?: string, forceReconnect = false) {
         return msgs;
       });
     } else if (data.Type === "done") {
+      messages.update(msgs => {
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === currentMessageId) {
+          lastMsg.bashOutput = "";
+        }
+        return msgs;
+      });
       isGenerating.set(false);
       currentMessageId = null;
     } else if (data.Type === "error") {
       messages.update(msgs => [
         ...msgs, 
-        { id: crypto.randomUUID(), role: "system", content: `Error: ${data.Content}`, statuses: [], logs: [], toolCalls: [] }
+        { id: crypto.randomUUID(), role: "system", content: `Error: ${data.Content}`, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
       ]);
       isGenerating.set(false);
       currentMessageId = null;
+    } else if (data.Type === "bash_output") {
+      messages.update(msgs => {
+        const lastMsg = msgs[msgs.length - 1];
+        if (lastMsg && lastMsg.role === "assistant" && lastMsg.id === currentMessageId) {
+          lastMsg.bashOutput += data.Content;
+          if (lastMsg.bashOutput.length > 4000) {
+            lastMsg.bashOutput = lastMsg.bashOutput.slice(lastMsg.bashOutput.length - 4000);
+          }
+          return [...msgs];
+        }
+        return msgs;
+      });
     } else if (data.Type === "log") {
       messages.update(msgs => {
         const lastMsg = msgs[msgs.length - 1];
@@ -291,13 +315,13 @@ export function sendMessage(content: string) {
   if (ws && ws.readyState === WebSocket.OPEN) {
     messages.update(msgs => [
       ...msgs, 
-      { id: crypto.randomUUID(), role: "user", content, statuses: [], logs: [], toolCalls: [] }
+      { id: crypto.randomUUID(), role: "user", content, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
     ]);
     
     currentMessageId = crypto.randomUUID();
     messages.update(msgs => [
       ...msgs, 
-      { id: currentMessageId!, role: "assistant", content: "", statuses: [], logs: [], toolCalls: [] }
+      { id: currentMessageId!, role: "assistant", content: "", bashOutput: "", statuses: [], logs: [], toolCalls: [] }
     ]);
     
     isGenerating.set(true);

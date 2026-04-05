@@ -65,7 +65,7 @@ func (a *Agent) SetModel(modelName string) {
 }
 
 type AgentEvent struct {
-	Type       string         `json:"Type"` // "text", "status", "error", "done", "tool_call", "tool_result", "log"
+	Type       string         `json:"Type"` // "text", "status", "error", "done", "tool_call", "tool_result", "log", "bash_output"
 	Content    string         `json:"Content"`
 	ToolName   string         `json:"ToolName,omitempty"`
 	ToolArgs   map[string]any `json:"ToolArgs,omitempty"`
@@ -242,7 +242,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 			}
 
 			// Auto-Verification loop hook
-			verifOut, verifErr := a.runAutoVerification(filePath)
+			verifOut, verifErr := a.runAutoVerification(filePath, outChan)
 			if verifErr != nil {
 				result = map[string]any{
 					"status":  "edit applied but auto-verification failed",
@@ -285,7 +285,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 		}
 
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🖥️ Running bash: %s", command)}
-		out, err := a.RunBash(command, timeout)
+		out, err := a.RunBash(command, timeout, outChan)
 		if err != nil {
 			result = map[string]any{"error": err.Error(), "output": out}
 		} else {
@@ -319,7 +319,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 			}
 
 			// Auto-Verification loop hook
-			verifOut, verifErr := a.runAutoVerification(filePath)
+			verifOut, verifErr := a.runAutoVerification(filePath, outChan)
 			if verifErr != nil {
 				result = map[string]any{
 					"status":  "file written but auto-verification failed",
@@ -446,14 +446,14 @@ func (a *Agent) Close() {
 
 // runAutoVerification intelligently checks the project based on the file extension
 // or presence of typical configuration files (go.mod, tsconfig.json, etc.).
-func (a *Agent) runAutoVerification(editedFilePath string) (string, error) {
+func (a *Agent) runAutoVerification(editedFilePath string, outChan chan<- AgentEvent) (string, error) {
 	root := a.GetRoot()
 
 	// Default: if it's a Go file, try running `go build ./...`
 	if strings.HasSuffix(editedFilePath, ".go") {
 		// Verify there's a go.mod
 		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
-			return a.RunBash("go build ./...", 30000)
+			return a.RunBash("go build ./...", 30000, outChan)
 		}
 	}
 
@@ -463,9 +463,9 @@ func (a *Agent) runAutoVerification(editedFilePath string) (string, error) {
 			// check if bun is available or package.json has a typecheck script
 			content, err := os.ReadFile(filepath.Join(root, "package.json"))
 			if err == nil && strings.Contains(string(content), "\"typecheck\"") {
-				return a.RunBash("npm run typecheck", 45000) // Fallback for general
+				return a.RunBash("npm run typecheck", 45000, outChan) // Fallback for general
 			}
-			return a.RunBash("npx tsc --noEmit", 45000)
+			return a.RunBash("npx tsc --noEmit", 45000, outChan)
 		}
 	}
 
