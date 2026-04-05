@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -155,6 +156,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch msg.Type {
+		case tea.KeyEsc:
+			if m.thinking {
+				m.agent.Interrupt()
+				m.messages = append(m.messages, ChatMessage{Role: "System", Content: "🛑 Interruption requested..."})
+				m.renderMessages()
+				m.autoScroll()
+			} else {
+				m.textarea.Reset()
+			}
+			return m, nil
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyPgUp:
@@ -306,7 +317,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.renderMessages()
 				m.viewport.GotoBottom()
 
-				out, err := m.agent.RunBash(cmdStr, 60000, nil)
+				out, err := m.agent.RunBash(context.Background(), cmdStr, 60000, nil)
 				if err != nil {
 					m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Command failed: " + err.Error() + "\n" + out})
 				} else {
@@ -321,7 +332,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.renderMessages()
 				m.viewport.GotoBottom()
 
-				out, err := m.agent.RunBash(cmdStr, 60000, nil)
+				out, err := m.agent.RunBash(context.Background(), cmdStr, 60000, nil)
 				if err != nil {
 					v += fmt.Sprintf("\n\nCommand `!%s` failed: %v\nOutput: %s", cmdStr, err, out)
 				} else {

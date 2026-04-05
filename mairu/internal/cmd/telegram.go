@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"html"
 	"log"
@@ -256,7 +257,7 @@ var telegramCmd = &cobra.Command{
 			if strings.HasPrefix(prompt, "!!") {
 				cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!!"))
 				c.Send("<i>Running local command...</i>", &tele.SendOptions{ParseMode: tele.ModeHTML})
-				out, err := ag.RunBash(cmdStr, 60000, nil)
+				out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
 				if err != nil {
 					return sendLongMessage(c, fmt.Sprintf("❌ Failed: %v\n%s", err, out))
 				}
@@ -265,7 +266,7 @@ var telegramCmd = &cobra.Command{
 
 			if strings.HasPrefix(prompt, "!") {
 				cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!"))
-				out, err := ag.RunBash(cmdStr, 60000, nil)
+				out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
 				if err != nil {
 					prompt += fmt.Sprintf("\nCommand !%s failed: %v\n%s", cmdStr, err, out)
 				} else {

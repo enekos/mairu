@@ -21,6 +21,9 @@ type Agent struct {
 	llm    *llm.GeminiProvider
 	db     *db.DB
 	apiKey string
+
+	mu     sync.Mutex
+	cancel context.CancelFunc
 }
 
 type Config struct {
@@ -56,6 +59,15 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 
 func (a *Agent) GetModelName() string {
 	return a.llm.GetModelName()
+}
+
+func (a *Agent) Interrupt() {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.cancel != nil {
+		a.cancel()
+		a.cancel = nil
+	}
 }
 
 func (a *Agent) GetRoot() string {
@@ -143,11 +155,25 @@ func (a *Agent) processLoopStream(input string, outChan chan<- AgentEvent) {
 	const maxStreamAttempts = 2
 	for attempt := 1; attempt <= maxStreamAttempts; attempt++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+
+		a.mu.Lock()
+		a.cancel = cancel
+		a.mu.Unlock()
+
 		iter := a.llm.ChatStream(ctx, input)
 		a.emitLog(outChan, "LLM ChatStream established (attempt %d/%d)", attempt, maxStreamAttempts)
 		err := a.handleIterator(ctx, iter, outChan)
+
+		a.mu.Lock()
+		a.cancel = nil
+		a.mu.Unlock()
 		cancel()
-		if err == nil {
+
+		if err == nil || errors.Is(err, context.Canceled) {
+			if errors.Is(err, context.Canceled) {
+				outChan <- AgentEvent{Type: "status", Content: "Interrupted by user"}
+				outChan <- AgentEvent{Type: "error", Content: "Interrupted"}
+			}
 			return
 		}
 
@@ -199,7 +225,7 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 				go func(idx int, fc genai.FunctionCall) {
 					defer wg.Done()
 					a.emitLog(outChan, "Executing tool call: %s", fc.Name)
-					res := a.executeToolCall(fc, outChan)
+					res := a.executeToolCall(ctx, fc, outChan)
 					results[idx] = llm.FunctionResponsePayload{
 						Name:     fc.Name,
 						Response: res,
@@ -235,7 +261,7 @@ func (a *Agent) searchBySymbolName(symName string, outChan chan<- AgentEvent) ma
 	return map[string]any{"content": content}
 }
 
-func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- AgentEvent) map[string]any {
+func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall, outChan chan<- AgentEvent) map[string]any {
 	a.emitLog(outChan, "Tool args for %s: %v", funcCall.Name, funcCall.Args)
 	outChan <- AgentEvent{
 		Type:     "tool_call",
@@ -264,7 +290,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 			}
 
 			// Auto-Verification loop hook
-			verifOut, verifErr := a.runAutoVerification(filePath, outChan)
+			verifOut, verifErr := a.runAutoVerification(ctx, filePath, outChan)
 			if verifErr != nil {
 				result = map[string]any{
 					"status":  "edit applied but auto-verification failed",
@@ -309,7 +335,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 		}
 
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🖥️ Running bash: %s", command)}
-		out, err := a.RunBash(command, timeout, outChan)
+		out, err := a.RunBash(ctx, command, timeout, outChan)
 		if err != nil {
 			result = map[string]any{"error": err.Error(), "output": out}
 		} else {
@@ -345,7 +371,7 @@ func (a *Agent) executeToolCall(funcCall genai.FunctionCall, outChan chan<- Agen
 			}
 
 			// Auto-Verification loop hook
-			verifOut, verifErr := a.runAutoVerification(filePath, outChan)
+			verifOut, verifErr := a.runAutoVerification(ctx, filePath, outChan)
 			if verifErr != nil {
 				result = map[string]any{
 					"status":  "file written but auto-verification failed",
@@ -490,14 +516,14 @@ func (a *Agent) Close() {
 
 // runAutoVerification intelligently checks the project based on the file extension
 // or presence of typical configuration files (go.mod, tsconfig.json, etc.).
-func (a *Agent) runAutoVerification(editedFilePath string, outChan chan<- AgentEvent) (string, error) {
+func (a *Agent) runAutoVerification(ctx context.Context, editedFilePath string, outChan chan<- AgentEvent) (string, error) {
 	root := a.GetRoot()
 
 	// Default: if it's a Go file, try running `go build ./...`
 	if strings.HasSuffix(editedFilePath, ".go") {
 		// Verify there's a go.mod
 		if _, err := os.Stat(filepath.Join(root, "go.mod")); err == nil {
-			return a.RunBash("go build ./...", 30000, outChan)
+			return a.RunBash(ctx, "go build ./...", 30000, outChan)
 		}
 	}
 
@@ -507,9 +533,9 @@ func (a *Agent) runAutoVerification(editedFilePath string, outChan chan<- AgentE
 			// check if bun is available or package.json has a typecheck script
 			content, err := os.ReadFile(filepath.Join(root, "package.json"))
 			if err == nil && strings.Contains(string(content), "\"typecheck\"") {
-				return a.RunBash("npm run typecheck", 45000, outChan) // Fallback for general
+				return a.RunBash(ctx, "npm run typecheck", 45000, outChan) // Fallback for general
 			}
-			return a.RunBash("npx tsc --noEmit", 45000, outChan)
+			return a.RunBash(ctx, "npx tsc --noEmit", 45000, outChan)
 		}
 	}
 
@@ -520,8 +546,11 @@ func isRetryableStreamErr(err error) bool {
 	if err == nil {
 		return false
 	}
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.DeadlineExceeded) {
 		return true
+	}
+	if errors.Is(err, context.Canceled) {
+		return false // Never retry explicit cancellations
 	}
 	lower := strings.ToLower(err.Error())
 	return strings.Contains(lower, "hangup") ||

@@ -3,6 +3,7 @@ package agent
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"os/exec"
@@ -21,14 +22,14 @@ func StripANSI(str string) string {
 }
 
 // RunBash executes a shell command with a timeout and returns its output.
-func (a *Agent) RunBash(command string, timeoutMs int, outChan chan<- AgentEvent) (string, error) {
+func (a *Agent) RunBash(ctx context.Context, command string, timeoutMs int, outChan chan<- AgentEvent) (string, error) {
 	if timeoutMs <= 0 {
 		timeoutMs = 30000 // default 30s
 	}
 
 	const maxAttempts = 2
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		out, waitErr, runErr := a.runBashOnce(command, timeoutMs, outChan)
+		out, waitErr, runErr := a.runBashOnce(ctx, command, timeoutMs, outChan)
 		if runErr != nil {
 			return "", runErr
 		}
@@ -43,8 +44,11 @@ func (a *Agent) RunBash(command string, timeoutMs int, outChan chan<- AgentEvent
 	return "", fmt.Errorf("command failed unexpectedly after retries")
 }
 
-func (a *Agent) runBashOnce(command string, timeoutMs int, outChan chan<- AgentEvent) (string, error, error) {
-	cmd := exec.Command("bash", "-c", command)
+func (a *Agent) runBashOnce(ctx context.Context, command string, timeoutMs int, outChan chan<- AgentEvent) (string, error, error) {
+	cmdCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMs)*time.Millisecond)
+	defer cancel()
+
+	cmd := exec.CommandContext(cmdCtx, "bash", "-c", command)
 	cmd.Dir = a.db.Root() // Run in the project root
 	// Make it more resilient by faking CI
 	cmd.Env = append(cmd.Environ(), "CI=true", "DEBIAN_FRONTEND=noninteractive", "NONINTERACTIVE=true", "FORCE_COLOR=0")
@@ -108,14 +112,17 @@ func (a *Agent) runBashOnce(command string, timeoutMs int, outChan chan<- AgentE
 	}()
 
 	select {
-	case <-time.After(time.Duration(timeoutMs) * time.Millisecond):
+	case <-cmdCtx.Done():
 		if cmd.Process != nil {
 			if runtime.GOOS != "windows" {
 				_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 			}
 			if err := cmd.Process.Kill(); err != nil {
-				return "", nil, fmt.Errorf("command timed out and failed to kill: %w", err)
+				return "", nil, fmt.Errorf("command cancelled and failed to kill: %w", err)
 			}
+		}
+		if ctx.Err() != nil {
+			return "", nil, fmt.Errorf("command interrupted by user")
 		}
 		return "", nil, fmt.Errorf("command timed out after %dms", timeoutMs)
 	case err := <-done:

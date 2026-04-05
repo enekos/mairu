@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"mairu/internal/db"
 	"path/filepath"
 	"strings"
@@ -13,7 +14,7 @@ func TestRunBash(t *testing.T) {
 	}
 
 	t.Run("basic command", func(t *testing.T) {
-		out, err := agent.RunBash("echo hello", 1000, nil)
+		out, err := agent.RunBash(context.Background(), "echo hello", 1000, nil)
 		if err != nil {
 			t.Fatalf("expected no error, got: %v", err)
 		}
@@ -23,7 +24,7 @@ func TestRunBash(t *testing.T) {
 	})
 
 	t.Run("timeout command", func(t *testing.T) {
-		_, err := agent.RunBash("sleep 2", 100, nil) // 100ms timeout
+		_, err := agent.RunBash(context.Background(), "sleep 2", 100, nil) // 100ms timeout
 		if err == nil {
 			t.Fatal("expected an error due to timeout")
 		}
@@ -33,7 +34,7 @@ func TestRunBash(t *testing.T) {
 	})
 
 	t.Run("failing command", func(t *testing.T) {
-		out, err := agent.RunBash("ls /non/existent/path/123", 1000, nil)
+		out, err := agent.RunBash(context.Background(), "ls /non/existent/path/123", 1000, nil)
 		if err != nil {
 			t.Fatalf("expected no error from RunBash itself for non-zero exit code, got: %v", err)
 		}
@@ -46,7 +47,7 @@ func TestRunBash(t *testing.T) {
 		flagPath := filepath.Join(t.TempDir(), "hup-flag")
 		cmd := "if [ -f '" + flagPath + "' ]; then echo recovered; else touch '" + flagPath + "'; kill -HUP $$; fi"
 
-		out, err := agent.RunBash(cmd, 2000, nil)
+		out, err := agent.RunBash(context.Background(), cmd, 2000, nil)
 		if err != nil {
 			t.Fatalf("expected no error after hangup retry, got: %v", err)
 		}
