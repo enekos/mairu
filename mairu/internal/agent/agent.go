@@ -358,8 +358,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			approved := false
 			select {
 			case <-ctx.Done():
-				result = map[string]any{"error": "tool execution cancelled"}
-				break
+				return map[string]any{"error": "tool execution cancelled"}
 			case approved = <-a.approvalChan:
 			}
 

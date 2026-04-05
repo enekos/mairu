@@ -94,17 +94,8 @@ func TestFilesTools(t *testing.T) {
 		}
 
 		res, err = agent.SearchCodebase("nonexistenttext")
-		// The current SearchCodebase logic might return an error or a message if nothing is found.
-		// Looking at files.go, if it falls back to grep and grep fails, it might return an error or "No matches found."
-		if err != nil && err.Error() != "search failed or no results found" {
-			// Actually grep exits with 1 if nothing found
-			// If ripgrep fails it might fall back to grep
-		}
-		if res != "No matches found." && !strings.Contains(res, "No matches found") && err == nil {
-			if res != "" {
-				// ripgrep exits with 1 if no matches found, which cmd.CombinedOutput returns as error
-				// Let's see what happens...
-			}
+		if err == nil && !strings.Contains(res, "No matches found") && res != "" {
+			t.Errorf("expected no matches message or error, got: %q", res)
 		}
 	})
 }

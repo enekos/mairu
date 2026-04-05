@@ -65,20 +65,16 @@ func (m *model) renderMessages() {
 			chunk = agentStyle.Render("● Mairu (streaming)") + "\n\n"
 		}
 		sb.WriteString(chunk)
-		line += strings.Count(chunk, "\n")
 		if len(m.toolEvents) > 0 {
 			for _, e := range m.toolEvents {
 				eventChunk := renderToolEventBox(e) + "\n"
 				sb.WriteString(eventChunk)
-				line += strings.Count(eventChunk, "\n")
 			}
 			sb.WriteString("\n")
-			line++
 		}
 		if m.currentBashOutput != "" {
 			bashChunk := toolStatusBoxStyle.Render(toolStatusTitleStyle.Render("🖥️ Running Bash...")+"\n\n"+m.currentBashOutput) + "\n"
 			sb.WriteString(bashChunk)
-			line += strings.Count(bashChunk, "\n")
 		}
 	}
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -42,11 +41,7 @@ func (a *Agent) FetchURL(url string) (string, error) {
 	}
 
 	// Basic HTML strip could be done here, but LLM usually handles raw HTML reasonably well,
-	// though it consumes more tokens. Let's do a very basic tag strip to save tokens if it's HTML.
-	if strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
-		// Just a naive strip for simplicity, enough for an agent.
-		// (In a real app you'd use a robust HTML parser like golang.org/x/net/html)
-	}
+	// though it consumes more tokens. (In a real app you'd use a robust HTML parser like golang.org/x/net/html)
 
 	return content, nil
 }

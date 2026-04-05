@@ -181,9 +181,9 @@ func (m *dataExplorerModel) Update(msg tea.Msg) (dataExplorerModel, tea.Cmd) {
 			m.updateViewportContent()
 			return *m, tea.Batch(cmds...)
 		case tea.KeyRight:
-			m.viewport.LineDown(1)
+			m.viewport.ScrollDown(1)
 		case tea.KeyLeft:
-			m.viewport.LineUp(1)
+			m.viewport.ScrollUp(1)
 		case tea.KeyRunes:
 			if string(msg.Runes) == "/" {
 				m.lists[m.activeTab], cmd = m.lists[m.activeTab].Update(msg)
