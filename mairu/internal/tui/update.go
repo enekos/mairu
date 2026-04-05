@@ -19,6 +19,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 
 	"mairu/internal/agent"
+	"mairu/internal/contextsrv"
 )
 
 type externalToolDoneMsg struct {
@@ -806,14 +807,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Memories
 					out, err = m.contextGet("/api/memories", map[string]string{"limit": "1000"})
 					if err == nil {
-						var mems []struct {
-							ID         string `json:"id"`
-							Project    string `json:"project"`
-							Content    string `json:"content"`
-							Category   string `json:"category"`
-							Owner      string `json:"owner"`
-							Importance int    `json:"importance"`
-						}
+						var mems []contextsrv.Memory
 						if json.Unmarshal(out, &mems) == nil {
 							for _, mem := range mems {
 								mItems = append(mItems, memoryListItem{
@@ -827,12 +821,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					// Skills
 					out, err = m.contextGet("/api/skills", map[string]string{"limit": "1000"})
 					if err == nil {
-						var skills []struct {
-							ID          string `json:"id"`
-							Project     string `json:"project"`
-							Name        string `json:"name"`
-							Description string `json:"description"`
-						}
+						var skills []contextsrv.Skill
 						if json.Unmarshal(out, &skills) == nil {
 							for _, s := range skills {
 								sItems = append(sItems, skillListItem{
