@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"os"
 
 	"mairu/internal/daemon"
@@ -53,7 +53,7 @@ func init() {
 			if err := d.ProcessAllFiles(context.Background()); err != nil {
 				return err
 			}
-			fmt.Printf("Daemon scan complete for %s\n", dir)
+			slog.Info("Daemon scan complete", "dir", dir)
 			return nil
 		},
 	}
