@@ -79,14 +79,6 @@ func (m *MeiliIndexer) Delete(entityType, id string) error {
 	return err
 }
 
-func decodePayload(raw []byte) (map[string]any, error) {
-	out := map[string]any{}
-	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func indexFromEntity(entityType string) (string, error) {
 	switch entityType {
 	case "memory":

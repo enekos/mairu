@@ -64,40 +64,55 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 		return "", err
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/chat/completions", c.BaseURL), bytes.NewBuffer(jsonData))
-	if err != nil {
-		return "", err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if c.APIKey != "" {
-		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.APIKey))
-	}
-
-	resp, err := c.HTTPClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, _ := io.ReadAll(resp.Body)
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(bodyBytes))
-	}
-
 	var chatResp ChatResponse
-	if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
-		return "", fmt.Errorf("failed to decode response: %v, raw: %s", err, string(bodyBytes))
+	var lastErr error
+
+	// Retry logic: up to 3 attempts
+	for attempt := 1; attempt <= 3; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/chat/completions", c.BaseURL), bytes.NewBuffer(jsonData))
+		if err != nil {
+			return "", err
+		}
+
+		req.Header.Set("Content-Type", "application/json")
+		if c.APIKey != "" {
+			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.APIKey))
+		}
+
+		resp, err := c.HTTPClient.Do(req)
+		if err != nil {
+			lastErr = err
+			time.Sleep(time.Duration(attempt) * time.Second)
+			continue
+		}
+
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+
+		if resp.StatusCode == 429 || resp.StatusCode >= 500 {
+			lastErr = fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+			time.Sleep(time.Duration(attempt) * 2 * time.Second)
+			continue
+		}
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+		}
+
+		if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
+			return "", fmt.Errorf("failed to decode response: %v, raw: %s", err, string(bodyBytes))
+		}
+
+		if chatResp.Error != nil {
+			return "", fmt.Errorf("API error: %s", chatResp.Error.Message)
+		}
+
+		if len(chatResp.Choices) == 0 {
+			return "", fmt.Errorf("no choices returned in response")
+		}
+
+		return chatResp.Choices[0].Message.Content, nil
 	}
 
-	if chatResp.Error != nil {
-		return "", fmt.Errorf("API error: %s", chatResp.Error.Message)
-	}
-
-	if len(chatResp.Choices) == 0 {
-		return "", fmt.Errorf("no choices returned in response")
-	}
-
-	return chatResp.Choices[0].Message.Content, nil
+	return "", fmt.Errorf("failed after 3 attempts, last error: %w", lastErr)
 }

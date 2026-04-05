@@ -25,9 +25,18 @@ export type Message = {
   toolCalls: ToolCall[];
 };
 
+type SavedPart = {
+  type: string;
+  text?: string;
+  func_name?: string;
+  func_args?: any;
+  func_resp?: any;
+};
+
 type SessionMessage = {
   role: "user" | "model";
-  content: string;
+  content?: string;
+  parts?: SavedPart[];
 };
 
 export type ViewType = "chat" | "workspace" | "dashboard" | "settings";
@@ -54,14 +63,70 @@ async function loadSessionMessages(sessionName: string) {
   }
 
   const payload = await response.json() as { messages?: SessionMessage[] };
-  const loaded = (payload.messages ?? []).map((msg): Message => ({
-    id: crypto.randomUUID(),
-    role: mapSavedRole(msg.role),
-    content: msg.content,
-    statuses: [],
-    logs: [],
-    toolCalls: []
-  }));
+  
+  const loaded: Message[] = [];
+  
+  for (const msg of payload.messages ?? []) {
+    if (msg.role === "user") {
+      const textParts = msg.parts?.filter(p => p.type === "text").map(p => p.text).join("") || msg.content || "";
+      const funcRespParts = msg.parts?.filter(p => p.type === "function_response") || [];
+      
+      if (textParts.length > 0) {
+        loaded.push({
+          id: crypto.randomUUID(),
+          role: "user",
+          content: textParts,
+          statuses: [], logs: [], toolCalls: []
+        });
+      }
+      
+      for (const resp of funcRespParts) {
+        for (let i = loaded.length - 1; i >= 0; i--) {
+          if (loaded[i].role === "assistant") {
+            const tc = loaded[i].toolCalls.find(t => t.name === resp.func_name && t.status === "running");
+            if (tc) {
+              tc.result = resp.func_resp;
+              tc.status = "completed";
+              break;
+            } else {
+              const tcCompleted = loaded[i].toolCalls.find(t => t.name === resp.func_name && !t.result);
+              if (tcCompleted) {
+                tcCompleted.result = resp.func_resp;
+              }
+            }
+          }
+        }
+      }
+    } else if (msg.role === "model") {
+      const textParts = msg.parts?.filter(p => p.type === "text").map(p => p.text).join("") || msg.content || "";
+      const funcCallParts = msg.parts?.filter(p => p.type === "function_call") || [];
+      
+      const toolCalls: ToolCall[] = funcCallParts.map(fc => ({
+        id: crypto.randomUUID(),
+        name: fc.func_name || "unknown",
+        args: fc.func_args || {},
+        status: "running"
+      }));
+      
+      if (textParts.length > 0 || toolCalls.length > 0) {
+        loaded.push({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: textParts,
+          statuses: [], logs: [], toolCalls: toolCalls
+        });
+      }
+    }
+  }
+  
+  for (const msg of loaded) {
+    for (const tc of msg.toolCalls) {
+      if (tc.status === "running") {
+        tc.status = "completed";
+      }
+    }
+  }
+
   messages.set(loaded);
 }
 

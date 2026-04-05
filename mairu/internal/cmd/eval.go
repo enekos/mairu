@@ -108,7 +108,7 @@ var evalCmd = &cobra.Command{
 			return results, nil
 		}
 
-		metrics, err := eval.EvaluateDataset(ctx, dataset, evalTopK, verbose, searchFunc)
+		metrics, err := eval.EvaluateDataset(ctx, &dataset, evalTopK, verbose, searchFunc)
 		if err != nil {
 			return err
 		}
@@ -119,7 +119,7 @@ var evalCmd = &cobra.Command{
 			return fmt.Errorf("MRR %.3f is below threshold %.3f", metrics.MRR, failBelowMRR)
 		}
 		if metrics.Recall < failBelowRecall {
-			return fmt.Errorf("Recall %.3f is below threshold %.3f", metrics.Recall, failBelowRecall)
+			return fmt.Errorf("recall %.3f is below threshold %.3f", metrics.Recall, failBelowRecall)
 		}
 
 		return nil

@@ -123,9 +123,9 @@ make mairu-build
 ./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project
 
 # Advanced Tools (Daemon, Ingest & Scraper)
-./mairu/bin/mairu-agent daemon ./src -P my-project       # Watch a directory and parse AST
-./mairu/bin/mairu-agent ingest design.md -P my-project   # Ingest free-text notes
-./mairu/bin/mairu-agent scrape https://example.com       # Scrape web page and store context
+./mairu/bin/mairu-agent daemon ./src -P my-project                                        # Scan directory and extract AST to context nodes
+./mairu/bin/mairu-agent ingest design.md --base-uri "contextfs://design" -P my-project -y # Parse markdown via LLM and persist
+./mairu/bin/mairu-agent scrape https://example.com --max-depth 2 -P my-project            # Crawl and summarize web content into context
 
 # Full TUI or Web Servers
 ./mairu/bin/mairu-agent tui

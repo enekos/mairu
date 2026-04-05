@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition';
   import { fmtDate, scoreColor, copy, impColor, categoryColors } from "../lib/utils";
 
   export let displayMemories: any[];
@@ -78,38 +79,40 @@
     {addingMemory ? "▲ Close" : "+ Add Memory"}
   </button>
   {#if addingMemory}
-    <form on:submit|preventDefault={createMemory} class="add-form">
-      <textarea rows="3" placeholder="Memory content — write as a self-contained fact" bind:value={newMemory.content} required></textarea>
-      <div class="form-row">
-        <label>
-          Category
-          <select bind:value={newMemory.category}>
-            {#each ["observation","reflection","profile","preferences","entities","events","cases","patterns","decision","constraint","architecture"] as cat}
-              <option value={cat}>{cat}</option>
-            {/each}
-          </select>
-        </label>
-        <label>
-          Owner
-          <select bind:value={newMemory.owner}>
-            <option value="agent">agent</option>
-            <option value="user">user</option>
-            <option value="system">system</option>
-          </select>
-        </label>
-        <label>
-          Importance
-          <input type="number" min="1" max="10" bind:value={newMemory.importance} style="width:60px" />
-        </label>
-      </div>
-      <div class="form-footer">
-        <label class="router-toggle">
-          <input type="checkbox" bind:checked={newMemory.useRouter} />
-          Smart dedup (LLM router)
-        </label>
-        <button type="submit" class="btn-primary" disabled={loading}>Save memory</button>
-      </div>
-    </form>
+    <div transition:slide>
+      <form on:submit|preventDefault={createMemory} class="add-form">
+        <textarea rows="3" placeholder="Memory content — write as a self-contained fact" bind:value={newMemory.content} required></textarea>
+        <div class="form-row">
+          <label>
+            Category
+            <select bind:value={newMemory.category}>
+              {#each ["observation","reflection","profile","preferences","entities","events","cases","patterns","decision","constraint","architecture"] as cat}
+                <option value={cat}>{cat}</option>
+              {/each}
+            </select>
+          </label>
+          <label>
+            Owner
+            <select bind:value={newMemory.owner}>
+              <option value="agent">agent</option>
+              <option value="user">user</option>
+              <option value="system">system</option>
+            </select>
+          </label>
+          <label>
+            Importance
+            <input type="number" min="1" max="10" bind:value={newMemory.importance} style="width:60px" />
+          </label>
+        </div>
+        <div class="form-footer">
+          <label class="router-toggle">
+            <input type="checkbox" bind:checked={newMemory.useRouter} />
+            Smart dedup (LLM router)
+          </label>
+          <button type="submit" class="btn-primary" disabled={loading}>Save memory</button>
+        </div>
+      </form>
+    </div>
   {/if}
 </section>
 

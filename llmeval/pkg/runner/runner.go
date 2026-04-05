@@ -46,8 +46,13 @@ func NewRunner(client *llm.Client, eval *evaluator.Evaluator, testModel string, 
 }
 
 func (r *Runner) Run(ctx context.Context, cases []TestCase) []TestResult {
-	jobs := make(chan TestCase, len(cases))
-	results := make(chan TestResult, len(cases))
+	type job struct {
+		index int
+		tc    TestCase
+	}
+
+	jobs := make(chan job, len(cases))
+	allResults := make([]TestResult, len(cases))
 
 	var wg sync.WaitGroup
 
@@ -55,26 +60,18 @@ func (r *Runner) Run(ctx context.Context, cases []TestCase) []TestResult {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for tc := range jobs {
-				results <- r.runSingle(ctx, tc)
+			for j := range jobs {
+				allResults[j.index] = r.runSingle(ctx, j.tc)
 			}
 		}()
 	}
 
-	for _, tc := range cases {
-		jobs <- tc
+	for i, tc := range cases {
+		jobs <- job{index: i, tc: tc}
 	}
 	close(jobs)
 
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	var allResults []TestResult
-	for res := range results {
-		allResults = append(allResults, res)
-	}
+	wg.Wait()
 
 	return allResults
 }

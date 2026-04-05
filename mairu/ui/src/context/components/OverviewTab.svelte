@@ -146,17 +146,18 @@
 
 <style>
   .overview-charts {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
-    margin-bottom: 24px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+    margin-bottom: 40px;
   }
 
   .chart-card {
-    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
-    padding: 18px 20px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-xl);
+    padding: 32px;
+    box-shadow: var(--shadow-sm);
   }
   .chart-title {
-    font-size: 12px; color: var(--text-muted); text-transform: uppercase;
-    letter-spacing: 0.05em; margin-bottom: 14px;
+    font-size: 14px; color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 24px; font-weight: 700;
   }
 
   /* Bar chart */

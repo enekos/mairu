@@ -72,8 +72,8 @@
     position: relative;
     height: 600px;
     width: 100%;
-    border: 1px solid var(--bg-card);
-    border-radius: 8px;
+    border: 1px solid var(--border-main);
+    border-radius: var(--radius-lg);
     background: var(--bg-main);
     display: flex;
     overflow: hidden;
@@ -114,7 +114,7 @@
     background: var(--bg-card);
     border: 1px solid var(--border-main);
     color: var(--text-dim);
-    border-radius: 8px;
+    border-radius: var(--radius-md);
     padding: 8px 10px;
     cursor: pointer;
     display: flex;
@@ -191,14 +191,14 @@
     font-family: monospace;
     background: var(--bg-main);
     padding: 6px 8px;
-    border-radius: 4px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-main);
   }
   
   .abstract-value {
     background: var(--bg-main);
     padding: 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border-left: 3px solid #38bdf8;
   }
   
@@ -206,7 +206,7 @@
     font-family: monospace;
     background: var(--bg-main);
     padding: 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border-main);
     white-space: pre-wrap;
     word-break: break-word;

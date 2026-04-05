@@ -136,7 +136,6 @@ var (
 	userStyle   = lipgloss.NewStyle().Foreground(colorUser).Bold(true)
 	agentStyle  = lipgloss.NewStyle().Foreground(colorAgent).Bold(true)
 	systemStyle = lipgloss.NewStyle().Foreground(colorSystem).Italic(true)
-	toolStyle   = lipgloss.NewStyle().Foreground(colorTool).Italic(true)
 	errorStyle  = lipgloss.NewStyle().Foreground(colorError).Bold(true)
 
 	toolCallBoxStyle = lipgloss.NewStyle().
@@ -408,11 +407,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			return m, tea.Quit
 		case tea.KeyPgUp:
-			m.viewport.HalfViewUp()
+			m.viewport.HalfPageUp()
 			m.followMode = false
 			return m, nil
 		case tea.KeyPgDown:
-			m.viewport.HalfViewDown()
+			m.viewport.HalfPageDown()
 			m.followMode = false
 			return m, nil
 		case tea.KeyHome:

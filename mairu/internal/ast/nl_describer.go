@@ -88,9 +88,8 @@ func describeVariableStatement(node *sitter.Node, source []byte) string {
 }
 
 func describeReturnStatement(node *sitter.Node, source []byte) string {
-	count := node.NamedChildCount()
-	for i := 0; i < int(count); i++ {
-		child := node.NamedChild(i)
+	if node.NamedChildCount() > 0 {
+		child := node.NamedChild(0)
 		return fmt.Sprintf("Returns %s", describeExpression(child, source))
 	}
 	return "Returns"
@@ -220,8 +219,8 @@ func describeTryStatement(node *sitter.Node, source []byte) string {
 }
 
 func describeThrowStatement(node *sitter.Node, source []byte) string {
-	for i := 0; i < int(node.NamedChildCount()); i++ {
-		child := node.NamedChild(i)
+	if node.NamedChildCount() > 0 {
+		child := node.NamedChild(0)
 		if child.Type() == "new_expression" {
 			constructor := child.ChildByFieldName("constructor")
 			args := child.ChildByFieldName("arguments")
@@ -287,8 +286,8 @@ func describeSwitchStatement(node *sitter.Node, source []byte) string {
 }
 
 func describeExpressionStatement(node *sitter.Node, source []byte) string {
-	for i := 0; i < int(node.NamedChildCount()); i++ {
-		return describeExpression(node.NamedChild(i), source)
+	if node.NamedChildCount() > 0 {
+		return describeExpression(node.NamedChild(0), source)
 	}
 	return strings.TrimSpace(node.Content(source))
 }

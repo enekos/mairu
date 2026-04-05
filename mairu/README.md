@@ -36,10 +36,13 @@ go build -C mairu -o bin/mairu-agent ./cmd/mairu
 ./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project -k 5
 
 # File/Knowledge Ingestion
-./mairu/bin/mairu-agent ingest README.md -P my-project -y
+./mairu/bin/mairu-agent ingest README.md --base-uri "contextfs://readme" -P my-project -y
 
 # Background context processing
 ./mairu/bin/mairu-agent daemon ./src -P my-project
+
+# Web Scraping
+./mairu/bin/mairu-agent scrape https://example.com --max-depth 2 -P my-project
 ```
 
 ## Notes

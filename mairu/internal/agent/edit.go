@@ -98,12 +98,12 @@ func (a *Agent) ReplaceBlock(filePath string, oldString, newString string) (stri
 
 	// Aider-style precise match
 	if !strings.Contains(contentStr, oldString) {
-		return "", fmt.Errorf("could not find exact old_code block in %s. Please read the file again and ensure the old_code matches perfectly including whitespace.", filePath)
+		return "", fmt.Errorf("could not find exact old_code block in %s; please read the file again and ensure the old_code matches perfectly including whitespace", filePath)
 	}
 
 	// Check for multiple matches
 	if strings.Count(contentStr, oldString) > 1 {
-		return "", fmt.Errorf("found multiple matches for old_code in %s. Please include more context lines in old_code to make it uniquely identifiable.", filePath)
+		return "", fmt.Errorf("found multiple matches for old_code in %s; please include more context lines in old_code to make it uniquely identifiable", filePath)
 	}
 
 	newContent := strings.Replace(contentStr, oldString, newString, 1)

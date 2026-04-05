@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition';
   import { fmtDate, scoreColor, copy } from "../lib/utils";
 
   export let displayContext: any[];
@@ -89,7 +90,7 @@
 </section>
 
 {#if addingContext}
-  <section class="add-panel" style="margin-top: 0; padding-top: 0; border-top: none;">
+  <section class="add-panel" style="margin-top: 0; padding-top: 0; border-top: none;" transition:slide>
     <form on:submit|preventDefault={createContext} class="add-form">
       <div class="form-row">
         <input type="text" placeholder="URI e.g. contextfs://project/backend/auth" bind:value={newContext.uri} required style="flex:2" />

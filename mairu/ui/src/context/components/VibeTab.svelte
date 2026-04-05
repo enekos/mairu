@@ -374,48 +374,48 @@
   .vibe-desc { font-size: 13px; color: var(--text-muted); }
 
   .vibe-controls {
-    display: flex; flex-direction: column; gap: 12px;
-    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 12px;
-    padding: 16px;
+    display: flex; flex-direction: column; gap: 16px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-xl);
+    padding: 24px; box-shadow: var(--shadow-sm);
   }
 
   .vibe-mode-toggle { display: flex; gap: 2px; }
   .vibe-mode-toggle button {
     background: none; border: 1px solid var(--border-main); color: var(--text-secondary);
-    padding: 6px 16px; font-size: 13px; font-weight: 500; cursor: pointer;
+    padding: 8px 20px; font-size: 14px; font-weight: 600; cursor: pointer;
     transition: all 0.15s;
   }
-  .vibe-mode-toggle button:first-child { border-radius: 7px 0 0 7px; }
-  .vibe-mode-toggle button:last-child { border-radius: 0 7px 7px 0; }
+  .vibe-mode-toggle button:first-child { border-radius: 8px 0 0 8px; }
+  .vibe-mode-toggle button:last-child { border-radius: 0 8px 8px 0; }
   .vibe-mode-toggle button.active {
     background: var(--bg-active); border-color: #4f46e5; color: var(--text-active);
   }
 
-  .vibe-input-row { display: flex; gap: 12px; align-items: flex-start; }
+  .vibe-input-row { display: flex; gap: 16px; align-items: flex-start; }
 
   .vibe-input {
     flex: 1; background: var(--bg-main); border: 1px solid var(--border-main); color: var(--text-main);
-    border-radius: 8px; padding: 10px 12px; font-size: 14px; outline: none;
-    font-family: inherit; resize: vertical; min-height: 44px;
+    border-radius: var(--radius-md); padding: 16px; font-size: 15px; outline: none;
+    font-family: inherit; resize: vertical; min-height: 56px;
   }
   .vibe-input:focus { border-color: var(--accent-main); }
   .vibe-input:disabled { opacity: 0.5; }
 
   .vibe-input-actions { display: flex; flex-direction: column; gap: 8px; min-width: 160px; }
 
-  .vibe-opts { display: flex; gap: 8px; }
+  .vibe-opts { display: flex; gap: 12px; }
   .vibe-opts label {
-    display: flex; flex-direction: column; gap: 2px;
-    font-size: 11px; color: var(--text-light);
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 12px; color: var(--text-light); font-weight: 600;
   }
   .vibe-opt-input {
     background: var(--bg-main); border: 1px solid var(--border-main); color: var(--text-main);
-    border-radius: 5px; padding: 4px 6px; font-size: 12px; outline: none;
-    width: 80px;
+    border-radius: var(--radius-sm); padding: 8px 10px; font-size: 13px; outline: none;
+    width: 90px;
   }
-  .vibe-opt-num { width: 50px; text-align: center; }
+  .vibe-opt-num { width: 60px; text-align: center; }
 
-  .vibe-submit { padding: 9px 20px; font-size: 13px; white-space: nowrap; }
+  .vibe-submit { padding: 12px 24px; font-size: 14px; white-space: nowrap; }
 
   /* Error */
   .vibe-error {
@@ -454,12 +454,12 @@
 
   .vibe-no-results { color: var(--text-light); font-size: 13px; padding: 12px 0; }
 
-  .vibe-items { display: flex; flex-direction: column; gap: 8px; }
+  .vibe-items { display: flex; flex-direction: column; gap: 12px; }
 
   .vibe-item {
-    display: flex; gap: 12px;
-    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 10px;
-    padding: 12px 14px; transition: border-color 0.15s;
+    display: flex; gap: 16px;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-lg);
+    padding: 16px 20px; transition: border-color 0.15s;
   }
   .vibe-item:hover { border-color: var(--text-light); }
 
@@ -488,12 +488,12 @@
   }
   .vibe-select-all:hover { background: var(--border-main); }
 
-  .vibe-ops { display: flex; flex-direction: column; gap: 8px; }
+  .vibe-ops { display: flex; flex-direction: column; gap: 12px; }
 
   .vibe-op {
-    display: flex; gap: 12px; align-items: flex-start;
-    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: 10px;
-    padding: 12px 14px; transition: all 0.15s;
+    display: flex; gap: 16px; align-items: flex-start;
+    background: var(--bg-card); border: 1px solid var(--border-main); border-radius: var(--radius-lg);
+    padding: 16px 20px; transition: all 0.15s;
   }
   .vibe-op-selected { border-color: #4f46e5; background: #1e2640; }
   .vibe-op-executed { opacity: 0.7; }

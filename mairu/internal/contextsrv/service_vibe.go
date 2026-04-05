@@ -64,7 +64,7 @@ func (s *AppService) VibeQuery(prompt, project string, topK int) (VibeQueryResul
 		if err != nil {
 			continue
 		}
-		items := []map[string]any{}
+		var items []map[string]any
 		switch q.Store {
 		case "memory":
 			items = toAnyMapSlice(search["memories"])

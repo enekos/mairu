@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { fade } from 'svelte/transition';
   import { onMount } from "svelte";
   import { connectWs } from "./lib/store";
   import Chat from "./lib/Chat.svelte";
@@ -10,11 +11,10 @@
   import ContextTab from "./context/components/ContextTab.svelte";
   import SearchLabTab from "./context/components/SearchLabTab.svelte";
   import VibeTab from "./context/components/VibeTab.svelte";
-  import ElasticTab from "./context/components/ElasticTab.svelte";
 
   const API_BASE = import.meta.env.VITE_DASHBOARD_API_BASE || "";
 
-  type Tab = "agent" | "overview" | "skills" | "memories" | "context" | "search" | "vibe" | "elastic";
+  type Tab = "agent" | "overview" | "skills" | "memories" | "context" | "search" | "vibe";
 
   let loading = false;
   let searching = false;
@@ -147,7 +147,6 @@
       <div class="tab-separator"></div>
       <button class:active={activeTab === "search"} on:click={() => setActiveTab("search")}>Search Lab</button>
       <button class:active={activeTab === "vibe"} on:click={() => setActiveTab("vibe")}>Vibe</button>
-      <button class:active={activeTab === "elastic"} on:click={() => setActiveTab("elastic")}>Cluster</button>
     </nav>
     <div class="header-actions">
       {#if ["skills", "memories", "context"].includes(activeTab)}
@@ -193,52 +192,54 @@
   {/if}
 
   <div class="content">
-    {#if activeTab === "agent"}
-      <Chat />
-    {:else if activeTab === "overview"}
-      <OverviewTab {skills} {memories} {contextNodes} {setActiveTab} />
-    {:else if activeTab === "skills"}
-      <SkillsTab
-        {displaySkills}
-        {hasSearchResults}
-        {searchQuery}
-        {API_BASE}
-        {load}
-        setLoading={(v) => (loading = v)}
-        setError={(e) => (error = e)}
-        setLastWriteResult={(r) => (lastWriteResult = r)}
-        {loading}
-      />
-    {:else if activeTab === "memories"}
-      <MemoriesTab
-        {displayMemories}
-        {hasSearchResults}
-        {searchQuery}
-        {API_BASE}
-        {load}
-        setLoading={(v) => (loading = v)}
-        setError={(e) => (error = e)}
-        setLastWriteResult={(r) => (lastWriteResult = r)}
-        {loading}
-      />
-    {:else if activeTab === "context"}
-      <ContextTab
-        {displayContext}
-        {hasSearchResults}
-        {searchQuery}
-        {API_BASE}
-        {load}
-        setLoading={(v) => (loading = v)}
-        setError={(e) => (error = e)}
-        setLastWriteResult={(r) => (lastWriteResult = r)}
-        {loading}
-      />
-    {:else if activeTab === "search"}
-      <SearchLabTab {API_BASE} />
-    {:else if activeTab === "vibe"}
-      <VibeTab {API_BASE} />
-    {:else if activeTab === "elastic"}
-      <ElasticTab {API_BASE} />
-    {/if}
+    {#key activeTab}
+      <div in:fade={{ duration: 200, delay: 100 }} out:fade={{ duration: 100 }} style="display: contents;">
+        {#if activeTab === "agent"}
+          <Chat />
+        {:else if activeTab === "overview"}
+          <OverviewTab {skills} {memories} {contextNodes} {setActiveTab} />
+        {:else if activeTab === "skills"}
+          <SkillsTab
+            {displaySkills}
+            {hasSearchResults}
+            {searchQuery}
+            {API_BASE}
+            {load}
+            setLoading={(v) => (loading = v)}
+            setError={(e) => (error = e)}
+            setLastWriteResult={(r) => (lastWriteResult = r)}
+            {loading}
+          />
+        {:else if activeTab === "memories"}
+          <MemoriesTab
+            {displayMemories}
+            {hasSearchResults}
+            {searchQuery}
+            {API_BASE}
+            {load}
+            setLoading={(v) => (loading = v)}
+            setError={(e) => (error = e)}
+            setLastWriteResult={(r) => (lastWriteResult = r)}
+            {loading}
+          />
+        {:else if activeTab === "context"}
+          <ContextTab
+            {displayContext}
+            {hasSearchResults}
+            {searchQuery}
+            {API_BASE}
+            {load}
+            setLoading={(v) => (loading = v)}
+            setError={(e) => (error = e)}
+            setLastWriteResult={(r) => (lastWriteResult = r)}
+            {loading}
+          />
+        {:else if activeTab === "search"}
+          <SearchLabTab {API_BASE} />
+        {:else if activeTab === "vibe"}
+          <VibeTab {API_BASE} />
+        {/if}
+      </div>
+    {/key}
   </div>
 </main>

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { slide } from 'svelte/transition';
   import { fmtDate, scoreColor, copy } from "../lib/utils";
 
   export let displaySkills: any[];
@@ -76,13 +77,15 @@
     {addingSkill ? "▲ Close" : "+ Add Skill"}
   </button>
   {#if addingSkill}
-    <form on:submit|preventDefault={createSkill} class="add-form">
-      <input type="text" placeholder="Skill name" bind:value={newSkill.name} required />
-      <textarea rows="3" placeholder="Description — what this skill does and when to use it" bind:value={newSkill.description} required></textarea>
-      <div class="form-footer">
-        <button type="submit" class="btn-primary" disabled={loading}>Save skill</button>
-      </div>
-    </form>
+    <div transition:slide>
+      <form on:submit|preventDefault={createSkill} class="add-form">
+        <input type="text" placeholder="Skill name" bind:value={newSkill.name} required />
+        <textarea rows="3" placeholder="Description — what this skill does and when to use it" bind:value={newSkill.description} required></textarea>
+        <div class="form-footer">
+          <button type="submit" class="btn-primary" disabled={loading}>Save skill</button>
+        </div>
+      </form>
+    </div>
   {/if}
 </section>
 
