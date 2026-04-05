@@ -4,71 +4,67 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
-
-	"github.com/gin-gonic/gin"
 )
 
 type Handler struct {
-	engine *gin.Engine
+	engine *http.ServeMux
 	svc    Service
 }
 
 func NewHandler(svc Service, authToken string) *Handler {
-	gin.SetMode(gin.ReleaseMode)
-	r := gin.New()
-	r.Use(gin.Recovery())
-	r.Use(func(c *gin.Context) {
-		if authToken == "" {
-			c.Next()
-			return
+	mux := http.NewServeMux()
+
+	h := &Handler{engine: mux, svc: svc}
+
+	authMiddleware := func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if authToken != "" {
+				if r.Header.Get("X-Context-Token") != authToken {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusUnauthorized)
+					json.NewEncoder(w).Encode(map[string]any{"error": "unauthorized"})
+					return
+				}
+			}
+			next(w, r)
 		}
-		if c.GetHeader("X-Context-Token") != authToken {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-		c.Next()
-	})
-
-	h := &Handler{engine: r, svc: svc}
-
-	api := r.Group("/api")
-	{
-		// System
-		api.GET("/health", h.health)
-		api.GET("/cluster", h.cluster)
-		api.GET("/dashboard", h.dashboard)
-
-		// Memories
-		api.POST("/memories", h.createMemory)
-		api.GET("/memories", h.listMemories)
-		api.PUT("/memories", h.updateMemory)
-		api.DELETE("/memories", h.deleteMemory)
-
-		// Skills
-		api.POST("/skills", h.createSkill)
-		api.GET("/skills", h.listSkills)
-		api.PUT("/skills", h.updateSkill)
-		api.DELETE("/skills", h.deleteSkill)
-
-		// Context Nodes
-		api.POST("/context", h.createContext)
-		api.GET("/context", h.listContext)
-		api.PUT("/context", h.updateContext)
-		api.DELETE("/context", h.deleteContext)
-
-		// Search
-		api.GET("/search", h.search)
-
-		// Vibe
-		api.POST("/vibe/query", h.vibeQuery)
-		api.POST("/vibe/mutation/plan", h.vibeMutationPlan)
-		api.POST("/vibe/mutation/execute", h.vibeMutationExecute)
-		api.POST("/vibe/ingest", h.vibeIngest)
-
-		// Moderation
-		api.GET("/moderation/queue", h.listModerationQueue)
-		api.POST("/moderation/review", h.reviewModeration)
 	}
+
+	// System
+	mux.HandleFunc("GET /api/health", authMiddleware(h.health))
+	mux.HandleFunc("GET /api/cluster", authMiddleware(h.cluster))
+	mux.HandleFunc("GET /api/dashboard", authMiddleware(h.dashboard))
+
+	// Memories
+	mux.HandleFunc("POST /api/memories", authMiddleware(h.createMemory))
+	mux.HandleFunc("GET /api/memories", authMiddleware(h.listMemories))
+	mux.HandleFunc("PUT /api/memories", authMiddleware(h.updateMemory))
+	mux.HandleFunc("DELETE /api/memories", authMiddleware(h.deleteMemory))
+
+	// Skills
+	mux.HandleFunc("POST /api/skills", authMiddleware(h.createSkill))
+	mux.HandleFunc("GET /api/skills", authMiddleware(h.listSkills))
+	mux.HandleFunc("PUT /api/skills", authMiddleware(h.updateSkill))
+	mux.HandleFunc("DELETE /api/skills", authMiddleware(h.deleteSkill))
+
+	// Context Nodes
+	mux.HandleFunc("POST /api/context", authMiddleware(h.createContext))
+	mux.HandleFunc("GET /api/context", authMiddleware(h.listContext))
+	mux.HandleFunc("PUT /api/context", authMiddleware(h.updateContext))
+	mux.HandleFunc("DELETE /api/context", authMiddleware(h.deleteContext))
+
+	// Search
+	mux.HandleFunc("GET /api/search", authMiddleware(h.search))
+
+	// Vibe
+	mux.HandleFunc("POST /api/vibe/query", authMiddleware(h.vibeQuery))
+	mux.HandleFunc("POST /api/vibe/mutation/plan", authMiddleware(h.vibeMutationPlan))
+	mux.HandleFunc("POST /api/vibe/mutation/execute", authMiddleware(h.vibeMutationExecute))
+	mux.HandleFunc("POST /api/vibe/ingest", authMiddleware(h.vibeIngest))
+
+	// Moderation
+	mux.HandleFunc("GET /api/moderation/queue", authMiddleware(h.listModerationQueue))
+	mux.HandleFunc("POST /api/moderation/review", authMiddleware(h.reviewModeration))
 
 	return h
 }

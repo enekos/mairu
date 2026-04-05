@@ -1,6 +1,8 @@
 package contextsrv
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestModerateContent(t *testing.T) {
 	t.Run("clean content passes", func(t *testing.T) {

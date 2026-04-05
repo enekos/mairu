@@ -1,15 +1,26 @@
 [
   {
     "id": "math_addition",
-    "prompt": "What is 2 + 2? Reply with just the number.",
+    "prompt": "What is {{num1}} + {{num2}}? Reply with just the number.",
+    "template_vars": {
+      "num1": "2",
+      "num2": "2"
+    },
     "expected": "4",
     "eval_type": "exact"
   },
   {
     "id": "capital_france",
     "prompt": "What is the capital of France?",
-    "expected": "paris",
-    "eval_type": "includes"
+    "expected": "(?i)paris",
+    "eval_type": "regex"
+  },
+  {
+    "id": "json_path_extraction",
+    "system_prompt": "You are a helpful assistant.",
+    "prompt": "Return a JSON object with 'status' set to 'success' and 'code' set to 200.",
+    "expected": "status=success",
+    "eval_type": "json_path"
   },
   {
     "id": "summarize_apple",

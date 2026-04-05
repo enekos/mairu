@@ -18,7 +18,7 @@ type Client struct {
 
 func NewClient(baseURL, apiKey string) *Client {
 	if baseURL == "" {
-		baseURL = "https://api.openai.com/v1"
+		baseURL = "https://generativelanguage.googleapis.com/v1beta"
 	}
 	return &Client{
 		BaseURL: baseURL,
@@ -29,41 +29,62 @@ func NewClient(baseURL, apiKey string) *Client {
 	}
 }
 
-type ChatMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
+type Part struct {
+	Text string `json:"text"`
 }
 
-type ChatRequest struct {
-	Model       string        `json:"model"`
-	Messages    []ChatMessage `json:"messages"`
-	Temperature float32       `json:"temperature,omitempty"`
-	MaxTokens   int           `json:"max_tokens,omitempty"`
+type Content struct {
+	Role  string `json:"role,omitempty"`
+	Parts []Part `json:"parts"`
+}
+
+type GenerationConfig struct {
+	Temperature float32 `json:"temperature"`
+}
+
+type GenerateContentRequest struct {
+	SystemInstruction *Content         `json:"systemInstruction,omitempty"`
+	Contents          []Content        `json:"contents"`
+	GenerationConfig  GenerationConfig `json:"generationConfig"`
+}
+
+type UsageMetadata struct {
+	PromptTokenCount     int `json:"promptTokenCount"`
+	CandidatesTokenCount int `json:"candidatesTokenCount"`
+	TotalTokenCount      int `json:"totalTokenCount"`
 }
 
 type Usage struct {
-	PromptTokens     int `json:"prompt_tokens"`
-	CompletionTokens int `json:"completion_tokens"`
-	TotalTokens      int `json:"total_tokens"`
+	PromptTokens     int
+	CompletionTokens int
+	TotalTokens      int
 }
 
-type ChatResponse struct {
-	Choices []struct {
-		Message ChatMessage `json:"message"`
-	} `json:"choices"`
-	Usage Usage `json:"usage"`
-	Error *struct {
+type GenerateContentResponse struct {
+	Candidates []struct {
+		Content Content `json:"content"`
+	} `json:"candidates"`
+	UsageMetadata UsageMetadata `json:"usageMetadata"`
+	Error         *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
 
-func (c *Client) Generate(ctx context.Context, model, prompt string, temperature float32) (string, Usage, error) {
-	reqBody := ChatRequest{
-		Model:       model,
-		Temperature: temperature,
-		Messages: []ChatMessage{
-			{Role: "user", Content: prompt},
+func (c *Client) Generate(ctx context.Context, model, systemPrompt, prompt string, temperature float32) (string, Usage, error) {
+	reqBody := GenerateContentRequest{
+		Contents: []Content{
+			{Role: "user", Parts: []Part{{Text: prompt}}},
 		},
+		GenerationConfig: GenerationConfig{
+			Temperature: temperature,
+		},
+	}
+
+	if systemPrompt != "" {
+		reqBody.SystemInstruction = &Content{
+			Role:  "user", // System instructions don't need a specific role or it's implicitly system based on the field
+			Parts: []Part{{Text: systemPrompt}},
+		}
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -71,20 +92,18 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 		return "", Usage{}, err
 	}
 
-	var chatResp ChatResponse
+	var chatResp GenerateContentResponse
 	var lastErr error
 
-	// Retry logic: up to 3 attempts
+	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", c.BaseURL, model, c.APIKey)
+
 	for attempt := 1; attempt <= 3; attempt++ {
-		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/chat/completions", c.BaseURL), bytes.NewBuffer(jsonData))
+		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
 		if err != nil {
 			return "", Usage{}, err
 		}
 
 		req.Header.Set("Content-Type", "application/json")
-		if c.APIKey != "" {
-			req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", c.APIKey))
-		}
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -114,11 +133,18 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 			return "", Usage{}, fmt.Errorf("API error: %s", chatResp.Error.Message)
 		}
 
-		if len(chatResp.Choices) == 0 {
-			return "", Usage{}, fmt.Errorf("no choices returned in response")
+		if len(chatResp.Candidates) == 0 || len(chatResp.Candidates[0].Content.Parts) == 0 {
+			// This might happen if it was blocked by safety settings
+			return "", Usage{}, fmt.Errorf("no choices returned in response: %s", string(bodyBytes))
 		}
 
-		return chatResp.Choices[0].Message.Content, chatResp.Usage, nil
+		usage := Usage{
+			PromptTokens:     chatResp.UsageMetadata.PromptTokenCount,
+			CompletionTokens: chatResp.UsageMetadata.CandidatesTokenCount,
+			TotalTokens:      chatResp.UsageMetadata.TotalTokenCount,
+		}
+
+		return chatResp.Candidates[0].Content.Parts[0].Text, usage, nil
 	}
 
 	return "", Usage{}, fmt.Errorf("failed after 3 attempts, last error: %w", lastErr)

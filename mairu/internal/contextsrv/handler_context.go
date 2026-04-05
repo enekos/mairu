@@ -1,13 +1,12 @@
 package contextsrv
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (h *Handler) createContext(c *gin.Context) {
+func (h *Handler) createContext(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		URI       string  `json:"uri"`
 		Project   string  `json:"project"`
@@ -17,8 +16,10 @@ func (h *Handler) createContext(c *gin.Context) {
 		Overview  string  `json:"overview"`
 		Content   string  `json:"content"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	out, err := h.svc.CreateContextNode(ContextCreateInput{
@@ -32,30 +33,40 @@ func (h *Handler) createContext(c *gin.Context) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrModerationRejected) {
-			c.JSON(http.StatusUnprocessableEntity, gin.H{"error": err.Error()})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, out)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(out)
 }
 
-func (h *Handler) listContext(c *gin.Context) {
-	limit := intParam(c.Query("limit"), 200)
+func (h *Handler) listContext(w http.ResponseWriter, r *http.Request) {
+	limit := intParam(r.URL.Query().Get("limit"), 200)
 	var parentURI *string
-	if v := c.Query("parentUri"); v != "" {
+	if v := r.URL.Query().Get("parentUri"); v != "" {
 		parentURI = &v
 	}
-	items, err := h.svc.ListContextNodes(c.Query("project"), parentURI, limit)
+	items, err := h.svc.ListContextNodes(r.URL.Query().Get("project"), parentURI, limit)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, items)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(items)
 }
 
-func (h *Handler) updateContext(c *gin.Context) {
+func (h *Handler) updateContext(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		URI      string `json:"uri"`
 		Name     string `json:"name"`
@@ -63,8 +74,10 @@ func (h *Handler) updateContext(c *gin.Context) {
 		Overview string `json:"overview"`
 		Content  string `json:"content"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	out, err := h.svc.UpdateContextNode(ContextUpdateInput{
@@ -75,16 +88,24 @@ func (h *Handler) updateContext(c *gin.Context) {
 		Content:  req.Content,
 	})
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, out)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(out)
 }
 
-func (h *Handler) deleteContext(c *gin.Context) {
-	if err := h.svc.DeleteContextNode(c.Query("uri")); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+func (h *Handler) deleteContext(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.DeleteContextNode(r.URL.Query().Get("uri")); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"ok": true})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{"ok": true})
 }

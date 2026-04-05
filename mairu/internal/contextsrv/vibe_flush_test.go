@@ -1,6 +1,8 @@
 package contextsrv
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestFlushVibeOps(t *testing.T) {
 	ops := []VibeMutationOp{

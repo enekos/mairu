@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -11,10 +12,12 @@ import (
 )
 
 type TestCase struct {
-	ID       string             `json:"id"`
-	Prompt   string             `json:"prompt"`
-	Expected string             `json:"expected"`
-	EvalType evaluator.EvalType `json:"eval_type"`
+	ID           string             `json:"id"`
+	SystemPrompt string             `json:"system_prompt,omitempty"`
+	Prompt       string             `json:"prompt"`
+	TemplateVars map[string]string  `json:"template_vars,omitempty"`
+	Expected     string             `json:"expected"`
+	EvalType     evaluator.EvalType `json:"eval_type"`
 }
 
 type TestResult struct {
@@ -83,23 +86,30 @@ func (r *Runner) Run(ctx context.Context, cases []TestCase) []TestResult {
 func (r *Runner) runSingle(ctx context.Context, tc TestCase) TestResult {
 	start := time.Now()
 
-	actual, usage, err := r.LLMClient.Generate(ctx, r.TestModel, tc.Prompt, 0.0)
+	prompt := tc.Prompt
+	for k, v := range tc.TemplateVars {
+		prompt = strings.ReplaceAll(prompt, fmt.Sprintf("{{%s}}", k), v)
+	}
+
+	systemPrompt := tc.SystemPrompt
+	for k, v := range tc.TemplateVars {
+		systemPrompt = strings.ReplaceAll(systemPrompt, fmt.Sprintf("{{%s}}", k), v)
+	}
+
+	actual, usage, err := r.LLMClient.Generate(ctx, r.TestModel, systemPrompt, prompt, 0.0)
 	duration := time.Since(start)
 
 	var cost float64
-	// Simple cost calculation based on model (approximations)
+	// Gemini pricing approx
 	switch r.TestModel {
-	case "gpt-4":
-		cost = float64(usage.PromptTokens)*0.03/1000.0 + float64(usage.CompletionTokens)*0.06/1000.0
-	case "gpt-3.5-turbo":
-		cost = float64(usage.PromptTokens)*0.0005/1000.0 + float64(usage.CompletionTokens)*0.0015/1000.0
-	case "gpt-4o":
-		cost = float64(usage.PromptTokens)*0.005/1000.0 + float64(usage.CompletionTokens)*0.015/1000.0
-	case "gpt-4o-mini":
-		cost = float64(usage.PromptTokens)*0.00015/1000.0 + float64(usage.CompletionTokens)*0.0006/1000.0
+	case "gemini-1.5-pro", "gemini-1.5-pro-latest":
+		cost = float64(usage.PromptTokens)*3.50/1000000.0 + float64(usage.CompletionTokens)*10.50/1000000.0
+	case "gemini-1.5-flash", "gemini-1.5-flash-latest":
+		cost = float64(usage.PromptTokens)*0.075/1000000.0 + float64(usage.CompletionTokens)*0.30/1000000.0
+	case "gemini-2.5-flash":
+		cost = float64(usage.PromptTokens)*0.075/1000000.0 + float64(usage.CompletionTokens)*0.30/1000000.0
 	default:
-		// Default to some generic low cost
-		cost = float64(usage.TotalTokens) * 0.001 / 1000.0
+		cost = float64(usage.TotalTokens) * 0.1 / 1000000.0
 	}
 
 	if err != nil {
@@ -112,7 +122,7 @@ func (r *Runner) runSingle(ctx context.Context, tc TestCase) TestResult {
 		}
 	}
 
-	evalRes, err := r.Evaluator.Evaluate(ctx, tc.EvalType, tc.Prompt, tc.Expected, actual)
+	evalRes, err := r.Evaluator.Evaluate(ctx, tc.EvalType, prompt, tc.Expected, actual)
 	if err != nil {
 		return TestResult{
 			TestCase: tc,

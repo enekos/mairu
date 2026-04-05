@@ -1,6 +1,8 @@
 package contextsrv
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestExceedsBudget(t *testing.T) {
 	b := Budget{MemoryPerProject: 2}

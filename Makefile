@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 .PHONY: help install install-dashboard setup build lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web
 .PHONY: fmt-go fmt-go-check lint-go test-go test-go-race test-go-cover check-go check-go-ci install-hooks
-.PHONY: eval-retrieval eval-seed
+.PHONY: eval-retrieval eval-seed eval-llm
 .PHONY: meili-up meili-down meili-status meili-clean setup-no-docker dev-no-docker mairu-no-docker
 
 help:
@@ -132,3 +132,11 @@ dev-no-docker: meili-up
 
 mairu-no-docker: meili-up mairu-build
 	./mairu/bin/mairu-agent web -p 8080
+
+eval-llm:
+	cd llmeval && go build -o bin/llmeval ./cmd/llmeval
+	./llmeval/bin/llmeval --dataset ./llmeval/sample_dataset.json --model gemini-2.5-flash
+
+eval-llm-vibe:
+	cd llmeval && go build -o bin/llmeval ./cmd/llmeval
+	./llmeval/bin/llmeval --dataset ./llmeval/mairu_vibe_mutation_eval.json --model gemini-2.5-flash

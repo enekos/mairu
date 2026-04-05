@@ -1,77 +1,100 @@
 package contextsrv
 
 import (
+	"encoding/json"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
-func (h *Handler) vibeQuery(c *gin.Context) {
+func (h *Handler) vibeQuery(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Prompt  string `json:"prompt"`
 		Project string `json:"project"`
 		TopK    int    `json:"topK"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	out, err := h.svc.VibeQuery(req.Prompt, req.Project, req.TopK)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, out)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(out)
 }
 
-func (h *Handler) vibeMutationPlan(c *gin.Context) {
+func (h *Handler) vibeMutationPlan(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Prompt  string `json:"prompt"`
 		Project string `json:"project"`
 		TopK    int    `json:"topK"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	out, err := h.svc.PlanVibeMutation(req.Prompt, req.Project, req.TopK)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, out)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(out)
 }
 
-func (h *Handler) vibeMutationExecute(c *gin.Context) {
+func (h *Handler) vibeMutationExecute(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Project    string           `json:"project"`
 		Operations []VibeMutationOp `json:"operations"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	results, err := h.svc.ExecuteVibeMutation(req.Operations, req.Project)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"results": results})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{"results": results})
 }
 
-func (h *Handler) vibeIngest(c *gin.Context) {
+func (h *Handler) vibeIngest(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Text    string `json:"text"`
 		BaseURI string `json:"base_uri"`
 	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
 		return
 	}
 	nodes, err := h.svc.Ingest(req.Text, req.BaseURI)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"nodes": nodes})
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]any{"nodes": nodes})
 }

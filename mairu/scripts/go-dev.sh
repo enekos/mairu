@@ -10,7 +10,13 @@ list_go_files() {
 
 fmt_go() {
   echo "Formatting Go packages..."
-  (cd "${MAIRU_DIR}" && go fmt ./...)
+  go_files=()
+  while IFS= read -r file; do
+    go_files+=("${file}")
+  done < <(list_go_files)
+  if [[ ${#go_files[@]} -gt 0 ]]; then
+    (cd "${ROOT_DIR}" && gofmt -w "${go_files[@]}")
+  fi
 }
 
 fmt_check_go() {

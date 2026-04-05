@@ -17,11 +17,11 @@ import (
 
 func main() {
 	datasetPath := flag.String("dataset", "", "Path to the JSON dataset file")
-	model := flag.String("model", "gpt-3.5-turbo", "Model to evaluate")
-	judgeModel := flag.String("judge-model", "gpt-4", "Model to use for llm_judge evaluations")
+	model := flag.String("model", "gemini-2.5-flash", "Model to evaluate")
+	judgeModel := flag.String("judge-model", "gemini-2.5-pro", "Model to use for llm_judge evaluations")
 	concurrency := flag.Int("concurrency", 4, "Number of parallel evaluations")
-	baseURL := flag.String("base-url", "", "OpenAI API compatible Base URL (optional)")
-	apiKey := flag.String("api-key", os.Getenv("OPENAI_API_KEY"), "API Key (defaults to OPENAI_API_KEY env var)")
+	baseURL := flag.String("base-url", "", "Gemini API Base URL (optional)")
+	apiKey := flag.String("api-key", os.Getenv("GEMINI_API_KEY"), "API Key (defaults to GEMINI_API_KEY env var)")
 	outputFormat := flag.String("format", "text", "Output format: text, json, csv")
 	outputFile := flag.String("output-file", "", "File to write results to (defaults to stdout if empty)")
 
@@ -106,7 +106,7 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 		status := "❌ FAIL"
 		if res.Error != nil {
 			status = "⚠️ ERROR"
-			fmt.Fprintf(out, "[%s] %s (%v, $%.4f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
+			fmt.Fprintf(out, "[%s] %s (%v, $%.6f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
 			fmt.Fprintf(out, "  Error: %v\n\n", res.Error)
 			continue
 		}
@@ -116,7 +116,7 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 			passes++
 		}
 
-		fmt.Fprintf(out, "[%s] %s (%v, $%.4f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
+		fmt.Fprintf(out, "[%s] %s (%v, $%.6f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
 		fmt.Fprintf(out, "  Type:     %s\n", res.TestCase.EvalType)
 		if !res.Pass {
 			if res.TestCase.Expected != "" {
@@ -134,7 +134,7 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 	fmt.Fprintf(out, "Failed:      %d\n", len(results)-passes)
 	fmt.Fprintf(out, "Pass Rate:   %.2f%%\n", float64(passes)/float64(len(results))*100)
 	fmt.Fprintf(out, "Duration:    %v\n", totalDuration.Round(time.Millisecond))
-	fmt.Fprintf(out, "Total Cost:  $%.4f\n", totalCost)
+	fmt.Fprintf(out, "Total Cost:  $%.6f\n", totalCost)
 	fmt.Fprintf(out, "Total Tokens:%d\n", totalTokens)
 }
 

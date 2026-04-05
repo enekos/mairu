@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
+	"github.com/tidwall/gjson"
 	"github.com/user/llmeval/pkg/llm"
 )
 
@@ -19,6 +20,8 @@ const (
 	LLMJudge   EvalType = "llm_judge"
 	ValidJSON  EvalType = "valid_json"
 	JSONSchema EvalType = "json_schema"
+	Regex      EvalType = "regex"
+	JSONPath   EvalType = "json_path"
 )
 
 type Evaluator struct {
@@ -52,6 +55,10 @@ func (e *Evaluator) Evaluate(ctx context.Context, evalType EvalType, prompt, exp
 		return e.evaluateValidJSON(actual), nil
 	case JSONSchema:
 		return e.evaluateJSONSchema(expected, actual), nil
+	case Regex:
+		return e.evaluateRegex(expected, actual), nil
+	case JSONPath:
+		return e.evaluateJSONPath(expected, actual), nil
 	default:
 		return EvalResult{}, fmt.Errorf("unknown evaluation type: %s", evalType)
 	}
@@ -83,6 +90,47 @@ func (e *Evaluator) evaluateIncludes(expected, actual string) EvalResult {
 	return EvalResult{Pass: pass, Reason: reason}
 }
 
+func (e *Evaluator) evaluateRegex(expected, actual string) EvalResult {
+	re, err := regexp.Compile(expected)
+	if err != nil {
+		return EvalResult{Pass: false, Reason: fmt.Sprintf("Invalid expected regex: %v", err)}
+	}
+	pass := re.MatchString(actual)
+	reason := "Regex matched"
+	if !pass {
+		reason = fmt.Sprintf("Output did not match regex: %s", expected)
+	}
+	return EvalResult{Pass: pass, Reason: reason}
+}
+
+func (e *Evaluator) evaluateJSONPath(expected, actual string) EvalResult {
+	// expected should be in format "path=value"
+	parts := strings.SplitN(expected, "=", 2)
+	if len(parts) != 2 {
+		return EvalResult{Pass: false, Reason: "Expected format for json_path is 'path=value'"}
+	}
+
+	path := strings.TrimSpace(parts[0])
+	expectedVal := strings.TrimSpace(parts[1])
+
+	cleanedActual := extractJSON(actual)
+	if !gjson.Valid(cleanedActual) {
+		return EvalResult{Pass: false, Reason: "Actual output is not valid JSON"}
+	}
+
+	result := gjson.Get(cleanedActual, path)
+	if !result.Exists() {
+		return EvalResult{Pass: false, Reason: fmt.Sprintf("JSON path '%s' not found", path)}
+	}
+
+	actualVal := result.String()
+	if actualVal != expectedVal {
+		return EvalResult{Pass: false, Reason: fmt.Sprintf("Path '%s' matched '%s', expected '%s'", path, actualVal, expectedVal)}
+	}
+
+	return EvalResult{Pass: true, Reason: "JSON path matched expected value"}
+}
+
 func (e *Evaluator) evaluateLLMJudge(ctx context.Context, prompt, expected, actual string) (EvalResult, error) {
 	if e.LLMClient == nil || e.JudgeModel == "" {
 		return EvalResult{}, fmt.Errorf("LLM client and JudgeModel must be configured for llm_judge evaluation")
@@ -104,23 +152,19 @@ Does the ACTUAL OUTPUT fulfill the core requirements of the EXPECTED OUTPUT?
 If it does, reply strictly with the word "PASS".
 If it does not, reply strictly with the word "FAIL", followed by a brief reason on a new line.`, prompt, expected, actual)
 
-	response, judgeUsage, err := e.LLMClient.Generate(ctx, e.JudgeModel, judgePrompt, 0.0)
+	response, judgeUsage, err := e.LLMClient.Generate(ctx, e.JudgeModel, "", judgePrompt, 0.0)
 	if err != nil {
 		return EvalResult{}, fmt.Errorf("failed to call judge LLM: %w", err)
 	}
 
 	var judgeCost float64
 	switch e.JudgeModel {
-	case "gpt-4":
-		judgeCost = float64(judgeUsage.PromptTokens)*0.03/1000.0 + float64(judgeUsage.CompletionTokens)*0.06/1000.0
-	case "gpt-3.5-turbo":
-		judgeCost = float64(judgeUsage.PromptTokens)*0.0005/1000.0 + float64(judgeUsage.CompletionTokens)*0.0015/1000.0
-	case "gpt-4o":
-		judgeCost = float64(judgeUsage.PromptTokens)*0.005/1000.0 + float64(judgeUsage.CompletionTokens)*0.015/1000.0
-	case "gpt-4o-mini":
-		judgeCost = float64(judgeUsage.PromptTokens)*0.00015/1000.0 + float64(judgeUsage.CompletionTokens)*0.0006/1000.0
+	case "gemini-1.5-pro", "gemini-1.5-pro-latest":
+		judgeCost = float64(judgeUsage.PromptTokens)*3.50/1000000.0 + float64(judgeUsage.CompletionTokens)*10.50/1000000.0
+	case "gemini-1.5-flash", "gemini-1.5-flash-latest":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.075/1000000.0 + float64(judgeUsage.CompletionTokens)*0.30/1000000.0
 	default:
-		judgeCost = float64(judgeUsage.TotalTokens) * 0.001 / 1000.0
+		judgeCost = float64(judgeUsage.TotalTokens) * 0.1 / 1000000.0
 	}
 
 	respTrimmed := strings.TrimSpace(response)

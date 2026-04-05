@@ -29,29 +29,25 @@ func newMCPCmd() *cobra.Command {
 				mcp.WithNumber("k", mcp.Description("Top K results to return (default 5)")),
 			)
 			mcpServer.AddTool(searchMemoriesTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				query, ok := request.Params.Arguments["query"].(string)
-				if !ok {
+				query, err := request.RequireString("query")
+				if err != nil {
 					return mcp.NewToolResultError("query is required"), nil
 				}
-				project, _ := request.Params.Arguments["project"].(string)
-				kFloat, ok := request.Params.Arguments["k"].(float64)
-				k := 5
-				if ok {
-					k = int(kFloat)
-				}
-				
+				project := request.GetString("project", "")
+				k := request.GetInt("k", 5)
+
 				params := map[string]string{
 					"q":       query,
 					"type":    "memory",
 					"project": project,
 					"topK":    fmt.Sprintf("%d", k),
 				}
-				
+
 				out, err := contextGet("/api/search", params)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
-				
+
 				// format JSON nicely
 				var v any
 				if err := json.Unmarshal(out, &v); err == nil {
@@ -72,28 +68,21 @@ func newMCPCmd() *cobra.Command {
 				mcp.WithNumber("importance", mcp.Description("Importance 1-10 (default 5)")),
 			)
 			mcpServer.AddTool(storeMemoryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				content, ok := request.Params.Arguments["content"].(string)
-				if !ok {
+				content, err := request.RequireString("content")
+				if err != nil {
 					return mcp.NewToolResultError("content is required"), nil
 				}
-				project, _ := request.Params.Arguments["project"].(string)
-				
-				category, ok := request.Params.Arguments["category"].(string)
-				if !ok || category == "" {
+				project := request.GetString("project", "")
+				category := request.GetString("category", "observation")
+				if category == "" {
 					category = "observation"
 				}
-				
-				owner, ok := request.Params.Arguments["owner"].(string)
-				if !ok || owner == "" {
+				owner := request.GetString("owner", "agent")
+				if owner == "" {
 					owner = "agent"
 				}
-				
-				impFloat, ok := request.Params.Arguments["importance"].(float64)
-				importance := 5
-				if ok {
-					importance = int(impFloat)
-				}
-				
+				importance := request.GetInt("importance", 5)
+
 				out, err := contextPost("/api/memories", map[string]any{
 					"project":    project,
 					"content":    content,
@@ -121,24 +110,20 @@ func newMCPCmd() *cobra.Command {
 				mcp.WithNumber("k", mcp.Description("Top K results to return (default 5)")),
 			)
 			mcpServer.AddTool(searchNodesTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				query, ok := request.Params.Arguments["query"].(string)
-				if !ok {
+				query, err := request.RequireString("query")
+				if err != nil {
 					return mcp.NewToolResultError("query is required"), nil
 				}
-				project, _ := request.Params.Arguments["project"].(string)
-				kFloat, ok := request.Params.Arguments["k"].(float64)
-				k := 5
-				if ok {
-					k = int(kFloat)
-				}
-				
+				project := request.GetString("project", "")
+				k := request.GetInt("k", 5)
+
 				params := map[string]string{
 					"q":       query,
 					"type":    "context",
 					"project": project,
 					"topK":    fmt.Sprintf("%d", k),
 				}
-				
+
 				out, err := contextGet("/api/search", params)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
@@ -160,17 +145,13 @@ func newMCPCmd() *cobra.Command {
 				mcp.WithNumber("k", mcp.Description("Top K results for the underlying context search (default 5)")),
 			)
 			mcpServer.AddTool(vibeQueryTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				prompt, ok := request.Params.Arguments["prompt"].(string)
-				if !ok {
+				prompt, err := request.RequireString("prompt")
+				if err != nil {
 					return mcp.NewToolResultError("prompt is required"), nil
 				}
-				project, _ := request.Params.Arguments["project"].(string)
-				kFloat, ok := request.Params.Arguments["k"].(float64)
-				k := 5
-				if ok {
-					k = int(kFloat)
-				}
-				
+				project := request.GetString("project", "")
+				k := request.GetInt("k", 5)
+
 				out, err := contextPost("/api/vibe/query", map[string]any{
 					"prompt":  prompt,
 					"project": project,
@@ -196,17 +177,13 @@ func newMCPCmd() *cobra.Command {
 				mcp.WithNumber("k", mcp.Description("Top K context nodes for resolving existing context (default 5)")),
 			)
 			mcpServer.AddTool(vibeMutationTool, func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-				prompt, ok := request.Params.Arguments["prompt"].(string)
-				if !ok {
+				prompt, err := request.RequireString("prompt")
+				if err != nil {
 					return mcp.NewToolResultError("prompt is required"), nil
 				}
-				project, _ := request.Params.Arguments["project"].(string)
-				kFloat, ok := request.Params.Arguments["k"].(float64)
-				k := 5
-				if ok {
-					k = int(kFloat)
-				}
-				
+				project := request.GetString("project", "")
+				k := request.GetInt("k", 5)
+
 				planOut, err := contextPost("/api/vibe/mutation/plan", map[string]any{
 					"prompt":  prompt,
 					"project": project,
