@@ -41,16 +41,23 @@ type ChatRequest struct {
 	MaxTokens   int           `json:"max_tokens,omitempty"`
 }
 
+type Usage struct {
+	PromptTokens     int `json:"prompt_tokens"`
+	CompletionTokens int `json:"completion_tokens"`
+	TotalTokens      int `json:"total_tokens"`
+}
+
 type ChatResponse struct {
 	Choices []struct {
 		Message ChatMessage `json:"message"`
 	} `json:"choices"`
+	Usage Usage `json:"usage"`
 	Error *struct {
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
 }
 
-func (c *Client) Generate(ctx context.Context, model, prompt string, temperature float32) (string, error) {
+func (c *Client) Generate(ctx context.Context, model, prompt string, temperature float32) (string, Usage, error) {
 	reqBody := ChatRequest{
 		Model:       model,
 		Temperature: temperature,
@@ -61,7 +68,7 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		return "", err
+		return "", Usage{}, err
 	}
 
 	var chatResp ChatResponse
@@ -71,7 +78,7 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 	for attempt := 1; attempt <= 3; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, "POST", fmt.Sprintf("%s/chat/completions", c.BaseURL), bytes.NewBuffer(jsonData))
 		if err != nil {
-			return "", err
+			return "", Usage{}, err
 		}
 
 		req.Header.Set("Content-Type", "application/json")
@@ -96,23 +103,23 @@ func (c *Client) Generate(ctx context.Context, model, prompt string, temperature
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			return "", fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(bodyBytes))
+			return "", Usage{}, fmt.Errorf("API error (status %d): %s", resp.StatusCode, string(bodyBytes))
 		}
 
 		if err := json.Unmarshal(bodyBytes, &chatResp); err != nil {
-			return "", fmt.Errorf("failed to decode response: %v, raw: %s", err, string(bodyBytes))
+			return "", Usage{}, fmt.Errorf("failed to decode response: %v, raw: %s", err, string(bodyBytes))
 		}
 
 		if chatResp.Error != nil {
-			return "", fmt.Errorf("API error: %s", chatResp.Error.Message)
+			return "", Usage{}, fmt.Errorf("API error: %s", chatResp.Error.Message)
 		}
 
 		if len(chatResp.Choices) == 0 {
-			return "", fmt.Errorf("no choices returned in response")
+			return "", Usage{}, fmt.Errorf("no choices returned in response")
 		}
 
-		return chatResp.Choices[0].Message.Content, nil
+		return chatResp.Choices[0].Message.Content, chatResp.Usage, nil
 	}
 
-	return "", fmt.Errorf("failed after 3 attempts, last error: %w", lastErr)
+	return "", Usage{}, fmt.Errorf("failed after 3 attempts, last error: %w", lastErr)
 }

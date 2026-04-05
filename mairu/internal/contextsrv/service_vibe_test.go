@@ -109,7 +109,7 @@ func TestPlanVibeMutation_UsesBoundedExistingContext(t *testing.T) {
 			},
 		},
 	}
-	svc := NewServiceWithSearch(repo, nil, llm)
+	svc := NewServiceWithSearch(repo, nil, llm, true)
 
 	plan, err := svc.PlanVibeMutation("remember migration rules", "demo", 5)
 	if err != nil {
@@ -150,7 +150,7 @@ func TestPlanVibeMutation_FiltersInvalidLLMOps(t *testing.T) {
 			},
 		},
 	}
-	svc := NewServiceWithSearch(repo, nil, llm)
+	svc := NewServiceWithSearch(repo, nil, llm, true)
 
 	plan, err := svc.PlanVibeMutation("update architecture node", "demo", 5)
 	if err != nil {

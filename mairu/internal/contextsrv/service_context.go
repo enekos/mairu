@@ -57,7 +57,7 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 		}
 	}
 
-	m := ModerateContent(input.Name + ": " + input.Abstract + "\n" + input.Content)
+	m := ModerateContent(input.Name+": "+input.Abstract+"\n"+input.Content, s.moderationEnabled)
 	input.ModerationStatus = m.Status
 	input.ModerationReasons = m.Reasons
 	input.ReviewRequired = m.Status == ModerationStatusFlaggedSoft

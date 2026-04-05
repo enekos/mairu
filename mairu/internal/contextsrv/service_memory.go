@@ -63,7 +63,7 @@ func (s *AppService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 		}
 	}
 
-	m := ModerateContent(input.Content)
+	m := ModerateContent(input.Content, s.moderationEnabled)
 	input.ModerationStatus = m.Status
 	input.ModerationReasons = m.Reasons
 	input.ReviewRequired = m.Status == ModerationStatusFlaggedSoft

@@ -57,7 +57,7 @@
     refreshThinkingText();
     thinkingTicker = window.setInterval(() => {
       refreshThinkingText();
-    }, 150 + Math.floor(Math.random() * 200));
+    }, 800 + Math.floor(Math.random() * 1000));
   }
 
   function stopThinkingTicker() {

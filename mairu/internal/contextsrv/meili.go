@@ -105,12 +105,9 @@ func (m *MeiliIndexer) Search(opts SearchOptions) (map[string]any, error) {
 		"skills":       []map[string]any{},
 		"contextNodes": []map[string]any{},
 	}
-	if strings.TrimSpace(opts.Query) == "" {
-		return out, nil
-	}
 
 	var queryEmbedding []float32
-	if m.embedder != nil {
+	if strings.TrimSpace(opts.Query) != "" && m.embedder != nil {
 		emb, _ := m.embedder.GetEmbedding(context.Background(), opts.Query)
 		queryEmbedding = emb
 	}

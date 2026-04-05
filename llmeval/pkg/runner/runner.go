@@ -18,12 +18,16 @@ type TestCase struct {
 }
 
 type TestResult struct {
-	TestCase TestCase
-	Actual   string
-	Pass     bool
-	Reason   string
-	Error    error
-	Duration time.Duration
+	TestCase   TestCase
+	Actual     string
+	Pass       bool
+	Reason     string
+	Error      error
+	Duration   time.Duration
+	Usage      llm.Usage
+	Cost       float64
+	JudgeUsage llm.Usage
+	JudgeCost  float64
 }
 
 type Runner struct {
@@ -79,14 +83,32 @@ func (r *Runner) Run(ctx context.Context, cases []TestCase) []TestResult {
 func (r *Runner) runSingle(ctx context.Context, tc TestCase) TestResult {
 	start := time.Now()
 
-	actual, err := r.LLMClient.Generate(ctx, r.TestModel, tc.Prompt, 0.0)
+	actual, usage, err := r.LLMClient.Generate(ctx, r.TestModel, tc.Prompt, 0.0)
 	duration := time.Since(start)
+
+	var cost float64
+	// Simple cost calculation based on model (approximations)
+	switch r.TestModel {
+	case "gpt-4":
+		cost = float64(usage.PromptTokens)*0.03/1000.0 + float64(usage.CompletionTokens)*0.06/1000.0
+	case "gpt-3.5-turbo":
+		cost = float64(usage.PromptTokens)*0.0005/1000.0 + float64(usage.CompletionTokens)*0.0015/1000.0
+	case "gpt-4o":
+		cost = float64(usage.PromptTokens)*0.005/1000.0 + float64(usage.CompletionTokens)*0.015/1000.0
+	case "gpt-4o-mini":
+		cost = float64(usage.PromptTokens)*0.00015/1000.0 + float64(usage.CompletionTokens)*0.0006/1000.0
+	default:
+		// Default to some generic low cost
+		cost = float64(usage.TotalTokens) * 0.001 / 1000.0
+	}
 
 	if err != nil {
 		return TestResult{
 			TestCase: tc,
 			Error:    fmt.Errorf("failed to generate response: %w", err),
 			Duration: duration,
+			Usage:    usage,
+			Cost:     cost,
 		}
 	}
 
@@ -97,14 +119,20 @@ func (r *Runner) runSingle(ctx context.Context, tc TestCase) TestResult {
 			Actual:   actual,
 			Error:    fmt.Errorf("evaluation failed: %w", err),
 			Duration: duration,
+			Usage:    usage,
+			Cost:     cost,
 		}
 	}
 
 	return TestResult{
-		TestCase: tc,
-		Actual:   actual,
-		Pass:     evalRes.Pass,
-		Reason:   evalRes.Reason,
-		Duration: duration,
+		TestCase:   tc,
+		Actual:     actual,
+		Pass:       evalRes.Pass,
+		Reason:     evalRes.Reason,
+		Duration:   duration,
+		Usage:      usage,
+		Cost:       cost,
+		JudgeUsage: evalRes.JudgeUsage,
+		JudgeCost:  evalRes.JudgeCost,
 	}
 }

@@ -67,6 +67,9 @@ type model struct {
 	listModel list.Model
 	listType  string // "session" or "model"
 
+	showGraph     bool
+	dataExplorer dataExplorerModel
+
 	width  int
 	height int
 

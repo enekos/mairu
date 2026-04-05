@@ -96,6 +96,9 @@ func (m model) View() string {
 	if m.showList {
 		return m.listModel.View()
 	}
+	if m.showGraph {
+		return m.dataExplorer.View()
+	}
 
 	statusStr := ""
 	if m.thinking {

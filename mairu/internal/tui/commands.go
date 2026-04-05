@@ -31,6 +31,8 @@ var allSlashCommands = []SlashCommand{
 	{"/compact", "Summarize history to save tokens"},
 	{"/squash", "Summarize history to save tokens"},
 	{"/export", "Export conversation to a file"},
+	{"/graph", "Interactive Context Graph Explorer"},
+	{"/data", "Interactive Workspace Data Explorer (Nodes, Memories, Skills)"},
 	{"/explore", "Toggle explore sidebar"},
 	{"/logs", "Toggle internal logs sidebar"},
 	{"/agent", "Focus agent pane"},

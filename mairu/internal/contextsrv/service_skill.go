@@ -11,7 +11,7 @@ func (s *AppService) CreateSkill(input SkillCreateInput) (Skill, error) {
 	if strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Description) == "" {
 		return Skill{}, fmt.Errorf("name and description are required")
 	}
-	m := ModerateContent(input.Name + ": " + input.Description)
+	m := ModerateContent(input.Name+": "+input.Description, s.moderationEnabled)
 	input.ModerationStatus = m.Status
 	input.ModerationReasons = m.Reasons
 	input.ReviewRequired = m.Status == ModerationStatusFlaggedSoft

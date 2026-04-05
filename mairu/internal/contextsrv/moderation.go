@@ -11,7 +11,11 @@ type ModerationResult struct {
 	Reasons []string
 }
 
-func ModerateContent(content string) ModerationResult {
+func ModerateContent(content string, moderationEnabled bool) ModerationResult {
+	if !moderationEnabled {
+		return ModerationResult{Status: ModerationStatusClean}
+	}
+
 	text := strings.TrimSpace(content)
 	if text == "" {
 		return ModerationResult{Status: ModerationStatusClean}

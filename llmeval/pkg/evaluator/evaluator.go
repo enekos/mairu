@@ -34,8 +34,10 @@ func NewEvaluator(client *llm.Client, judgeModel string) *Evaluator {
 }
 
 type EvalResult struct {
-	Pass   bool
-	Reason string
+	Pass       bool
+	Reason     string
+	JudgeUsage llm.Usage
+	JudgeCost  float64
 }
 
 func (e *Evaluator) Evaluate(ctx context.Context, evalType EvalType, prompt, expected, actual string) (EvalResult, error) {
@@ -102,17 +104,31 @@ Does the ACTUAL OUTPUT fulfill the core requirements of the EXPECTED OUTPUT?
 If it does, reply strictly with the word "PASS".
 If it does not, reply strictly with the word "FAIL", followed by a brief reason on a new line.`, prompt, expected, actual)
 
-	response, err := e.LLMClient.Generate(ctx, e.JudgeModel, judgePrompt, 0.0)
+	response, judgeUsage, err := e.LLMClient.Generate(ctx, e.JudgeModel, judgePrompt, 0.0)
 	if err != nil {
 		return EvalResult{}, fmt.Errorf("failed to call judge LLM: %w", err)
 	}
 
-	respTrimmed := strings.TrimSpace(response)
-	if strings.HasPrefix(strings.ToUpper(respTrimmed), "PASS") {
-		return EvalResult{Pass: true, Reason: "Judge LLM approved"}, nil
+	var judgeCost float64
+	switch e.JudgeModel {
+	case "gpt-4":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.03/1000.0 + float64(judgeUsage.CompletionTokens)*0.06/1000.0
+	case "gpt-3.5-turbo":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.0005/1000.0 + float64(judgeUsage.CompletionTokens)*0.0015/1000.0
+	case "gpt-4o":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.005/1000.0 + float64(judgeUsage.CompletionTokens)*0.015/1000.0
+	case "gpt-4o-mini":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.00015/1000.0 + float64(judgeUsage.CompletionTokens)*0.0006/1000.0
+	default:
+		judgeCost = float64(judgeUsage.TotalTokens) * 0.001 / 1000.0
 	}
 
-	return EvalResult{Pass: false, Reason: "Judge LLM rejected: " + respTrimmed}, nil
+	respTrimmed := strings.TrimSpace(response)
+	if strings.HasPrefix(strings.ToUpper(respTrimmed), "PASS") {
+		return EvalResult{Pass: true, Reason: "Judge LLM approved", JudgeUsage: judgeUsage, JudgeCost: judgeCost}, nil
+	}
+
+	return EvalResult{Pass: false, Reason: "Judge LLM rejected: " + respTrimmed, JudgeUsage: judgeUsage, JudgeCost: judgeCost}, nil
 }
 
 func (e *Evaluator) evaluateValidJSON(actual string) EvalResult {

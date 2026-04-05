@@ -58,9 +58,10 @@ type Repository interface {
 
 // AppService is the default implementation of the Service interface.
 type AppService struct {
-	repo          Repository
-	searchBackend SearchBackend
-	llmClient     LLMClient
+	repo              Repository
+	searchBackend     SearchBackend
+	llmClient         LLMClient
+	moderationEnabled bool
 }
 
 // NewService creates a new AppService with the given repository.
@@ -75,8 +76,8 @@ type SearchBackend interface {
 }
 
 // NewServiceWithSearch creates an AppService with both a repository and search backend.
-func NewServiceWithSearch(repo Repository, backend SearchBackend, llmClient LLMClient) *AppService {
-	return &AppService{repo: repo, searchBackend: backend, llmClient: llmClient}
+func NewServiceWithSearch(repo Repository, backend SearchBackend, llmClient LLMClient, moderationEnabled bool) *AppService {
+	return &AppService{repo: repo, searchBackend: backend, llmClient: llmClient, moderationEnabled: moderationEnabled}
 }
 
 // Health returns basic service health status.

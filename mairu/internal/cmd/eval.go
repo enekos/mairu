@@ -55,7 +55,7 @@ var evalCmd = &cobra.Command{
 		}
 
 		meili := contextsrv.NewMeiliIndexer(meiliURL, meiliKey, nil)
-		svc := contextsrv.NewServiceWithSearch(repo, meili, nil)
+		svc := contextsrv.NewServiceWithSearch(repo, meili, nil, false)
 
 		_ = eval.SeedFixtures(ctx, svc, dataset.Fixtures)
 

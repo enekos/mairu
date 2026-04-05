@@ -96,11 +96,17 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 	fmt.Fprintln(out, "========================================")
 
 	passes := 0
+	var totalCost float64
+	var totalTokens int
+
 	for _, res := range results {
+		totalCost += res.Cost + res.JudgeCost
+		totalTokens += res.Usage.TotalTokens + res.JudgeUsage.TotalTokens
+
 		status := "❌ FAIL"
 		if res.Error != nil {
 			status = "⚠️ ERROR"
-			fmt.Fprintf(out, "[%s] %s (%v)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond))
+			fmt.Fprintf(out, "[%s] %s (%v, $%.4f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
 			fmt.Fprintf(out, "  Error: %v\n\n", res.Error)
 			continue
 		}
@@ -110,7 +116,7 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 			passes++
 		}
 
-		fmt.Fprintf(out, "[%s] %s (%v)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond))
+		fmt.Fprintf(out, "[%s] %s (%v, $%.4f, %dtoks)\n", status, res.TestCase.ID, res.Duration.Round(time.Millisecond), res.Cost+res.JudgeCost, res.Usage.TotalTokens+res.JudgeUsage.TotalTokens)
 		fmt.Fprintf(out, "  Type:     %s\n", res.TestCase.EvalType)
 		if !res.Pass {
 			if res.TestCase.Expected != "" {
@@ -128,23 +134,31 @@ func writeText(out *os.File, results []runner.TestResult, totalDuration time.Dur
 	fmt.Fprintf(out, "Failed:      %d\n", len(results)-passes)
 	fmt.Fprintf(out, "Pass Rate:   %.2f%%\n", float64(passes)/float64(len(results))*100)
 	fmt.Fprintf(out, "Duration:    %v\n", totalDuration.Round(time.Millisecond))
+	fmt.Fprintf(out, "Total Cost:  $%.4f\n", totalCost)
+	fmt.Fprintf(out, "Total Tokens:%d\n", totalTokens)
 }
 
 func writeJSON(out *os.File, results []runner.TestResult, totalDuration time.Duration) {
 	passes := 0
+	var totalCost float64
+	var totalTokens int
 	for _, res := range results {
 		if res.Pass {
 			passes++
 		}
+		totalCost += res.Cost + res.JudgeCost
+		totalTokens += res.Usage.TotalTokens + res.JudgeUsage.TotalTokens
 	}
 
 	report := map[string]interface{}{
 		"summary": map[string]interface{}{
-			"total":      len(results),
-			"passed":     passes,
-			"failed":     len(results) - passes,
-			"pass_rate":  float64(passes) / float64(len(results)) * 100,
-			"duration_s": totalDuration.Seconds(),
+			"total":        len(results),
+			"passed":       passes,
+			"failed":       len(results) - passes,
+			"pass_rate":    float64(passes) / float64(len(results)) * 100,
+			"duration_s":   totalDuration.Seconds(),
+			"total_cost":   totalCost,
+			"total_tokens": totalTokens,
 		},
 		"results": results,
 	}
@@ -160,7 +174,7 @@ func writeCSV(out *os.File, results []runner.TestResult) {
 	writer := csv.NewWriter(out)
 	defer writer.Flush()
 
-	writer.Write([]string{"ID", "Pass", "Type", "Expected", "Actual", "Reason", "Error", "Duration_ms"})
+	writer.Write([]string{"ID", "Pass", "Type", "Expected", "Actual", "Reason", "Error", "Duration_ms", "Cost", "Tokens", "JudgeCost", "JudgeTokens"})
 
 	for _, res := range results {
 		passStr := strconv.FormatBool(res.Pass)
@@ -179,6 +193,10 @@ func writeCSV(out *os.File, results []runner.TestResult) {
 			res.Reason,
 			errorStr,
 			fmt.Sprintf("%d", res.Duration.Milliseconds()),
+			fmt.Sprintf("%f", res.Cost),
+			strconv.Itoa(res.Usage.TotalTokens),
+			fmt.Sprintf("%f", res.JudgeCost),
+			strconv.Itoa(res.JudgeUsage.TotalTokens),
 		})
 	}
 }

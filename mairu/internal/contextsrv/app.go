@@ -13,28 +13,30 @@ import (
 // Config defines configuration parameters for starting the Context Server.
 // It includes server settings, database connections, API keys, and projector configuration.
 type Config struct {
-	Port            int
-	PostgresDSN     string
-	MeiliURL        string
-	MeiliAPIKey     string
-	GeminiAPIKey    string
-	AuthToken       string
-	EnableProjector bool
-	ProjectorEvery  time.Duration
-	ProjectorBatch  int
+	Port              int
+	PostgresDSN       string
+	MeiliURL          string
+	MeiliAPIKey       string
+	GeminiAPIKey      string
+	AuthToken         string
+	EnableProjector   bool
+	ProjectorEvery    time.Duration
+	ProjectorBatch    int
+	ModerationEnabled bool
 }
 
 // LoadConfig creates a Config with defaults and environment variables overrides.
 func LoadConfig() Config {
 	cfg := Config{
-		Port:           8788,
-		PostgresDSN:    os.Getenv("CONTEXT_SERVER_POSTGRES_DSN"),
-		MeiliURL:       os.Getenv("MEILI_URL"),
-		MeiliAPIKey:    os.Getenv("MEILI_API_KEY"),
-		GeminiAPIKey:   os.Getenv("GEMINI_API_KEY"),
-		AuthToken:      os.Getenv("CONTEXT_AUTH_TOKEN"),
-		ProjectorEvery: 3 * time.Second,
-		ProjectorBatch: 50,
+		Port:              8788,
+		PostgresDSN:       os.Getenv("CONTEXT_SERVER_POSTGRES_DSN"),
+		MeiliURL:          os.Getenv("MEILI_URL"),
+		MeiliAPIKey:       os.Getenv("MEILI_API_KEY"),
+		GeminiAPIKey:      os.Getenv("GEMINI_API_KEY"),
+		AuthToken:         os.Getenv("CONTEXT_AUTH_TOKEN"),
+		ProjectorEvery:    3 * time.Second,
+		ProjectorBatch:    50,
+		ModerationEnabled: os.Getenv("CONTEXT_ENABLE_MODERATION") == "true",
 	}
 	if cfg.MeiliURL == "" {
 		cfg.MeiliURL = "http://localhost:7700"
@@ -87,7 +89,7 @@ func NewApp(cfg Config) (*App, error) {
 		repoIntf = repo
 	}
 
-	svc := NewServiceWithSearch(repoIntf, indexer, llmClient)
+	svc := NewServiceWithSearch(repoIntf, indexer, llmClient, cfg.ModerationEnabled)
 	handler := NewHandler(svc, cfg.AuthToken)
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
