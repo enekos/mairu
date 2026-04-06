@@ -160,15 +160,15 @@ func describeForStatement(node *sitter.Node, source []byte) string {
 
 	initText := ""
 	if initializer != nil {
-		initText = initializer.Content(source)
+		initText = strings.TrimSuffix(initializer.Content(source), ";")
 	}
 	condText := ""
 	if condition != nil {
-		condText = condition.Content(source)
+		condText = strings.TrimSuffix(condition.Content(source), ";")
 	}
 	incText := ""
 	if increment != nil {
-		incText = increment.Content(source)
+		incText = strings.TrimSuffix(increment.Content(source), ";")
 	}
 	return fmt.Sprintf("Loops with %s; while %s; %s: %s", initText, condText, incText, describeBlockInline(body, source))
 }
@@ -331,6 +331,7 @@ func extractBindingName(node *sitter.Node, source []byte) string {
 	if node == nil {
 		return "element"
 	}
+	// tree-sitter might wrap it or the node itself is the binding
 	if node.Type() == "lexical_declaration" || node.Type() == "variable_declaration" {
 		for i := 0; i < int(node.NamedChildCount()); i++ {
 			c := node.NamedChild(i)
@@ -435,7 +436,7 @@ func describeCondition(node *sitter.Node, source []byte) string {
 			"!=":  "does not equal",
 		}
 		if opWord, ok := opMap[op]; ok {
-			return fmt.Sprintf("`%s` %s %s", leftText, opWord, rightText)
+			return fmt.Sprintf("`%s` %s `%s`", leftText, opWord, rightText)
 		}
 
 		return fmt.Sprintf("`%s`", node.Content(source))

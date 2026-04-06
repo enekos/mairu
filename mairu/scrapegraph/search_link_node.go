@@ -1,0 +1,78 @@
+package scrapegraph
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/PuerkitoBio/goquery"
+	"mairu/internal/llm"
+)
+
+// SearchLinkNode extracts all links from a webpage and uses the LLM to filter
+// and return only the ones relevant to the user prompt.
+type SearchLinkNode struct {
+	Provider *llm.GeminiProvider
+}
+
+func (n *SearchLinkNode) Name() string { return "SearchLinkNode" }
+
+func (n *SearchLinkNode) Execute(ctx context.Context, state State) (State, error) {
+	htmlContent, ok := state["html"].(string)
+	if !ok || htmlContent == "" {
+		return state, fmt.Errorf("SearchLinkNode: missing 'html' in state")
+	}
+	userPrompt, ok := state["prompt"].(string)
+	if !ok || userPrompt == "" {
+		return state, fmt.Errorf("SearchLinkNode: missing 'prompt' in state")
+	}
+
+	geminiProvider := n.Provider
+	if geminiProvider == nil {
+		return state, fmt.Errorf("SearchLinkNode: missing GeminiProvider")
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(htmlContent))
+	if err != nil {
+		return state, fmt.Errorf("SearchLinkNode: failed to parse HTML: %w", err)
+	}
+
+	var allLinks []string
+	doc.Find("a[href]").Each(func(i int, s *goquery.Selection) {
+		href, exists := s.Attr("href")
+		if exists && href != "" && !strings.HasPrefix(href, "#") && !strings.HasPrefix(href, "javascript:") {
+			text := strings.TrimSpace(s.Text())
+			if text != "" {
+				allLinks = append(allLinks, fmt.Sprintf("%s (URL: %s)", text, href))
+			} else {
+				allLinks = append(allLinks, href)
+			}
+		}
+	})
+
+	if len(allLinks) == 0 {
+		state["relevant_links"] = []string{}
+		return state, nil
+	}
+
+	linksText := strings.Join(allLinks, "\n")
+	if len(linksText) > 60000 {
+		linksText = linksText[:60000] + "\n...[truncated]"
+	}
+
+	systemInstruction := `You are a web scraper. You have a list of extracted links from a website.
+Based on the user's prompt, identify the links that are relevant to their request.
+Output a JSON array of strings containing ONLY the relevant URLs. Do not include the link text.
+Example output: ["https://example.com/pricing", "https://example.com/about"]`
+
+	fullPrompt := fmt.Sprintf("USER PROMPT: %s\n\nEXTRACTED LINKS:\n%s", userPrompt, linksText)
+
+	var result []string
+	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &result)
+	if err != nil {
+		return state, fmt.Errorf("SearchLinkNode: LLM failed: %w", err)
+	}
+
+	state["relevant_links"] = result
+	return state, nil
+}
