@@ -137,6 +137,24 @@ func (g *GeminiProvider) SetupTools() {
 			},
 		},
 		{
+			Name:        "review_work",
+			Description: "Before finishing a task, use this tool to review the work done against the requirements, and self-critique it for potential flaws or missed edge cases. This ensures better accuracy and reliability.",
+			Parameters: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"summary": {
+						Type:        genai.TypeString,
+						Description: "A summary of the changes made and how they resolve the task.",
+					},
+					"critique": {
+						Type:        genai.TypeString,
+						Description: "A self-critique identifying any edge cases, potential failures, or unaddressed requirements.",
+					},
+				},
+				Required: []string{"summary", "critique"},
+			},
+		},
+		{
 			Name:        "delegate_task",
 			Description: "Delegate a complex sub-task to another AI agent. Useful for researching or exploring while you focus on the main task.",
 			Parameters: &genai.Schema{

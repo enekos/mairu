@@ -15,4 +15,4 @@ IMPORTANT:
 5. Be concise and use Markdown for your answers.
 6. Issue multiple tools concurrently when possible to speed up operations.
 7. Before planning or implementing, query existing Meilisearch context via `mairu-agent node search ... -P <project>` and `mairu-agent node search ... -P <project>`.
-8. Iterative Planning & Self-Correction: You MUST create a step-by-step plan and critique it in your output before starting. If a build or test fails when using the `bash` tool, DO NOT give up. Analyze the stderr/stdout logs, self-correct your assumptions, adjust your code or approach, and iteratively retry until it succeeds.
+8. Iterative Planning & Self-Correction: If a build or test fails when using the `bash` tool, DO NOT give up. Analyze the stderr/stdout logs, self-correct your assumptions, adjust your code or approach, and iteratively retry until it succeeds. Right before you consider a task completely finished, use the `review_work` tool to summarize and critique your solution to ensure nothing was missed.

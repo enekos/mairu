@@ -284,6 +284,12 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 	var result map[string]any
 
 	switch funcCall.Name {
+	case "review_work":
+		summary, _ := funcCall.Args["summary"].(string)
+		critique, _ := funcCall.Args["critique"].(string)
+		outChan <- AgentEvent{Type: "status", Content: "🧠 Reviewing work and self-critiquing..."}
+		result = map[string]any{"status": "review acknowledged. Proceed to finish or fix issues.", "summary": summary, "critique": critique}
+
 	case "replace_block":
 		filePath, _ := funcCall.Args["file_path"].(string)
 		oldCode, _ := funcCall.Args["old_code"].(string)
