@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import "context"
 

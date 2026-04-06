@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func TestMergeAnswersNodeValidation(t *testing.T) {
 	if err == nil || !strings.Contains(err.Error(), "missing 'prompt'") {
 		t.Fatalf("Expected error for missing prompt, got: %v", err)
 	}
-	
+
 	// Test missing provider
 	state3 := State{"results": results, "prompt": "prompt"}
 	_, err = node.Execute(context.Background(), state3)

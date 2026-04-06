@@ -1,0 +1,4 @@
+USER PROMPT: {{.UserPrompt}}
+
+SCRAPED DATA FROM MULTIPLE SOURCES:
+{{.Results}}

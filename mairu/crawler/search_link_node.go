@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 // SearchLinkNode extracts all links from a webpage and uses the LLM to filter
@@ -60,12 +61,12 @@ func (n *SearchLinkNode) Execute(ctx context.Context, state State) (State, error
 		linksText = linksText[:60000] + "\n...[truncated]"
 	}
 
-	systemInstruction := `You are a web scraper. You have a list of extracted links from a website.
-Based on the user's prompt, identify the links that are relevant to their request.
-Output a JSON array of strings containing ONLY the relevant URLs. Do not include the link text.
-Example output: ["https://example.com/pricing", "https://example.com/about"]`
+	systemInstruction := prompts.Render("crawler_search_link_sys", nil)
 
-	fullPrompt := fmt.Sprintf("USER PROMPT: %s\n\nEXTRACTED LINKS:\n%s", userPrompt, linksText)
+	fullPrompt := prompts.Render("crawler_search_link_user", map[string]any{
+		"UserPrompt": userPrompt,
+		"LinksText":  linksText,
+	})
 
 	var result []string
 	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &result)

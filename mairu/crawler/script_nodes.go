@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 // MinifyHTMLNode strips out irrelevant tags (scripts, styles, svg, paths, comments)
@@ -72,15 +73,13 @@ func (n *GenerateScriptNode) Execute(ctx context.Context, state State) (State, e
 		htmlContent = htmlContent[:80000] + "...[truncated]"
 	}
 
-	systemInstruction := "You are an expert Go developer. Generate a self-contained Go script that extracts the requested data from the provided HTML structure.\n" +
-		"The script MUST:\n" +
-		"1. Be a valid, self-contained main.go file (package main).\n" +
-		"2. Use \"github.com/PuerkitoBio/goquery\" and standard libraries.\n" +
-		"3. Be robust to missing elements.\n" +
-		"4. Output the extracted data as pretty-printed JSON to stdout.\n" +
-		"5. Print ONLY the valid Go code, without markdown formatting like \"```go\" or any conversational text."
+	systemInstruction := prompts.Render("crawler_script_generator_sys", nil)
 
-	fullPrompt := fmt.Sprintf("TARGET URL: %s\n\nPROMPT: %s\n\nHTML STRUCTURE:\n%s", targetURL, userPrompt, htmlContent)
+	fullPrompt := prompts.Render("crawler_script_generator_user", map[string]any{
+		"TargetURL":   targetURL,
+		"UserPrompt":  userPrompt,
+		"HTMLContent": htmlContent,
+	})
 
 	script, err := geminiProvider.GenerateContent(ctx, geminiProvider.GetModelName(), systemInstruction+"\n\n"+fullPrompt)
 	if err != nil {

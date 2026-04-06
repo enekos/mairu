@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
+	"mairu/crawler"
 	"mairu/internal/contextsrv"
 	"mairu/internal/llm"
 	"mairu/internal/scraper"
-	"mairu/scrapegraph"
 
 	"github.com/spf13/cobra"
 )
@@ -1100,6 +1100,7 @@ func newSmartScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var useRAG bool
+	var refinePrompt bool
 
 	cmd := &cobra.Command{
 		Use:   "smart-scrape <url>",
@@ -1123,7 +1124,7 @@ func newSmartScrapeCmd() *cobra.Command {
 
 			fmt.Printf("Running smart scrape on %s...\n", targetURL)
 
-			graph := scrapegraph.NewSmartScraperGraph(provider)
+			graph := crawler.NewSmartScraperGraph(provider)
 			data, err := graph.Run(cmd.Context(), targetURL, prompt)
 			if err != nil {
 				return fmt.Errorf("scrape failed: %w", err)
@@ -1183,7 +1184,7 @@ func newSearchScrapeCmd() *cobra.Command {
 
 			fmt.Printf("Running search scrape for query '%s'...\n", query)
 
-			graph := scrapegraph.NewSearchScraperGraph(provider)
+			graph := crawler.NewSearchScraperGraph(provider)
 			results, err := graph.Run(cmd.Context(), query, prompt, maxResults)
 			if err != nil {
 				return fmt.Errorf("search scrape failed: %w", err)
@@ -1230,15 +1231,15 @@ func newMultiScrapeCmd() *cobra.Command {
 			if apiKey == "" {
 				return fmt.Errorf("gemini api key required for multi-scrape")
 			}
-			
+
 			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
 
 			fmt.Printf("Running multi-scrape on %d URLs...\n", len(args))
-			
-			graph := scrapegraph.NewSmartScraperMultiGraph(provider, concurrency)
+
+			graph := crawler.NewSmartScraperMultiGraph(provider, concurrency)
 			data, err := graph.Run(cmd.Context(), args, prompt)
 			if err != nil {
 				return fmt.Errorf("multi-scrape failed: %w", err)
@@ -1256,9 +1257,9 @@ func newMultiScrapeCmd() *cobra.Command {
 			for urlStr, result := range data {
 				uri := fmt.Sprintf("contextfs://scrape/%s", strings.ReplaceAll(strings.ReplaceAll(urlStr, "https://", ""), "http://", ""))
 				resBytes, _ := json.Marshal(result)
-				runNodeStore(project, uri, "Extracted Data", "Data extracted via multi-scrape: " + prompt, "", "", string(resBytes))
+				runNodeStore(project, uri, "Extracted Data", "Data extracted via multi-scrape: "+prompt, "", "", string(resBytes))
 			}
-			
+
 			return nil
 		},
 	}
@@ -1286,15 +1287,15 @@ func newScriptScrapeCmd() *cobra.Command {
 			if apiKey == "" {
 				return fmt.Errorf("gemini api key required for script-scrape")
 			}
-			
+
 			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
 
 			fmt.Printf("Generating scraper script for %s...\n", targetURL)
-			
-			graph := scrapegraph.NewScriptCreatorGraph(provider)
+
+			graph := crawler.NewScriptCreatorGraph(provider)
 			scriptContent, err := graph.Run(cmd.Context(), targetURL, prompt)
 			if err != nil {
 				return fmt.Errorf("script generation failed: %w", err)
@@ -1314,7 +1315,7 @@ func newScriptScrapeCmd() *cobra.Command {
 			} else {
 				fmt.Printf("\n--- Generated Go Script ---\n\n%s\n\n", scriptContent)
 			}
-			
+
 			return nil
 		},
 	}
@@ -1343,15 +1344,15 @@ func newDepthScrapeCmd() *cobra.Command {
 			if apiKey == "" {
 				return fmt.Errorf("gemini api key required for depth-scrape")
 			}
-			
+
 			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
 
 			fmt.Printf("Running depth-scrape (depth: %d) on %s...\n", maxDepth, seedURL)
-			
-			graph := scrapegraph.NewDepthSearchScraperGraph(provider, maxDepth, concurrency)
+
+			graph := crawler.NewDepthSearchScraperGraph(provider, maxDepth, concurrency)
 			data, err := graph.Run(cmd.Context(), seedURL, prompt)
 			if err != nil {
 				return fmt.Errorf("depth-scrape failed: %w", err)
@@ -1369,9 +1370,9 @@ func newDepthScrapeCmd() *cobra.Command {
 			for urlStr, result := range data {
 				uri := fmt.Sprintf("contextfs://scrape/%s", strings.ReplaceAll(strings.ReplaceAll(urlStr, "https://", ""), "http://", ""))
 				resBytes, _ := json.Marshal(result)
-				runNodeStore(project, uri, "Extracted Data", "Data extracted via depth-scrape: " + prompt, "", "", string(resBytes))
+				runNodeStore(project, uri, "Extracted Data", "Data extracted via depth-scrape: "+prompt, "", "", string(resBytes))
 			}
-			
+
 			return nil
 		},
 	}
@@ -1400,15 +1401,15 @@ func newOmniScrapeCmd() *cobra.Command {
 			if apiKey == "" {
 				return fmt.Errorf("gemini api key required for omni-scrape")
 			}
-			
+
 			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
 
 			fmt.Printf("Running omni-scrape on %d URLs...\n", len(args))
-			
-			graph := scrapegraph.NewOmniScraperGraph(provider, concurrency)
+
+			graph := crawler.NewOmniScraperGraph(provider, concurrency)
 			data, err := graph.Run(cmd.Context(), args, prompt)
 			if err != nil {
 				return fmt.Errorf("omni-scrape failed: %w", err)
@@ -1427,11 +1428,11 @@ func newOmniScrapeCmd() *cobra.Command {
 			if len(args) > 1 {
 				uri += "-and-others"
 			}
-			
+
 			content := string(jsonBytes)
 			fmt.Printf("Storing merged data at %s in project '%s'...\n", uri, project)
-			
-			return runNodeStore(project, uri, "Merged Omni Data", "Data merged via omni-scrape: " + prompt, "", "", content)
+
+			return runNodeStore(project, uri, "Merged Omni Data", "Data merged via omni-scrape: "+prompt, "", "", content)
 		},
 	}
 	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project namespace")

@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 // MergeAnswersNode merges extracted data from multiple sources into a single coherent JSON object.
@@ -38,14 +39,12 @@ func (n *MergeAnswersNode) Execute(ctx context.Context, state State) (State, err
 		resultsStr = resultsStr[:80000] + "\n...[truncated]"
 	}
 
-	systemInstruction := `You are an expert data analyst. You have been given scraped data from multiple websites in JSON format.
-Your task is to merge this data into a single, cohesive, and comprehensive JSON object that directly answers the user's prompt.
-- Remove any duplicates or redundant information.
-- Resolve any contradictions intelligently.
-- Structure the final output logically.
-- Return ONLY valid JSON.`
+	systemInstruction := prompts.Render("crawler_merge_answers_sys", nil)
 
-	fullPrompt := fmt.Sprintf("USER PROMPT: %s\n\nSCRAPED DATA FROM MULTIPLE SOURCES:\n%s", userPrompt, resultsStr)
+	fullPrompt := prompts.Render("crawler_merge_answers_user", map[string]any{
+		"UserPrompt": userPrompt,
+		"Results":    resultsStr,
+	})
 
 	var mergedResult map[string]any
 	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &mergedResult)

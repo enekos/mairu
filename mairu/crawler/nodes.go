@@ -1,4 +1,4 @@
-package scrapegraph
+package crawler
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-shiori/go-readability"
 	"mairu/internal/llm"
+	"mairu/internal/prompts"
 )
 
 // FetchNode fetches HTML content from a URL
@@ -31,7 +32,7 @@ func (n *FetchNode) Execute(ctx context.Context, state State) (State, error) {
 	if err != nil {
 		return state, fmt.Errorf("FetchNode: failed to create request: %w", err)
 	}
-	req.Header.Set("User-Agent", "mairu-scrapegraph/1.0")
+	req.Header.Set("User-Agent", "mairu-crawler/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -127,14 +128,17 @@ func (n *ExtractNode) Execute(ctx context.Context, state State) (State, error) {
 		return state, fmt.Errorf("ExtractNode: missing GeminiProvider")
 	}
 
-	systemInstruction := "You are a web scraping data extraction tool. Extract the requested information from the provided document. Respond ONLY with valid JSON."
+	systemInstruction := prompts.Render("crawler_extract_sys", nil)
 
 	// Ensure we don't blow up context size (cap at ~60k chars roughly)
 	if len(doc) > 60000 {
 		doc = doc[:60000] + "\n...[truncated]"
 	}
 
-	fullPrompt := fmt.Sprintf("DOCUMENT:\n---\n%s\n---\n\nINSTRUCTIONS: %s\n\nExtract the requested information based on the instructions.", doc, userPrompt)
+	fullPrompt := prompts.Render("crawler_extract_user", map[string]any{
+		"Doc":        doc,
+		"UserPrompt": userPrompt,
+	})
 
 	var result map[string]any
 	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &result)
