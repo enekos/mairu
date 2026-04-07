@@ -235,11 +235,11 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 func defaultsForIndex(index string) hybridWeights {
 	switch index {
 	case IndexMemories:
-		return defaultMemoryWeights()
+		return defaultMemoryWeights(nil)
 	case IndexSkills:
-		return defaultSkillWeights()
+		return defaultSkillWeights(nil)
 	default:
-		return defaultContextWeights()
+		return defaultContextWeights(nil)
 	}
 }
 

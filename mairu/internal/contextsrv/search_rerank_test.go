@@ -18,7 +18,7 @@ func TestScoreHybrid_RecencyAndImportanceAffectOrdering(t *testing.T) {
 		time.Now().Add(-1*time.Hour),
 		1,
 		opts,
-		defaultMemoryWeights(),
+		defaultMemoryWeights(nil),
 	)
 	oldHighImportance := scoreHybrid(
 		map[string]string{"content": "auth token rotation"},
@@ -26,7 +26,7 @@ func TestScoreHybrid_RecencyAndImportanceAffectOrdering(t *testing.T) {
 		time.Now().Add(-60*24*time.Hour),
 		10,
 		opts,
-		defaultMemoryWeights(),
+		defaultMemoryWeights(nil),
 	)
 
 	if newLowImportance <= oldHighImportance {
@@ -52,7 +52,7 @@ func TestScoreWithMeiliRanking_TotalNeverExceedsOne(t *testing.T) {
 	// A perfect Meilisearch score (1.0) combined with maximum recency and
 	// importance should still produce a final score ≤ 1.0.
 	opts := SearchOptions{}
-	score := scoreWithMeiliRanking(1.0, time.Now(), 10, opts, defaultMemoryWeights())
+	score := scoreWithMeiliRanking(1.0, time.Now(), 10, opts, defaultMemoryWeights(nil))
 	if score > 1.0 {
 		t.Fatalf("expected score ≤ 1.0 with perfect inputs, got %f", score)
 	}
@@ -62,7 +62,7 @@ func TestScoreWithMeiliRanking_WeightBudgetSplit(t *testing.T) {
 	// With only vector+keyword weights (no recency/importance), the Meilisearch
 	// score should map linearly through those weights.
 	opts := SearchOptions{WeightVector: 0.7, WeightKeyword: 0.3, WeightRecency: 0, WeightImp: 0}
-	score := scoreWithMeiliRanking(0.8, time.Time{}, 0, opts, defaultSkillWeights())
+	score := scoreWithMeiliRanking(0.8, time.Time{}, 0, opts, defaultSkillWeights(nil))
 	expected := 0.8 // vector+keyword fraction = 1.0, so score = 0.8 * 1.0
 	if score < expected-0.001 || score > expected+0.001 {
 		t.Fatalf("expected score ≈ %f, got %f", expected, score)

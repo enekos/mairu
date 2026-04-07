@@ -23,16 +23,46 @@ type scoredDoc struct {
 
 var tokenSplitRegex = regexp.MustCompile(`[^a-z0-9]+`)
 
-func defaultMemoryWeights() hybridWeights {
-	return hybridWeights{vector: 0.6, keyword: 0.2, recency: 0.05, importance: 0.15}
+// WeightOverrides allows injecting config-driven weight defaults.
+type WeightOverrides struct {
+	Vector     float64
+	Keyword    float64
+	Recency    float64
+	Importance float64
 }
 
-func defaultSkillWeights() hybridWeights {
-	return hybridWeights{vector: 0.7, keyword: 0.3, recency: 0, importance: 0}
+func defaultMemoryWeights(overrides *WeightOverrides) hybridWeights {
+	w := hybridWeights{vector: 0.6, keyword: 0.2, recency: 0.05, importance: 0.15}
+	return applyOverrides(w, overrides)
 }
 
-func defaultContextWeights() hybridWeights {
-	return hybridWeights{vector: 0.65, keyword: 0.3, recency: 0.05, importance: 0}
+func defaultSkillWeights(overrides *WeightOverrides) hybridWeights {
+	w := hybridWeights{vector: 0.7, keyword: 0.3, recency: 0, importance: 0}
+	return applyOverrides(w, overrides)
+}
+
+func defaultContextWeights(overrides *WeightOverrides) hybridWeights {
+	w := hybridWeights{vector: 0.65, keyword: 0.3, recency: 0.05, importance: 0}
+	return applyOverrides(w, overrides)
+}
+
+func applyOverrides(w hybridWeights, o *WeightOverrides) hybridWeights {
+	if o == nil {
+		return w
+	}
+	if o.Vector > 0 {
+		w.vector = o.Vector
+	}
+	if o.Keyword > 0 {
+		w.keyword = o.Keyword
+	}
+	if o.Recency > 0 {
+		w.recency = o.Recency
+	}
+	if o.Importance > 0 {
+		w.importance = o.Importance
+	}
+	return w
 }
 
 func normalizeStoreName(store string) string {
