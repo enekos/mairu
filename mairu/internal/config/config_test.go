@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -165,5 +166,50 @@ func TestLoad_LegacyEnvAliases(t *testing.T) {
 	}
 	if cfg.API.MeiliURL != "http://custom:7700" {
 		t.Errorf("MeiliURL = %q, want http://custom:7700", cfg.API.MeiliURL)
+	}
+}
+func TestMigrateLegacyJSON(t *testing.T) {
+	home := t.TempDir()
+	configDir := filepath.Join(home, ".config", "mairu")
+	os.MkdirAll(configDir, 0755)
+
+	jsonPath := filepath.Join(configDir, "config.json")
+	os.WriteFile(jsonPath, []byte(`{"gemini_api_key": "test-key-from-json"}`), 0644)
+
+	migrated, err := MigrateLegacyJSON(configDir)
+	if err != nil {
+		t.Fatalf("MigrateLegacyJSON error: %v", err)
+	}
+	if !migrated {
+		t.Fatal("expected migration to happen")
+	}
+
+	// config.toml should exist
+	tomlPath := filepath.Join(configDir, "config.toml")
+	data, err := os.ReadFile(tomlPath)
+	if err != nil {
+		t.Fatalf("read config.toml: %v", err)
+	}
+	if !strings.Contains(string(data), "test-key-from-json") {
+		t.Errorf("config.toml should contain the API key, got:\n%s", data)
+	}
+
+	// Original should be renamed to .bak
+	if _, err := os.Stat(jsonPath); !os.IsNotExist(err) {
+		t.Error("config.json should have been renamed to .bak")
+	}
+	if _, err := os.Stat(jsonPath + ".bak"); err != nil {
+		t.Error("config.json.bak should exist")
+	}
+}
+
+func TestMigrateLegacyJSON_NoFile(t *testing.T) {
+	configDir := t.TempDir()
+	migrated, err := MigrateLegacyJSON(configDir)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if migrated {
+		t.Error("should not migrate when no JSON file exists")
 	}
 }
