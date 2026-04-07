@@ -58,6 +58,12 @@ func (r *repoSearchStub) EnqueueOutbox(ctx context.Context, entityType, entityID
 func (r *repoSearchStub) GetMemory(ctx context.Context, id string) (Memory, error) {
 	return Memory{}, nil
 }
+func (r *repoSearchStub) RecordRetrievals(ctx context.Context, ids []string) error {
+	return nil
+}
+func (r *repoSearchStub) IncrementFeedbackCount(ctx context.Context, id string) error {
+	return nil
+}
 
 type backendStub struct {
 	searchCalls int

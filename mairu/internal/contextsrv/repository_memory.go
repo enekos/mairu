@@ -56,7 +56,7 @@ func (r *SQLiteRepository) ListMemories(ctx context.Context, project string, lim
 	if limit <= 0 {
 		limit = 200
 	}
-	q := `SELECT id, project, content, category, owner, importance, moderation_status, moderation_reasons, review_required, created_at, updated_at FROM memories`
+	q := `SELECT id, project, content, category, owner, importance, retrieval_count, feedback_count, last_retrieved_at, moderation_status, moderation_reasons, review_required, created_at, updated_at FROM memories`
 	var args []any
 	if project != "" {
 		q += ` WHERE project = $1`
@@ -74,7 +74,7 @@ func (r *SQLiteRepository) ListMemories(ctx context.Context, project string, lim
 	for rows.Next() {
 		var m Memory
 		var reasonsRaw []byte
-		if err := rows.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		if err := rows.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.RetrievalCount, &m.FeedbackCount, &m.LastRetrievedAt, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if err := unmarshalJSONField(reasonsRaw, &m.ModerationReasons); err != nil {
@@ -87,12 +87,12 @@ func (r *SQLiteRepository) ListMemories(ctx context.Context, project string, lim
 
 func (r *SQLiteRepository) GetMemory(ctx context.Context, id string) (Memory, error) {
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, project, content, category, owner, importance, moderation_status, moderation_reasons, review_required, created_at, updated_at
+		SELECT id, project, content, category, owner, importance, retrieval_count, feedback_count, last_retrieved_at, moderation_status, moderation_reasons, review_required, created_at, updated_at
 		FROM memories WHERE id = $1
 	`, id)
 	var m Memory
 	var reasonsRaw []byte
-	if err := row.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
+	if err := row.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.RetrievalCount, &m.FeedbackCount, &m.LastRetrievedAt, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
 		return Memory{}, err
 	}
 	if err := unmarshalJSONField(reasonsRaw, &m.ModerationReasons); err != nil {
@@ -120,12 +120,12 @@ func (r *SQLiteRepository) UpdateMemory(ctx context.Context, input MemoryUpdateI
 		return Memory{}, err
 	}
 	row := r.db.QueryRowContext(ctx, `
-		SELECT id, project, content, category, owner, importance, moderation_status, moderation_reasons, review_required, created_at, updated_at
+		SELECT id, project, content, category, owner, importance, retrieval_count, feedback_count, last_retrieved_at, moderation_status, moderation_reasons, review_required, created_at, updated_at
 		FROM memories WHERE id = $1
 	`, input.ID)
 	var m Memory
 	var reasonsRaw []byte
-	if err := row.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
+	if err := row.Scan(&m.ID, &m.Project, &m.Content, &m.Category, &m.Owner, &m.Importance, &m.RetrievalCount, &m.FeedbackCount, &m.LastRetrievedAt, &m.ModerationStatus, &reasonsRaw, &m.ReviewRequired, &m.CreatedAt, &m.UpdatedAt); err != nil {
 		return Memory{}, err
 	}
 	if err := unmarshalJSONField(reasonsRaw, &m.ModerationReasons); err != nil {
@@ -136,5 +136,70 @@ func (r *SQLiteRepository) UpdateMemory(ctx context.Context, input MemoryUpdateI
 
 func (r *SQLiteRepository) DeleteMemory(ctx context.Context, id string) error {
 	_, err := r.db.ExecContext(ctx, `DELETE FROM memories WHERE id = $1`, id)
+	return err
+}
+
+// implicitDecayBaseline is the importance level unrewarded memories drift toward.
+const implicitDecayBaseline = 3
+
+// implicitDecayAlpha is the learning rate for each decay step.
+const implicitDecayAlpha = 0.1
+
+// implicitDecayInterval is how many unrewarded retrievals trigger a decay step.
+// "Unrewarded retrievals" = retrieval_count - feedback_count * implicitDecayInterval.
+const implicitDecayInterval = 10
+
+// RecordRetrievals bumps retrieval_count and last_retrieved_at for each memory id.
+// When a memory accumulates implicitDecayInterval retrievals without feedback, its
+// importance is nudged toward implicitDecayBaseline (only downward — low-importance
+// memories are left alone).
+//
+// The decay is expressed as a single atomic SQL UPDATE to avoid read-modify-write
+// races and keep the operation lightweight.
+func (r *SQLiteRepository) RecordRetrievals(ctx context.Context, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	now := time.Now().UTC()
+
+	// Decay formula (integer arithmetic, applied when a new unrewarded interval is crossed):
+	//   unrewarded = retrieval_count + 1 - feedback_count * INTERVAL
+	//   fires when unrewarded > 0 AND unrewarded % INTERVAL == 0 AND importance > BASELINE
+	//   new_importance = ROUND(importance + ALPHA * (BASELINE - importance))
+	//
+	// ROUND via CAST(x + 0.5 AS INT) is equivalent to floor(x + 0.5).
+	const query = `
+		UPDATE memories
+		SET
+			retrieval_count    = retrieval_count + 1,
+			last_retrieved_at  = $2,
+			importance = CASE
+				WHEN importance > $3
+				 AND (retrieval_count + 1 - feedback_count * $4) > 0
+				 AND (retrieval_count + 1 - feedback_count * $4) % $4 = 0
+				THEN MAX(1, CAST(importance + $5 * ($3 - importance) + 0.5 AS INT))
+				ELSE importance
+			END
+		WHERE id = $1`
+
+	for _, id := range ids {
+		if _, err := r.db.ExecContext(ctx, query,
+			id,
+			now,
+			implicitDecayBaseline,
+			implicitDecayInterval,
+			implicitDecayAlpha,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// IncrementFeedbackCount records that explicit feedback was given for a memory.
+func (r *SQLiteRepository) IncrementFeedbackCount(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `
+		UPDATE memories SET feedback_count = feedback_count + 1 WHERE id = $1
+	`, id)
 	return err
 }

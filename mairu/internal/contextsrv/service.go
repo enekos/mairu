@@ -79,6 +79,8 @@ type MemoryRepository interface {
 	GetMemory(ctx context.Context, id string) (Memory, error)
 	UpdateMemory(ctx context.Context, input MemoryUpdateInput) (Memory, error)
 	DeleteMemory(ctx context.Context, id string) error
+	RecordRetrievals(ctx context.Context, ids []string) error
+	IncrementFeedbackCount(ctx context.Context, id string) error
 }
 
 // SkillRepository covers skill persistence.
@@ -140,13 +142,15 @@ func (s *AppService) Health() map[string]any {
 
 // Search performs a search across memories, skills, and/or context nodes.
 func (s *AppService) Search(opts SearchOptions) (map[string]any, error) {
+	var out map[string]any
+	var err error
+
 	if s.searchBackend != nil {
-		out, err := s.searchBackend.Search(opts)
+		out, err = s.searchBackend.Search(opts)
 		if err == nil {
+			s.recordMemoryRetrievals(out)
 			return out, nil
 		}
-		// Log the underlying search error but fall through to DB search.
-		// (In a real app, use a logger; here we can return it if repo is nil)
 		if s.repo == nil {
 			return nil, err
 		}
@@ -154,7 +158,36 @@ func (s *AppService) Search(opts SearchOptions) (map[string]any, error) {
 	if s.repo == nil {
 		return nil, errors.New("no search backend and no repository configured")
 	}
-	return s.repo.SearchText(context.Background(), opts)
+	out, err = s.repo.SearchText(context.Background(), opts)
+	if err == nil {
+		s.recordMemoryRetrievals(out)
+	}
+	return out, err
+}
+
+// recordMemoryRetrievals fires a goroutine to record retrieval events for
+// every memory ID in the search result set. Errors are silently dropped so
+// that tracking never blocks or fails the caller.
+func (s *AppService) recordMemoryRetrievals(results map[string]any) {
+	if s.repo == nil {
+		return
+	}
+	memories, _ := results["memories"].([]map[string]any)
+	if len(memories) == 0 {
+		return
+	}
+	ids := make([]string, 0, len(memories))
+	for _, m := range memories {
+		if id, ok := m["id"].(string); ok && id != "" {
+			ids = append(ids, id)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	go func() {
+		_ = s.repo.RecordRetrievals(context.Background(), ids)
+	}()
 }
 
 // Dashboard returns a summary of the current project state.

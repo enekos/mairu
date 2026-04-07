@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -144,5 +145,19 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 			return err
 		}
 	}
+
+	// Retrieval tracking columns — ALTER TABLE is not idempotent in SQLite,
+	// so we ignore "duplicate column name" errors for each.
+	alterStmts := []string{
+		`ALTER TABLE memories ADD COLUMN retrieval_count INT NOT NULL DEFAULT 0`,
+		`ALTER TABLE memories ADD COLUMN feedback_count INT NOT NULL DEFAULT 0`,
+		`ALTER TABLE memories ADD COLUMN last_retrieved_at DATETIME NULL`,
+	}
+	for _, stmt := range alterStmts {
+		if _, err := r.db.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			return err
+		}
+	}
+
 	return nil
 }

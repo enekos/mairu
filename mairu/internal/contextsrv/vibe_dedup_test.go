@@ -64,6 +64,8 @@ func (m *mockRepo) ReviewModeration(ctx context.Context, input ModerationReviewI
 func (m *mockRepo) GetMemory(ctx context.Context, id string) (Memory, error) {
 	return Memory{}, nil
 }
+func (m *mockRepo) RecordRetrievals(ctx context.Context, ids []string) error    { return nil }
+func (m *mockRepo) IncrementFeedbackCount(ctx context.Context, id string) error { return nil }
 
 func (m *mockRepo) EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error {
 	return nil

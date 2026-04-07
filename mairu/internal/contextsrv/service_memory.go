@@ -207,7 +207,10 @@ func (s *AppService) ApplyMemoryFeedback(id string, reward int) (Memory, error) 
 		newImportance = 10
 	}
 
-	// 4. Update the memory if importance changed
+	// 4. Bump feedback_count so implicit decay knows this retrieval was rewarded.
+	_ = s.repo.IncrementFeedbackCount(context.Background(), id)
+
+	// 5. Update the memory if importance changed
 	if newImportance != mem.Importance {
 		return s.UpdateMemory(MemoryUpdateInput{
 			ID:         id,

@@ -27,17 +27,20 @@ const (
 
 // Memory represents an atomic piece of knowledge stored by an agent or user.
 type Memory struct {
-	ID                string    `json:"id"`
-	Project           string    `json:"project"`
-	Content           string    `json:"content"`
-	Category          string    `json:"category"`
-	Owner             string    `json:"owner"`
-	Importance        int       `json:"importance"`
-	ModerationStatus  string    `json:"moderation_status"`
-	ModerationReasons []string  `json:"moderation_reasons"`
-	ReviewRequired    bool      `json:"review_required"`
-	CreatedAt         time.Time `json:"created_at"`
-	UpdatedAt         time.Time `json:"updated_at"`
+	ID                string     `json:"id"`
+	Project           string     `json:"project"`
+	Content           string     `json:"content"`
+	Category          string     `json:"category"`
+	Owner             string     `json:"owner"`
+	Importance        int        `json:"importance"`
+	RetrievalCount    int        `json:"retrieval_count"`
+	FeedbackCount     int        `json:"feedback_count"`
+	LastRetrievedAt   *time.Time `json:"last_retrieved_at,omitempty"`
+	ModerationStatus  string     `json:"moderation_status"`
+	ModerationReasons []string   `json:"moderation_reasons"`
+	ReviewRequired    bool       `json:"review_required"`
+	CreatedAt         time.Time  `json:"created_at"`
+	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
 // Skill represents a capability or tool available to agents.
