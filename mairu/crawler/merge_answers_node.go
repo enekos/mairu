@@ -47,7 +47,7 @@ func (n *MergeAnswersNode) Execute(ctx context.Context, state State) (State, err
 	})
 
 	var mergedResult map[string]any
-	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &mergedResult)
+	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &mergedResult)
 	if err != nil {
 		return state, fmt.Errorf("MergeAnswersNode: LLM failed: %w", err)
 	}

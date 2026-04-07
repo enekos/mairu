@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/generative-ai-go/genai"
 	"mairu/internal/prompts"
 )
 
 type LLMClient interface {
-	GenerateJSON(ctx context.Context, system, user string, out any) error
+	GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error
 }
 
 type RouterAction struct {
@@ -61,7 +62,29 @@ func DecideMemoryAction(ctx context.Context, client LLMClient, newContent string
 	})
 
 	var decision RouterAction
-	err := client.GenerateJSON(ctx, "system", prompt, &decision)
+	schema := &genai.Schema{
+		Type: genai.TypeObject,
+		Properties: map[string]*genai.Schema{
+			"action": {
+				Type:        genai.TypeString,
+				Description: "One of: create, update, skip",
+			},
+			"targetId": {
+				Type:        genai.TypeString,
+				Description: "ID of the target memory if updating",
+			},
+			"mergedContent": {
+				Type:        genai.TypeString,
+				Description: "The new merged content if updating",
+			},
+			"reason": {
+				Type:        genai.TypeString,
+				Description: "Reasoning for the action",
+			},
+		},
+		Required: []string{"action", "reason"},
+	}
+	err := client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err
 	}
@@ -114,7 +137,29 @@ func DecideContextAction(ctx context.Context, client LLMClient, uri, name, abstr
 	})
 
 	var decision RouterAction
-	err := client.GenerateJSON(ctx, "system", prompt, &decision)
+	schema := &genai.Schema{
+		Type: genai.TypeObject,
+		Properties: map[string]*genai.Schema{
+			"action": {
+				Type:        genai.TypeString,
+				Description: "One of: create, update, skip",
+			},
+			"targetId": {
+				Type:        genai.TypeString,
+				Description: "ID of the target memory if updating",
+			},
+			"mergedContent": {
+				Type:        genai.TypeString,
+				Description: "The new merged content if updating",
+			},
+			"reason": {
+				Type:        genai.TypeString,
+				Description: "Reasoning for the action",
+			},
+		},
+		Required: []string{"action", "reason"},
+	}
+	err := client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err
 	}

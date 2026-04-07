@@ -125,10 +125,13 @@ func (g *GeminiProvider) SendFunctionResponsesStream(ctx context.Context, respon
 	return g.session.SendMessageStream(ctx, parts...)
 }
 
-func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, out any) error {
+func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error {
 	model := g.client.GenerativeModel(g.modelName)
 	applySafetySettings(model)
 	model.ResponseMIMEType = "application/json"
+	if schema != nil {
+		model.ResponseSchema = schema
+	}
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(system)},
 	}

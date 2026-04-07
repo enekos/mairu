@@ -69,7 +69,7 @@ func (n *SearchLinkNode) Execute(ctx context.Context, state State) (State, error
 	})
 
 	var result []string
-	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &result)
+	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &result)
 	if err != nil {
 		return state, fmt.Errorf("SearchLinkNode: LLM failed: %w", err)
 	}

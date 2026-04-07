@@ -7,10 +7,12 @@ import (
 	"mairu/internal/prompts"
 	"math"
 	"strings"
+
+	"github.com/google/generative-ai-go/genai"
 )
 
 type LLMClient interface {
-	GenerateJSON(ctx context.Context, system, user string, out any) error
+	GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error
 	GenerateContent(ctx context.Context, model, prompt string) (string, error)
 }
 
@@ -43,7 +45,25 @@ func (s *AppService) VibeQuery(prompt, project string, topK int) (VibeQueryResul
 			Project: strings.TrimSpace(project),
 		}); err == nil {
 			var res map[string]any
-			err := s.llmClient.GenerateJSON(context.Background(), sys, prompt, &res)
+			schema := &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"reasoning": {Type: genai.TypeString},
+					"queries": {
+						Type: genai.TypeArray,
+						Items: &genai.Schema{
+							Type: genai.TypeObject,
+							Properties: map[string]*genai.Schema{
+								"store": {Type: genai.TypeString, Description: "One of: memory, skill, node"},
+								"query": {Type: genai.TypeString},
+							},
+							Required: []string{"store", "query"},
+						},
+					},
+				},
+				Required: []string{"reasoning", "queries"},
+			}
+			err := s.llmClient.GenerateJSON(context.Background(), sys, prompt, schema, &res)
 			if err == nil {
 				plannedReasoning, plannedQueries := parseSearchPlan(res)
 				if len(plannedQueries) > 0 {
@@ -115,7 +135,28 @@ func (s *AppService) PlanVibeMutation(prompt, project string, topK int) (VibeMut
 	}
 
 	var res map[string]any
-	err = s.llmClient.GenerateJSON(context.Background(), systemPrompt, "USER PROMPT: "+mutationPrompt, &res)
+	schema := &genai.Schema{
+		Type: genai.TypeObject,
+		Properties: map[string]*genai.Schema{
+			"reasoning": {Type: genai.TypeString, Description: "Why this plan was chosen"},
+			"operations": {
+				Type: genai.TypeArray,
+				Items: &genai.Schema{
+					Type: genai.TypeObject,
+					Properties: map[string]*genai.Schema{
+						"op":          {Type: genai.TypeString, Description: "Operation type e.g. create_memory, update_memory, create_node, etc."},
+						"target":      {Type: genai.TypeString, Description: "Target ID or URI if applicable"},
+						"description": {Type: genai.TypeString, Description: "Description of the operation"},
+						"data":        {Type: genai.TypeObject, Description: "Operation payload"},
+					},
+					Required: []string{"op", "description", "data"},
+				},
+			},
+		},
+		Required: []string{"reasoning", "operations"},
+	}
+
+	err = s.llmClient.GenerateJSON(context.Background(), systemPrompt, "USER PROMPT: "+mutationPrompt, schema, &res)
 	if err == nil {
 		if parsed, ok := parseMutationPlan(res); ok {
 			return parsed, nil
@@ -133,7 +174,7 @@ func (s *AppService) PlanVibeMutation(prompt, project string, topK int) (VibeMut
 		return fallback, nil
 	}
 
-	err = s.llmClient.GenerateJSON(context.Background(), compactSystemPrompt, "USER PROMPT (possibly truncated): "+truncateForLLM(mutationPrompt, 6000), &res)
+	err = s.llmClient.GenerateJSON(context.Background(), compactSystemPrompt, "USER PROMPT (possibly truncated): "+truncateForLLM(mutationPrompt, 6000), schema, &res)
 	if err == nil {
 		if parsed, ok := parseMutationPlan(res); ok {
 			return parsed, nil

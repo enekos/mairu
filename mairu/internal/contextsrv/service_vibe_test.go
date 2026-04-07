@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/generative-ai-go/genai"
 )
 
 type vibeRepo struct {
@@ -92,7 +94,7 @@ type vibeLLM struct {
 	payload    map[string]any
 }
 
-func (l *vibeLLM) GenerateJSON(ctx context.Context, system, user string, out any) error {
+func (l *vibeLLM) GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error {
 	l.lastSystem = system
 	l.lastUser = user
 	b, err := json.Marshal(l.payload)

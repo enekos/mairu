@@ -25,6 +25,33 @@ func (g *GeminiProvider) GetEmbedding(ctx context.Context, text string) ([]float
 	return res.Embedding.Values, nil
 }
 
+func (g *GeminiProvider) GetEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	modelName := os.Getenv("EMBEDDING_MODEL")
+	if modelName == "" {
+		modelName = "text-embedding-004"
+	}
+	em := g.client.EmbeddingModel(modelName)
+	batch := em.NewBatch()
+	for _, t := range texts {
+		batch.AddContent(genai.Text(t))
+	}
+
+	res, err := em.BatchEmbedContents(ctx, batch)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get batch embeddings: %w", err)
+	}
+
+	if len(res.Embeddings) != len(texts) {
+		return nil, fmt.Errorf("expected %d embeddings, got %d", len(texts), len(res.Embeddings))
+	}
+
+	var out [][]float32
+	for _, e := range res.Embeddings {
+		out = append(out, e.Values)
+	}
+	return out, nil
+}
+
 func GetEmbeddingDimension() int {
 	dimStr := os.Getenv("EMBEDDING_DIM")
 	if dimStr != "" {

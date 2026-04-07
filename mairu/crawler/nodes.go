@@ -141,7 +141,7 @@ func (n *ExtractNode) Execute(ctx context.Context, state State) (State, error) {
 	})
 
 	var result map[string]any
-	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, &result)
+	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &result)
 	if err != nil {
 		return state, fmt.Errorf("ExtractNode: LLM extraction failed: %w", err)
 	}
