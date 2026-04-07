@@ -20,8 +20,11 @@ type Case struct {
 }
 
 type Metrics struct {
-	MRR    float64
-	Recall float64
+	MRR       float64
+	Recall    float64
+	Precision float64
+	NDCG      float64
+	MAP       float64
 }
 
 type SearchFunc func(ctx context.Context, domain, query string, topK int) ([]RetrievalResult, error)
@@ -51,10 +54,20 @@ func EvaluateCases(cases []Case, k int) Metrics {
 	if len(cases) == 0 {
 		return Metrics{}
 	}
-	var mrr, recall float64
+	var mrr, recall, precision, ndcg, ap float64
 	for _, c := range cases {
 		mrr += MeanReciprocalRank(c.Expected, c.Got)
 		recall += RecallAtK(c.Expected, c.Got, k)
+		precision += PrecisionAtK(c.Expected, c.Got, k)
+		ndcg += NDCGAtK(c.Expected, c.Got, k)
+		ap += AveragePrecision(c.Expected, c.Got)
 	}
-	return Metrics{MRR: mrr / float64(len(cases)), Recall: recall / float64(len(cases))}
+	n := float64(len(cases))
+	return Metrics{
+		MRR:       mrr / n,
+		Recall:    recall / n,
+		Precision: precision / n,
+		NDCG:      ndcg / n,
+		MAP:       ap / n,
+	}
 }

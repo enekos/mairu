@@ -113,7 +113,8 @@ var evalCmd = &cobra.Command{
 			return err
 		}
 
-		fmt.Printf("Evaluation complete.\nMRR: %.3f\nRecall: %.3f\n", metrics.MRR, metrics.Recall)
+		fmt.Printf("Evaluation complete.\nMRR:       %.3f\nRecall@%d: %.3f\nPrecision@%d: %.3f\nNDCG@%d:   %.3f\nMAP:       %.3f\n",
+			metrics.MRR, evalTopK, metrics.Recall, evalTopK, metrics.Precision, evalTopK, metrics.NDCG, metrics.MAP)
 
 		if metrics.MRR < failBelowMRR {
 			return fmt.Errorf("MRR %.3f is below threshold %.3f", metrics.MRR, failBelowMRR)
