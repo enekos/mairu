@@ -101,6 +101,13 @@ func (g *GeminiProvider) IsNewSession() bool {
 }
 
 func (g *GeminiProvider) CacheContext(ctx context.Context, systemPrompt string, ttl time.Duration) (string, error) {
+	// Be smart: Caching small prompts is slower and less cost-effective.
+	// Gemini cache pricing and performance is optimized for > 32k tokens.
+	// We use a rough heuristic: ~100,000 characters is ~25k tokens.
+	if len(systemPrompt) < 100000 {
+		return "", nil // Skip caching, fallback to normal requests
+	}
+
 	modelID := g.modelName
 	if !strings.HasPrefix(modelID, "models/") {
 		modelID = "models/" + modelID
@@ -121,6 +128,9 @@ func (g *GeminiProvider) CacheContext(ctx context.Context, systemPrompt string, 
 }
 
 func (g *GeminiProvider) SetCachedContent(ctx context.Context, name string) error {
+	if name == "" {
+		return nil // No cache to set
+	}
 	cc, err := g.client.GetCachedContent(ctx, name)
 	if err != nil {
 		return fmt.Errorf("failed to get cached content %q: %w", name, err)
@@ -132,6 +142,13 @@ func (g *GeminiProvider) SetCachedContent(ctx context.Context, name string) erro
 	g.model = newModel
 	g.session = newSession
 	return nil
+}
+
+func (g *GeminiProvider) DeleteCachedContent(ctx context.Context, name string) error {
+	if name == "" {
+		return nil
+	}
+	return g.client.DeleteCachedContent(ctx, name)
 }
 
 func (g *GeminiProvider) GetHistory() []*genai.Content {
