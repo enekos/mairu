@@ -9,55 +9,104 @@ import (
 
 var ErrModerationRejected = errors.New("content rejected by moderation policy")
 
-// Service defines the interface for core functionality, including memories, skills,
-// context nodes, vibe querying and mutation, and moderation.
-type Service interface {
-	Health() map[string]any
+// ---- domain-scoped sub-interfaces ----
+// Callers that only need one domain can depend on the narrower type instead
+// of the full Service or Repository, making dependencies explicit and tests
+// easier to stub.
+
+// MemoryService covers the full memory lifecycle.
+type MemoryService interface {
 	CreateMemory(input MemoryCreateInput) (Memory, error)
 	ListMemories(project string, limit int) ([]Memory, error)
 	GetMemory(id string) (Memory, error)
-	ApplyMemoryFeedback(id string, reward int) (Memory, error)
-
 	UpdateMemory(input MemoryUpdateInput) (Memory, error)
 	DeleteMemory(id string) error
+	ApplyMemoryFeedback(id string, reward int) (Memory, error)
+}
+
+// SkillService covers the full skill lifecycle.
+type SkillService interface {
 	CreateSkill(input SkillCreateInput) (Skill, error)
 	ListSkills(project string, limit int) ([]Skill, error)
 	UpdateSkill(input SkillUpdateInput) (Skill, error)
 	DeleteSkill(id string) error
+}
+
+// NodeService covers the full context-node lifecycle.
+type NodeService interface {
 	CreateContextNode(input ContextCreateInput) (ContextNode, error)
 	ListContextNodes(project string, parentURI *string, limit int) ([]ContextNode, error)
 	UpdateContextNode(input ContextUpdateInput) (ContextNode, error)
 	DeleteContextNode(uri string) error
-	Search(opts SearchOptions) (map[string]any, error)
-	Dashboard(limit int, project string) (map[string]any, error)
-	ClusterStats() map[string]any
+}
+
+// ModerationService covers the moderation review workflow.
+type ModerationService interface {
+	ListModerationQueue(limit int) ([]ModerationEvent, error)
+	ReviewModeration(input ModerationReviewInput) error
+}
+
+// VibeService covers natural-language planning and mutation.
+type VibeService interface {
 	VibeQuery(prompt, project string, topK int) (VibeQueryResult, error)
 	PlanVibeMutation(prompt, project string, topK int) (VibeMutationPlan, error)
 	ExecuteVibeMutation(ops []VibeMutationOp, project string) ([]map[string]any, error)
-	ListModerationQueue(limit int) ([]ModerationEvent, error)
-	ReviewModeration(input ModerationReviewInput) error
+}
+
+// Service defines the interface for core functionality, including memories, skills,
+// context nodes, vibe querying and mutation, and moderation.
+// It composes the domain-scoped sub-interfaces so that callers that only need
+// one domain can depend on the narrower type.
+type Service interface {
+	MemoryService
+	SkillService
+	NodeService
+	ModerationService
+	VibeService
+	Health() map[string]any
+	Search(opts SearchOptions) (map[string]any, error)
+	Dashboard(limit int, project string) (map[string]any, error)
+	ClusterStats() map[string]any
 	Ingest(text, baseURI string) ([]llm.ProposedContextNode, error)
 }
 
-// Repository encapsulates data access logic, usually persisting to a database.
-type Repository interface {
+// ---- repository sub-interfaces ----
+
+// MemoryRepository covers memory persistence.
+type MemoryRepository interface {
 	CreateMemory(ctx context.Context, input MemoryCreateInput) (Memory, error)
 	ListMemories(ctx context.Context, project string, limit int) ([]Memory, error)
+	GetMemory(ctx context.Context, id string) (Memory, error)
 	UpdateMemory(ctx context.Context, input MemoryUpdateInput) (Memory, error)
 	DeleteMemory(ctx context.Context, id string) error
+}
+
+// SkillRepository covers skill persistence.
+type SkillRepository interface {
 	CreateSkill(ctx context.Context, input SkillCreateInput) (Skill, error)
 	ListSkills(ctx context.Context, project string, limit int) ([]Skill, error)
 	UpdateSkill(ctx context.Context, input SkillUpdateInput) (Skill, error)
 	DeleteSkill(ctx context.Context, id string) error
+}
+
+// NodeRepository covers context-node persistence.
+type NodeRepository interface {
 	CreateContextNode(ctx context.Context, input ContextCreateInput) (ContextNode, error)
 	ListContextNodes(ctx context.Context, project string, parentURI *string, limit int) ([]ContextNode, error)
 	UpdateContextNode(ctx context.Context, input ContextUpdateInput) (ContextNode, error)
 	DeleteContextNode(ctx context.Context, uri string) error
+}
+
+// Repository encapsulates data access logic, usually persisting to a database.
+// It composes the domain-scoped repository sub-interfaces.
+type Repository interface {
+	MemoryRepository
+	SkillRepository
+	NodeRepository
 	SearchText(ctx context.Context, opts SearchOptions) (map[string]any, error)
 	ListModerationQueue(ctx context.Context, limit int) ([]ModerationEvent, error)
 	ReviewModeration(ctx context.Context, input ModerationReviewInput) error
 	EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error
-	GetMemory(ctx context.Context, id string) (Memory, error)
 }
 
 // AppService is the default implementation of the Service interface.
