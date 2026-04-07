@@ -69,6 +69,20 @@ func (g *GeminiProvider) GetModelName() string {
 	return g.modelName
 }
 
+func (g *GeminiProvider) SetSystemInstruction(prompt string) {
+	if prompt == "" {
+		g.model.SystemInstruction = nil
+	} else {
+		g.model.SystemInstruction = &genai.Content{
+			Parts: []genai.Part{genai.Text(prompt)},
+		}
+	}
+	// Restart chat session to ensure it picks up the new system instruction
+	newSession := g.model.StartChat()
+	newSession.History = g.session.History
+	g.session = newSession
+}
+
 func (g *GeminiProvider) SetModel(modelName string) {
 	newModel := g.client.GenerativeModel(modelName)
 	applySafetySettings(newModel)

@@ -154,7 +154,7 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 		cwd, _ := os.Getwd()
 		systemPrompt += fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
 
-		fullPrompt = systemPrompt + "\n\nUser Request: " + prompt
+		a.llm.SetSystemInstruction(systemPrompt)
 		a.emitLog(outChan, "Initialized new session with context length: %d chars", len(systemPrompt))
 	}
 
