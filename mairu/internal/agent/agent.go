@@ -225,6 +225,26 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 			if text, ok := part.(genai.Text); ok {
 				outChan <- AgentEvent{Type: "text", Content: string(text)}
 			}
+			if execCode, ok := part.(genai.ExecutableCode); ok {
+				langStr := ""
+				if execCode.Language == genai.ExecutableCodePython {
+					langStr = "python"
+				}
+				outChan <- AgentEvent{
+					Type:    "text",
+					Content: fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code),
+				}
+			}
+			if execResult, ok := part.(genai.CodeExecutionResult); ok {
+				outcomeStr := "OK"
+				if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
+					outcomeStr = execResult.Outcome.String()
+				}
+				outChan <- AgentEvent{
+					Type:    "text",
+					Content: fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output),
+				}
+			}
 		}
 
 		if len(functionCalls) > 0 {

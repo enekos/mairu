@@ -17,11 +17,15 @@ import (
 )
 
 type SavedPart struct {
-	Type     string         `json:"type"`                // "text", "function_call", "function_response"
+	Type     string         `json:"type"`                // "text", "function_call", "function_response", "executable_code", "code_execution_result"
 	Text     string         `json:"text,omitempty"`      // For "text" type
 	FuncName string         `json:"func_name,omitempty"` // For function call/response
 	FuncArgs map[string]any `json:"func_args,omitempty"` // For function call
 	FuncResp map[string]any `json:"func_resp,omitempty"` // For function response
+	Language int32          `json:"language,omitempty"`  // For executable code
+	Code     string         `json:"code,omitempty"`      // For executable code
+	Outcome  int32          `json:"outcome,omitempty"`   // For code execution result
+	Output   string         `json:"output,omitempty"`    // For code execution result
 }
 
 type SavedMessage struct {
@@ -197,6 +201,18 @@ func (a *Agent) SaveSession(sessionName string) error {
 						FuncName: v.Name,
 						FuncResp: v.Response,
 					})
+				case genai.ExecutableCode:
+					savedParts = append(savedParts, SavedPart{
+						Type:     "executable_code",
+						Language: int32(v.Language),
+						Code:     v.Code,
+					})
+				case genai.CodeExecutionResult:
+					savedParts = append(savedParts, SavedPart{
+						Type:    "code_execution_result",
+						Outcome: int32(v.Outcome),
+						Output:  v.Output,
+					})
 				}
 			}
 			if len(savedParts) > 0 {
@@ -250,6 +266,16 @@ func (a *Agent) LoadSession(sessionName string) error {
 				genaiParts = append(genaiParts, genai.FunctionResponse{
 					Name:     sp.FuncName,
 					Response: sp.FuncResp,
+				})
+			case "executable_code":
+				genaiParts = append(genaiParts, genai.ExecutableCode{
+					Language: genai.ExecutableCodeLanguage(sp.Language),
+					Code:     sp.Code,
+				})
+			case "code_execution_result":
+				genaiParts = append(genaiParts, genai.CodeExecutionResult{
+					Outcome: genai.CodeExecutionResultOutcome(sp.Outcome),
+					Output:  sp.Output,
 				})
 			}
 		}
@@ -313,6 +339,20 @@ func (a *Agent) GetHistoryText() []string {
 				if t, ok := p.(genai.Text); ok {
 					textContent += string(t)
 				}
+				if execCode, ok := p.(genai.ExecutableCode); ok {
+					langStr := ""
+					if execCode.Language == genai.ExecutableCodePython {
+						langStr = "python"
+					}
+					textContent += fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code)
+				}
+				if execResult, ok := p.(genai.CodeExecutionResult); ok {
+					outcomeStr := "OK"
+					if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
+						outcomeStr = execResult.Outcome.String()
+					}
+					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output)
+				}
 			}
 			if textContent != "" {
 				prefix := "You: "
@@ -341,6 +381,20 @@ func (a *Agent) CompactContext() error {
 			for _, p := range c.Parts {
 				if t, ok := p.(genai.Text); ok {
 					textContent += string(t)
+				}
+				if execCode, ok := p.(genai.ExecutableCode); ok {
+					langStr := ""
+					if execCode.Language == genai.ExecutableCodePython {
+						langStr = "python"
+					}
+					textContent += fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code)
+				}
+				if execResult, ok := p.(genai.CodeExecutionResult); ok {
+					outcomeStr := "OK"
+					if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
+						outcomeStr = execResult.Outcome.String()
+					}
+					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output)
 				}
 			}
 			conversation += fmt.Sprintf("[%s]: %s\n\n", c.Role, textContent)
