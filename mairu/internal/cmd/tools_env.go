@@ -17,7 +17,6 @@ var envPattern string
 func init() {
 	envCmd.Flags().BoolVarP(&envReveal, "reveal", "r", false, "Reveal non-sensitive values (like booleans, numbers, or non-credential strings)")
 	envCmd.Flags().StringVarP(&envPattern, "match", "m", "", "Only return keys matching regex pattern")
-	rootCmd.AddCommand(envCmd)
 }
 
 type envKey struct {

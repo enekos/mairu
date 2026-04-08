@@ -40,7 +40,7 @@ type SessionMessage = {
   parts?: SavedPart[];
 };
 
-export type ViewType = "chat" | "workspace" | "dashboard" | "settings";
+export type ViewType = "chat" | "workspace" | "dashboard" | "logs" | "settings";
 
 export const activeView = writable<ViewType>("chat");
 export const messages = writable<Message[]>([]);

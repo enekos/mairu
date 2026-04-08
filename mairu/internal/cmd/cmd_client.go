@@ -1,0 +1,199 @@
+package cmd
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"os"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
+
+func contextServerURL() string {
+	base := strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_URL"))
+	if base == "" {
+		base = "http://localhost:8788"
+	}
+	return strings.TrimRight(base, "/")
+}
+
+func contextToken() string {
+	return strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_TOKEN"))
+}
+
+func contextGet(path string, params map[string]string) ([]byte, error) {
+	u, err := url.Parse(contextServerURL() + path)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	for k, v := range params {
+		if strings.TrimSpace(v) == "" {
+			continue
+		}
+		q.Set(k, v)
+	}
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	if tok := contextToken(); tok != "" {
+		req.Header.Set("X-Context-Token", tok)
+	}
+	return doContextRequest(req)
+}
+
+func contextPost(path string, payload any) ([]byte, error) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, contextServerURL()+path, bytes.NewReader(raw))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if tok := contextToken(); tok != "" {
+		req.Header.Set("X-Context-Token", tok)
+	}
+	return doContextRequest(req)
+}
+
+func contextPut(path string, payload any) ([]byte, error) {
+	raw, err := json.Marshal(payload)
+	if err != nil {
+		return nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, contextServerURL()+path, bytes.NewReader(raw))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if tok := contextToken(); tok != "" {
+		req.Header.Set("X-Context-Token", tok)
+	}
+	return doContextRequest(req)
+}
+
+func contextDelete(path string, params map[string]string) ([]byte, error) {
+	u, err := url.Parse(contextServerURL() + path)
+	if err != nil {
+		return nil, err
+	}
+	q := u.Query()
+	for k, v := range params {
+		if strings.TrimSpace(v) == "" {
+			continue
+		}
+		q.Set(k, v)
+	}
+	u.RawQuery = q.Encode()
+	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+	if tok := contextToken(); tok != "" {
+		req.Header.Set("X-Context-Token", tok)
+	}
+	return doContextRequest(req)
+}
+
+func doContextRequest(req *http.Request) ([]byte, error) {
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("context server error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Read response using bytes.Buffer since we might need the body for both JSON decoding and raw string
+	buf := new(bytes.Buffer)
+	buf.ReadFrom(resp.Body)
+	body := buf.Bytes()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("context server HTTP %d: %s", resp.StatusCode, string(body))
+	}
+
+	return body, nil
+}
+
+func printJSON(raw []byte) {
+	var v any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		fmt.Println(string(raw))
+		return
+	}
+	formatted, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		fmt.Println(string(raw))
+		return
+	}
+	fmt.Println(string(formatted))
+}
+
+func addCommonSearchFlags(cmd *cobra.Command) {
+	cmd.Flags().IntP("topK", "k", 5, "Number of results to return")
+	cmd.Flags().Float64("minScore", 0, "Minimum relevance score threshold")
+	cmd.Flags().Bool("highlight", false, "Include text highlights in response")
+	cmd.Flags().Int("fuzziness", -1, "Typo tolerance (0-2, or -1 for auto)")
+	cmd.Flags().Float64("phraseBoost", 0, "Boost phrase exact matches (e.g. 3.0)")
+	cmd.Flags().String("owner", "", "Filter by owner")
+	cmd.Flags().String("category", "", "Filter by category")
+	cmd.Flags().String("from", "", "Filter by creation date from (e.g. 2024-01-01)")
+	cmd.Flags().String("to", "", "Filter by creation date to (e.g. 2024-12-31)")
+}
+
+func searchParamsFromFlags(cmd *cobra.Command, query, store, project string) map[string]string {
+	k, _ := cmd.Flags().GetInt("topK")
+	minScore, _ := cmd.Flags().GetFloat64("minScore")
+	highlight, _ := cmd.Flags().GetBool("highlight")
+	fuzziness, _ := cmd.Flags().GetInt("fuzziness")
+	phraseBoost, _ := cmd.Flags().GetFloat64("phraseBoost")
+	owner, _ := cmd.Flags().GetString("owner")
+	category, _ := cmd.Flags().GetString("category")
+	from, _ := cmd.Flags().GetString("from")
+	to, _ := cmd.Flags().GetString("to")
+
+	params := map[string]string{
+		"q":       query,
+		"type":    store,
+		"project": project,
+		"topK":    fmt.Sprintf("%d", k),
+	}
+	if minScore > 0 {
+		params["minScore"] = fmt.Sprintf("%v", minScore)
+	}
+	if highlight {
+		params["highlight"] = "true"
+	}
+	if fuzziness >= 0 {
+		params["fuzziness"] = fmt.Sprintf("%d", fuzziness)
+	}
+	if phraseBoost > 0 {
+		params["phraseBoost"] = fmt.Sprintf("%v", phraseBoost)
+	}
+	if owner != "" {
+		params["owner"] = owner
+	}
+	if category != "" {
+		params["category"] = category
+	}
+	if from != "" {
+		params["from"] = from
+	}
+	if to != "" {
+		params["to"] = to
+	}
+	return params
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen] + "..."
+	}
+	return s
+}

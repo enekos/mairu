@@ -222,3 +222,117 @@ Agents are encouraged to use the `mairu` binary for token-dense, strictly parsab
 - `mairu sys` -> Quick system status and memory check
 - `mairu info [dir]` -> Repository analytics (token sizes, file counts, extensions)
 - `mairu env [file] -r` -> Smart env reader. Extracts keys, flags secrets (`is_secret: true`), and safely reveals non-sensitive config values (booleans, ports)
+
+### Extended Namespaces (Code Analysis & Scraping)
+Mairu commands are grouped into logical namespaces.
+
+**Code Analysis (`mairu analyze`)**
+- `mairu analyze diff` -> Analyzes blast radius of current git changes.
+- `mairu analyze graph` -> Analyzes the codebase graph to build project understanding.
+
+**Web Scraping (`mairu scrape`)**
+Agents can extract documentation or read web sources using LLM-powered scrapers:
+- `mairu scrape web <url>` -> Fetch, summarize, and store as context node.
+- `mairu scrape smart <url> --prompt "..."` -> Extract structured data via LLM.
+- `mairu scrape search <query>` -> Search the web and extract structured data.
+- `mairu scrape multi <url1> <url2>` -> Scrape multiple URLs concurrently.
+- `mairu scrape depth <url> -d 2` -> Crawl up to depth 2 and extract.
+- `mairu scrape omni <urls...>` -> Scrape and merge results into a single summary.
+- `mairu scrape script <url>` -> Auto-generates a Go `goquery` scraper script for a given URL.
+
+### CLI Command Reference
+Agents should be aware of the exact CLI structure. Below are the primary namespaces and their subcommands:
+
+<details>
+<summary>Memory Commands (`mairu memory`)</summary>
+
+```
+ContextFS memory operations
+
+Usage:
+  mairu memory [command]
+
+Available Commands:
+  add         Alias for memory store
+  delete      Delete memory
+  feedback    Apply reinforcement learning feedback to a memory (reward 1-10)
+  list        List memories
+  search      Search memories
+  store       Store a memory
+  update      Update a memory
+
+Flags:
+  -h, --help             help for memory
+  -P, --project string   Project name
+
+Global Flags:
+      --debug           Enable debug logging
+  -o, --output string   Output format: table, json, plain (default "table")
+      --quiet           Only output results, no status messages
+      --verbose         Show extra details (timing, weights, query plan)
+
+Use "mairu memory [command] --help" for more information about a command.
+
+```
+</details>
+
+<details>
+<summary>Scrape Commands (`mairu scrape`)</summary>
+
+```
+Web scraping and content extraction tools
+
+Usage:
+  mairu scrape [command]
+
+Available Commands:
+  depth        Fetch a URL, discover relevant links up to depth K, and extract data concurrently
+  multi-scrape Fetch multiple URLs concurrently and extract structured data using LLM
+  omni-scrape  Fetch multiple URLs concurrently and merge extracted data into a single summary
+  script       Generate a Go scraping script using goquery tailored for a specific URL
+  search       Search web for query and extract structured data from top results using LLM
+  smart        Fetch a URL and extract structured data using LLM based on prompt
+  web          Fetch a URL, extract content, summarize, and store as a context node
+
+Flags:
+  -h, --help   help for scrape
+
+Global Flags:
+      --debug           Enable debug logging
+  -o, --output string   Output format: table, json, plain (default "table")
+      --quiet           Only output results, no status messages
+      --verbose         Show extra details (timing, weights, query plan)
+
+Use "mairu scrape [command] --help" for more information about a command.
+
+```
+</details>
+
+<details>
+<summary>Analyze Commands (`mairu analyze`)</summary>
+
+```
+Analyze codebase graphs and diffs
+
+Usage:
+  mairu analyze [command]
+
+Available Commands:
+  diff        Analyze the current git diff against the codebase graph to determine blast radius
+  graph       Analyze the AST graph to generate execution flows and functional clusters (skills)
+
+Flags:
+  -h, --help   help for analyze
+
+Global Flags:
+      --debug           Enable debug logging
+  -o, --output string   Output format: table, json, plain (default "table")
+      --quiet           Only output results, no status messages
+      --verbose         Show extra details (timing, weights, query plan)
+
+Use "mairu analyze [command] --help" for more information about a command.
+
+```
+</details>
+
+Use `mairu <command> --help` to discover exact flags for any specific command.

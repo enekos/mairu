@@ -12,7 +12,6 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(infoCmd)
 }
 
 type infoResult struct {

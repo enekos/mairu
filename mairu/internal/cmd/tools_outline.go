@@ -13,7 +13,6 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(outlineCmd)
 }
 
 type outlineResult struct {

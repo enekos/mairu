@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Code2, MessageSquare, Settings, LayoutDashboard } from 'lucide-svelte';
+  import { Code2, MessageSquare, Settings, LayoutDashboard, Terminal } from 'lucide-svelte';
   import { activeView, type ViewType } from './store';
 
   function setView(view: ViewType) {
@@ -35,6 +35,13 @@
       title="Dashboard"
     >
       <LayoutDashboard size={20} />
+    </button>
+    <button 
+      class="p-3  transition-colors {$activeView === 'logs' ? 'text-green-400 bg-green-950' : 'text-green-600 hover:text-green-400'}"
+      on:click={() => setView('logs')}
+      title="System Logs"
+    >
+      <Terminal size={20} />
     </button>
   </nav>
 

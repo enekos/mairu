@@ -116,5 +116,4 @@ func newDoctorCmd() *cobra.Command {
 }
 
 func init() {
-	rootCmd.AddCommand(newDoctorCmd())
 }

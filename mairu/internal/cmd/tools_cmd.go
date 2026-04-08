@@ -17,8 +17,6 @@ var mapDepth int
 
 func init() {
 	mapCmd.Flags().IntVarP(&mapDepth, "depth", "d", 0, "Max depth to map (0 = unlimited)")
-	rootCmd.AddCommand(mapCmd)
-	rootCmd.AddCommand(sysCmd)
 }
 
 type mapEntry struct {

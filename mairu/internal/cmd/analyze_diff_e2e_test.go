@@ -109,7 +109,7 @@ func TestAnalyzeDiffE2E(t *testing.T) {
 
 	// Now run analyze-diff
 	cmd := rootCmd
-	cmd.SetArgs([]string{"analyze-diff", "-P", "test"})
+	cmd.SetArgs([]string{"analyze", "diff", "-P", "test"})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 

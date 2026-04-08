@@ -54,7 +54,7 @@ func TestAnalyzeGraphAndImpactE2E(t *testing.T) {
 
 	// Test analyze-graph
 	cmd := rootCmd
-	cmd.SetArgs([]string{"analyze-graph", "-P", "test", "--save"})
+	cmd.SetArgs([]string{"analyze", "graph", "-P", "test", "--save"})
 	var out bytes.Buffer
 	cmd.SetOut(&out)
 

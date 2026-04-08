@@ -307,5 +307,4 @@ func init() {
 	telegramCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
 	telegramCmd.Flags().StringP("project", "P", "", "Project root path (default is current directory)")
 	telegramCmd.Flags().String("allowed-users", "", "Comma separated list of allowed telegram user IDs or usernames")
-	rootCmd.AddCommand(telegramCmd)
 }

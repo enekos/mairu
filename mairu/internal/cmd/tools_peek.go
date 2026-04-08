@@ -17,7 +17,6 @@ var peekSymbol string
 func init() {
 	peekCmd.Flags().StringVarP(&peekLines, "lines", "l", "", "Line range to extract (e.g., 50-100)")
 	peekCmd.Flags().StringVarP(&peekSymbol, "symbol", "s", "", "Symbol name to extract (e.g., myFunc)")
-	rootCmd.AddCommand(peekCmd)
 }
 
 type peekResult struct {

@@ -199,7 +199,7 @@ func TestDoContextRequestReturnsErrorOnNon2xx(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected doContextRequest to fail on non-2xx response")
 	}
-	if !strings.Contains(err.Error(), "failed (400)") {
+	if !strings.Contains(err.Error(), "context server HTTP 400:") {
 		t.Fatalf("expected status code in error, got: %v", err)
 	}
 }

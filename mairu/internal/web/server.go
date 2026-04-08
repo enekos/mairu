@@ -182,6 +182,12 @@ func (s *Server) handleChat() http.HandlerFunc {
 			ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "failed to initialize agent: " + err.Error()})
 			return
 		}
+
+		modelQuery := req.URL.Query().Get("model")
+		if modelQuery != "" {
+			ag.SetModel(modelQuery)
+		}
+
 		defer ag.Close()
 
 		if err := ag.LoadSession(sessionName); err != nil {

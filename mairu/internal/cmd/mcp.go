@@ -11,7 +11,6 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(newMCPCmd())
 }
 
 func newMCPCmd() *cobra.Command {

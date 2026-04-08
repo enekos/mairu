@@ -412,7 +412,7 @@ func TestContextCommandsEndToEnd(t *testing.T) {
 		Execute() error
 	} {
 		return newMemoryCmd()
-	}, "-P", project, "store", "remember auth token rotation", "-c", "decision", "-o", "agent", "-i", "8")
+	}, "-P", project, "store", "remember auth token rotation", "-c", "decision", "--owner", "agent", "-i", "8")
 	execCommand(t, func() interface {
 		SetOut(io.Writer)
 		SetErr(io.Writer)
@@ -605,7 +605,7 @@ func TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newScrapeCmd()
+		return newScrapeWebCmd()
 	}, "-P", project, pageSrv.URL+"/docs")
 
 	api.mu.Lock()

@@ -91,5 +91,4 @@ func writeMinimalConfig(target, projectName string) error {
 }
 
 func init() {
-	rootCmd.AddCommand(newInitCmd())
 }

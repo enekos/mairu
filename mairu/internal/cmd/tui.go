@@ -48,5 +48,4 @@ var tuiCmd = &cobra.Command{
 
 func init() {
 	tuiCmd.Flags().StringVarP(&sessionName, "session", "s", "", "Load/Save a named session (e.g. 'bug-123')")
-	rootCmd.AddCommand(tuiCmd)
 }

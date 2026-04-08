@@ -36,5 +36,4 @@ To install completions:
 }
 
 func init() {
-	rootCmd.AddCommand(newCompletionCmd())
 }

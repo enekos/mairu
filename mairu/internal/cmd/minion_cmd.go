@@ -32,7 +32,6 @@ Ideal for executing from background jobs or automation pipelines.`,
 }
 
 func init() {
-	rootCmd.AddCommand(minionCmd)
 	minionCmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
 }
 

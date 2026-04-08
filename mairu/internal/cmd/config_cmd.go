@@ -223,5 +223,4 @@ func printConfigWithOrigin(f *Formatter) error {
 }
 
 func init() {
-	rootCmd.AddCommand(newConfigCmd())
 }

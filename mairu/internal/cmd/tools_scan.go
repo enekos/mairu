@@ -29,7 +29,6 @@ func init() {
 	scanCmd.Flags().BoolVarP(&scanIgnoreCase, "ignore-case", "i", false, "Case-insensitive search")
 	scanCmd.Flags().BoolVarP(&scanFilesOnly, "files-with-matches", "l", false, "Only print matching filenames")
 	scanCmd.Flags().BoolVarP(&scanHeading, "heading", "H", false, "Attempt to find nearest function/class heading above match")
-	rootCmd.AddCommand(scanCmd)
 }
 
 type scanMatch struct {

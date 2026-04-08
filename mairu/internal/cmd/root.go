@@ -102,3 +102,58 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show extra details (timing, weights, query plan)")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "Only output results, no status messages")
 }
+
+func init() {
+	// AI-Optimized Tools (Keep at top level)
+	rootCmd.AddCommand(
+		mapCmd,
+		sysCmd,
+		envCmd,
+		infoCmd,
+		outlineCmd,
+		peekCmd,
+		scanCmd,
+	)
+
+	// Subsystems & Workflows
+	rootCmd.AddCommand(
+		newMemoryCmd(),
+		newSkillCmd(),
+		newNodeCmd(),
+		newCodeCmd(),
+		newVibeCmd(),
+		newVibeQueryAliasCmd(),
+		newVibeMutationAliasCmd(),
+		newScrapeCmd(),
+		newAnalyzeCmd(),
+		newIngestCmd(),
+		newSummarizeCmd(),
+		newFlushCmd(),
+		newNudgeCmd(),
+		newImpactCmd(),
+		newGithubCmd(),
+		newLinearCmd(),
+	)
+
+	// Agent & Servers
+	rootCmd.AddCommand(
+		minionCmd,
+		newDaemonCmd(),
+		contextServerCmd,
+		webCmd,
+		tuiCmd,
+		telegramCmd,
+		newMCPCmd(),
+	)
+
+	// Core / Admin / Misc
+	rootCmd.AddCommand(
+		newInitCmd(),
+		newConfigCmd(),
+		newCompletionCmd(),
+		newDoctorCmd(),
+		setupCmd,
+		newSeedCmd(),
+		evalCmd,
+	)
+}

@@ -106,5 +106,4 @@ func init() {
 	contextServerCmd.Flags().Bool("projector", true, "Enable SQLite->Meilisearch outbox projector")
 	contextServerCmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
 	contextServerCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
-	rootCmd.AddCommand(contextServerCmd)
 }

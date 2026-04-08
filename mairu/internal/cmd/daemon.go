@@ -45,9 +45,9 @@ func (remoteManager) DeleteContextNode(ctx context.Context, uri string) error {
 	return err
 }
 
-func init() {
+func newDaemonCmd() *cobra.Command {
 	var project string
-	daemonCmd := &cobra.Command{
+	cmd := &cobra.Command{
 		Use:   "daemon [dir]",
 		Short: "Run local codebase daemon scan",
 		Args:  cobra.MaximumNArgs(1),
@@ -93,6 +93,6 @@ func init() {
 			return nil
 		},
 	}
-	daemonCmd.Flags().StringVarP(&project, "project", "P", "default", "Project name")
-	rootCmd.AddCommand(daemonCmd)
+	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project name")
+	return cmd
 }

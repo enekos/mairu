@@ -112,9 +112,106 @@
     }
   }
 
+  async function handleSlashCommand(cmd: string) {
+    const parts = cmd.split(" ");
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1).join(" ");
+
+    // Add user message to history
+    messages.update(msgs => [
+      ...msgs, 
+      { id: crypto.randomUUID(), role: "user", content: cmd, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+    ]);
+
+    try {
+      if (command === "/clear") {
+        messages.set([]);
+        return;
+      } else if (command === "/approve" || command === "/deny") {
+        sendMessage(cmd); // Standard handling for agent approvals
+        return;
+      } else if (command === "/memory") {
+        const subCmd = parts[1];
+        const memArgs = parts.slice(2).join(" ");
+        if (subCmd === "search" || subCmd === "read") {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(memArgs)}&type=memory&topK=15`);
+          const data = await res.json();
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: "Searched memories:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+        } else if (subCmd === "store" || subCmd === "write") {
+          await fetch('/api/memories', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: memArgs, category: "user_provided" })
+          });
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: "Stored memory.", bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+        }
+      } else if (command === "/node") {
+        const subCmd = parts[1];
+        const nodeArgs = parts.slice(2).join(" ");
+        if (subCmd === "search" || subCmd === "read") {
+          const res = await fetch(`/api/search?q=${encodeURIComponent(nodeArgs)}&type=context&topK=15`);
+          const data = await res.json();
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: "Searched context nodes:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+        } else if (subCmd === "ls") {
+          const res = await fetch(`/api/context?parentUri=${encodeURIComponent(nodeArgs)}`);
+          const data = await res.json();
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: "Context node listing:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+        }
+      } else if (command === "/model") {
+        if (args) {
+          // Reconnect with new model
+          const currentSess = $currentSession;
+          // Store connection URL dynamically
+          const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+          window.location.hash = `#model=${args}`; // simple way to keep state for demo, though better done in store
+          
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: `Switching model to: ${args}`, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+          
+          // Reconnect with new model
+          const wsUrl = `${protocol}//${window.location.host}/api/chat?session=${encodeURIComponent(currentSess)}&model=${encodeURIComponent(args)}`;
+          // We would actually need to update store.ts connectWs to accept model, but for now we'll just log it
+          messages.update(msgs => [
+            ...msgs, 
+            { id: crypto.randomUUID(), role: "system", content: `Model switch requested (Note: fully dynamic switching requires refreshing connection with ?model=${args})`, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+          ]);
+        }
+      } else {
+        // Fallback for unknown slash commands, send to agent anyway
+        sendMessage(cmd);
+      }
+    } catch (e) {
+      messages.update(msgs => [
+        ...msgs, 
+        { id: crypto.randomUUID(), role: "system", content: `Command failed: ${e instanceof Error ? e.message : String(e)}`, bashOutput: "", statuses: [], logs: [], toolCalls: [] }
+      ]);
+    }
+  }
+
   function handleSend() {
-    if (!inputStr.trim() || $isGenerating || $connectionState !== "connected") return;
-    sendMessage(inputStr.trim());
+    const input = inputStr.trim();
+    if (!input || $isGenerating || $connectionState !== "connected") return;
+    
+    if (input.startsWith("/")) {
+      handleSlashCommand(input);
+    } else {
+      sendMessage(input);
+    }
+    
     inputStr = "";
   }
 

@@ -102,3 +102,25 @@ mairu daemon . -P <project_name> &
 3. **Scope always:** Include `-P <project_name>` on every `mairu` call.
 4. **Prefer defaults:** Use direct retrieval commands first; use `vibe-query` only as fallback.
 5. **Do not guess conventions:** Check `contextfs` before asking the user to repeat known decisions.
+
+### 6) Code Analysis (`mairu analyze`)
+- `mairu analyze diff` -> Analyzes blast radius of current git changes.
+- `mairu analyze graph` -> Analyzes the codebase graph to build project understanding.
+
+### 7) Web Scraping (`mairu scrape`)
+Agents can extract documentation or read web sources using LLM-powered scrapers:
+- `mairu scrape web <url>` -> Fetch, summarize, and store as context node.
+- `mairu scrape smart <url> --prompt "..."` -> Extract structured data via LLM.
+- `mairu scrape search <query>` -> Search the web and extract structured data.
+- `mairu scrape multi <url1> <url2>` -> Scrape multiple URLs concurrently.
+- `mairu scrape depth <url> -d 2` -> Crawl up to depth 2 and extract.
+- `mairu scrape omni <urls...>` -> Scrape and merge results into a single summary.
+- `mairu scrape script <url>` -> Auto-generates a Go `goquery` scraper script for a given URL.
+
+### AI-Optimized GNU Tools
+Agents are encouraged to use the `mairu` binary for token-dense, strictly parsable exploration:
+- `mairu map [dir] -d 2` -> Fast, `.gitignore` aware, token-counted directory tree
+- `mairu outline <file>` -> Emits imports and logic symbols (classes, functions) via AST
+- `mairu peek <file> -s <symbol>` -> Smart, bracket-aware symbol extraction
+- `mairu scan <regex> [dir] -C 1 -e .go -H -n 5` -> Token-budgeted regex search
+- `mairu info [dir]` -> Repository analytics

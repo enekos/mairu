@@ -52,5 +52,4 @@ func init() {
 	webCmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
 	webCmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
 	webCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
-	rootCmd.AddCommand(webCmd)
 }

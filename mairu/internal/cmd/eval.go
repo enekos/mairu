@@ -133,5 +133,4 @@ func init() {
 	evalCmd.Flags().Float64Var(&failBelowMRR, "fail-below-mrr", 0.0, "Fail if MRR is below this threshold")
 	evalCmd.Flags().Float64Var(&failBelowRecall, "fail-below-recall", 0.0, "Fail if Recall is below this threshold")
 	evalCmd.Flags().BoolVarP(&evalVerbose, "verbose", "v", false, "Print verbose output")
-	rootCmd.AddCommand(evalCmd)
 }
