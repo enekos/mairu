@@ -4,7 +4,7 @@ M.options = {
   -- Server settings
   server = {
     auto_start = true,
-    bin_path = "mairu-agent", -- Assumes mairu-agent is in PATH, or provide absolute path
+    bin_path = "mairu", -- Assumes mairu is in PATH, or provide absolute path
     port = 8788,
     project = vim.fn.fnamemodify(vim.fn.getcwd(), ":t"), -- Current directory name
   },

@@ -10,7 +10,7 @@ This is the unified Svelte web UI for the Mairu coding agent and ContextFS serve
 
 ## Development
 
-The dashboard is designed to be run alongside the `mairu-agent context-server` API backend.
+The dashboard is designed to be run alongside the `mairu context-server` API backend.
 
 1. Ensure dependencies are installed:
 ```bash

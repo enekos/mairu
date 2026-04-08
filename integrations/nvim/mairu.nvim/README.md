@@ -12,7 +12,7 @@ Neovim plugin for the Mairu AI Coding Agent. Integrates deep context, memory sea
 ## Requirements
 
 - Neovim >= 0.9.0
-- `mairu-agent` built and accessible in your `PATH` (or specified in config)
+- `mairu` built and accessible in your `PATH` (or specified in config)
 - `plenary.nvim` (Async HTTP)
 - `nui.nvim` (UI Components)
 - `telescope.nvim` (Command Palette)
@@ -31,8 +31,8 @@ Neovim plugin for the Mairu AI Coding Agent. Integrates deep context, memory sea
   config = function()
     require("mairu").setup({
       server = {
-        auto_start = true, -- Automatically start headless mairu-agent context-server
-        bin_path = "mairu-agent", -- Make sure this is in your PATH or provide absolute path
+        auto_start = true, -- Automatically start headless mairu context-server
+        bin_path = "mairu", -- Make sure this is in your PATH or provide absolute path
         port = 8788,
       },
       ambient = {
@@ -62,4 +62,4 @@ If `set_default_keymaps()` is called:
 
 ## How it works
 
-The plugin operates by starting a background headless `mairu-agent context-server` job when Neovim opens. It uses `plenary.curl` to communicate asynchronously over local HTTP APIs (`/api/search`, `/api/vibe/query`, etc.), ensuring Neovim's UI never blocks.
+The plugin operates by starting a background headless `mairu context-server` job when Neovim opens. It uses `plenary.curl` to communicate asynchronously over local HTTP APIs (`/api/search`, `/api/vibe/query`, etc.), ensuring Neovim's UI never blocks.

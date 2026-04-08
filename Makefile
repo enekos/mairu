@@ -45,7 +45,7 @@ install-dashboard:
 
 setup:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent setup
+	./mairu/bin/mairu setup
 
 build:
 	$(MAKE) mairu-build
@@ -88,30 +88,30 @@ clean:
 
 dashboard-api:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent context-server -p 8788
+	./mairu/bin/mairu context-server -p 8788
 
 dashboard-dev:
 	bun run --cwd mairu/ui dev
 
 dashboard:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent context-server -p 8788 & MAIRU_CONTEXT_SERVER_URL=http://localhost:8788 ./mairu/bin/mairu-agent web -p 8080 & bun run --cwd mairu/ui dev
+	./mairu/bin/mairu context-server -p 8788 & MAIRU_CONTEXT_SERVER_URL=http://localhost:8788 ./mairu/bin/mairu web -p 8080 & bun run --cwd mairu/ui dev
 
 mairu-build:
 	mkdir -p mairu/bin
-	go build -C mairu -o bin/mairu-agent ./cmd/mairu
+	go build -C mairu -o bin/mairu ./cmd/mairu
 
 mairu-web:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent web -p 8080
+	./mairu/bin/mairu web -p 8080
 
 eval-retrieval:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent eval:retrieval
+	./mairu/bin/mairu eval:retrieval
 
 eval-seed:
 	$(MAKE) mairu-build
-	./mairu/bin/mairu-agent seed
+	./mairu/bin/mairu seed
 
 meili-up:
 	./mairu/scripts/meili-local.sh up
@@ -131,7 +131,7 @@ dev-no-docker: meili-up
 	$(MAKE) dashboard
 
 mairu-no-docker: meili-up mairu-build
-	./mairu/bin/mairu-agent web -p 8080
+	./mairu/bin/mairu web -p 8080
 
 eval-llm:
 	cd llmeval && go build -o bin/llmeval ./cmd/llmeval

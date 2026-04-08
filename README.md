@@ -41,8 +41,8 @@ Then initialize the configuration and set your API key:
 
 ```bash
 make mairu-build
-./mairu/bin/mairu-agent setup
-./mairu/bin/mairu-agent init --defaults
+./mairu/bin/mairu setup
+./mairu/bin/mairu init --defaults
 ```
 
 Start the services:
@@ -64,10 +64,10 @@ Mairu uses a five-tier TOML configuration cascade:
 
 Manage your config using the CLI:
 ```bash
-./mairu/bin/mairu-agent config list
-./mairu/bin/mairu-agent config set api.gemini_api_key "your-key"
-./mairu/bin/mairu-agent init            # interactive project setup
-./mairu/bin/mairu-agent doctor          # check system health
+./mairu/bin/mairu config list
+./mairu/bin/mairu config set api.gemini_api_key "your-key"
+./mairu/bin/mairu init            # interactive project setup
+./mairu/bin/mairu doctor          # check system health
 ```
 
 ### Sample `config.toml`
@@ -103,7 +103,7 @@ color = true
 
 | Command | Description |
 |---|---|
-| `make mairu-build` | Build Go `mairu-agent` binary |
+| `make mairu-build` | Build Go `mairu` binary |
 | `make test-go` | Run Go test suite |
 | `make lint-go` | Run Go lint (`golangci-lint` or fallback `go vet`) |
 | `make check-go` | Run Go fmt check + lint + tests |
@@ -133,33 +133,33 @@ make install-hooks
 
 ## Go CLI Commands (Mairu Agent)
 
-With the latest features, the Go CLI implements the ContextFS API fully via the `mairu-agent` binary.
+With the latest features, the Go CLI implements the ContextFS API fully via the `mairu` binary.
 Output defaults to `table`, but you can use `-o json` or `-o plain` for scripting.
 
 ```bash
 make mairu-build
 
 # Configuration & Health
-./mairu/bin/mairu-agent config list
-./mairu/bin/mairu-agent doctor
+./mairu/bin/mairu config list
+./mairu/bin/mairu doctor
 
 # Context Server APIs
-./mairu/bin/mairu-agent memory search "auth token" -P my-project -k 5
-./mairu/bin/mairu-agent node search "authentication architecture" -P my-project -k 5
+./mairu/bin/mairu memory search "auth token" -P my-project -k 5
+./mairu/bin/mairu node search "authentication architecture" -P my-project -k 5
 
 # Vibe commands (LLM powered mutations and queries)
-./mairu/bin/mairu-agent vibe query "how does auth work?" -P my-project
-./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project
+./mairu/bin/mairu vibe query "how does auth work?" -P my-project
+./mairu/bin/mairu vibe mutation "remember we use gRPC internally" -P my-project
 
 # Advanced Tools (Daemon, Ingest & Scraper)
-./mairu/bin/mairu-agent daemon ./src -P my-project                                        # Scan directory and extract AST to context nodes
-./mairu/bin/mairu-agent ingest design.md --base-uri "contextfs://design" -P my-project -y # Parse markdown via LLM and persist
-./mairu/bin/mairu-agent scrape https://example.com --max-depth 2 -P my-project            # Crawl and summarize web content into context
+./mairu/bin/mairu daemon ./src -P my-project                                        # Scan directory and extract AST to context nodes
+./mairu/bin/mairu ingest design.md --base-uri "contextfs://design" -P my-project -y # Parse markdown via LLM and persist
+./mairu/bin/mairu scrape https://example.com --max-depth 2 -P my-project            # Crawl and summarize web content into context
 
 # Full TUI or Web Servers
-./mairu/bin/mairu-agent tui
-./mairu/bin/mairu-agent web -p 8080
-./mairu/bin/mairu-agent context-server -p 8788
+./mairu/bin/mairu tui
+./mairu/bin/mairu web -p 8080
+./mairu/bin/mairu context-server -p 8788
 ```
 
 ## Environment Variables (Legacy Support)

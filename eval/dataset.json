@@ -251,7 +251,7 @@
         "uri": "contextfs://eval/agents",
         "name": "Agent Integration",
         "abstract": "How coding agents integrate with contextfs to store, retrieve, and manage knowledge using the CLI tool or REST API.",
-        "overview": "Agents interact with contextfs via the mairu-agent binary or the REST API. They store facts as memories with importance scores, register capabilities as skills, and document architecture as context nodes. The system routes writes through an LLM deduplication layer to avoid redundancy.",
+        "overview": "Agents interact with contextfs via the mairu binary or the REST API. They store facts as memories with importance scores, register capabilities as skills, and document architecture as context nodes. The system routes writes through an LLM deduplication layer to avoid redundancy.",
         "parent_uri": null,
         "project": "eval-suite"
       },
@@ -259,7 +259,7 @@
         "uri": "contextfs://eval/agents/memory",
         "name": "Memory Management",
         "abstract": "Agent workflow for persisting facts, user preferences, and architectural decisions as memories with importance scoring, category tagging, and LLM-powered deduplication.",
-        "overview": "When an agent learns something new, it calls 'mairu-agent memory store' with the fact, a category (architecture, preferences, constraint, etc.), owner, and importance 1-10. The LLM dedup router checks for near-duplicates and decides whether to create, merge, or skip. Importance weights how strongly the memory boosts in future searches.",
+        "overview": "When an agent learns something new, it calls 'mairu memory store' with the fact, a category (architecture, preferences, constraint, etc.), owner, and importance 1-10. The LLM dedup router checks for near-duplicates and decides whether to create, merge, or skip. Importance weights how strongly the memory boosts in future searches.",
         "parent_uri": "contextfs://eval/agents",
         "project": "eval-suite"
       },

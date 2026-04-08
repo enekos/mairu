@@ -359,8 +359,8 @@ func (c *Chronicle) RunOnce(ctx context.Context) error
 | Mode | Invocation | Use case |
 |---|---|---|
 | Daemon goroutine | Launched alongside daemon when `chronicle.enabled = true` | Always-on background learning |
-| Standalone | `mairu-agent chronicle start` | Dedicated background process |
-| One-shot | `mairu-agent chronicle run` | CI integration, manual trigger |
+| Standalone | `mairu chronicle start` | Dedicated background process |
+| One-shot | `mairu chronicle run` | CI integration, manual trigger |
 
 ### Processing pipeline
 
@@ -628,7 +628,7 @@ The existing scorer (`mairu/internal/contextsrv/scorer.go`) gets two new weight 
 New search option `--expand` that, after retrieving top-K results, expands each via `call_edges` and returns the union. Useful for "show me everything related to this function."
 
 ```bash
-mairu-agent node search "token validation" -k 5 --expand -P my-project
+mairu node search "token validation" -k 5 --expand -P my-project
 ```
 
 ### Intent field search
@@ -636,10 +636,10 @@ mairu-agent node search "token validation" -k 5 --expand -P my-project
 The `intent` field is full-text searchable. Queries like these now work:
 
 ```bash
-mairu-agent node search "performance-sensitive authentication" -P my-project
+mairu node search "performance-sensitive authentication" -P my-project
 # Matches nodes whose intent mentions performance + auth context
 
-mairu-agent node search "recently refactored" -P my-project
+mairu node search "recently refactored" -P my-project
 # Matches nodes whose intent mentions refactoring history
 ```
 

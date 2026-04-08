@@ -30,9 +30,9 @@ bun run --cwd mairu/ui check
 - `make dashboard` - run Go context server API and Svelte dev server.
 - `bun run --cwd mairu/ui dev` - run unified Svelte dashboard (`mairu/ui`).
 - `make eval-retrieval` - run retrieval benchmark.
-- `mairu-agent memory search "query" -P my-project --mode surface` - curated-memory-first retrieval.
-- `mairu-agent memory feedback -P my-project --arm <arm> --outcome accepted|ignored --rank 1` - feed reward signals.
-- `mairu-agent memory policy -P my-project` / `mairu-agent memory policy -P my-project --reset` - inspect/reset adaptive policy state.
+- `mairu memory search "query" -P my-project --mode surface` - curated-memory-first retrieval.
+- `mairu memory feedback -P my-project --arm <arm> --outcome accepted|ignored --rank 1` - feed reward signals.
+- `mairu memory policy -P my-project` / `mairu memory policy -P my-project --reset` - inspect/reset adaptive policy state.
 
 ## Contribution Guidelines
 

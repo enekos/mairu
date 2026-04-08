@@ -18,31 +18,31 @@ make mairu-build
 Or directly:
 
 ```bash
-go build -C mairu -o bin/mairu-agent ./cmd/mairu
+go build -C mairu -o bin/mairu ./cmd/mairu
 ```
 
 ## Run
 
 ```bash
-./mairu/bin/mairu-agent tui
-./mairu/bin/mairu-agent web -p 8080
-./mairu/bin/mairu-agent context-server -p 8788
+./mairu/bin/mairu tui
+./mairu/bin/mairu web -p 8080
+./mairu/bin/mairu context-server -p 8788
 
 # Go-native ContextFS commands (use -P for project)
-./mairu/bin/mairu-agent memory search "auth token" -P my-project -k 5
-./mairu/bin/mairu-agent memory store "we use Postgres for context server" -P my-project -c observation -o agent -i 5
-./mairu/bin/mairu-agent node search "authentication architecture" -P my-project -k 5
-./mairu/bin/mairu-agent vibe query "how does auth work?" -P my-project -k 5
-./mairu/bin/mairu-agent vibe mutation "remember we use gRPC internally" -P my-project -k 5
+./mairu/bin/mairu memory search "auth token" -P my-project -k 5
+./mairu/bin/mairu memory store "we use Postgres for context server" -P my-project -c observation -o agent -i 5
+./mairu/bin/mairu node search "authentication architecture" -P my-project -k 5
+./mairu/bin/mairu vibe query "how does auth work?" -P my-project -k 5
+./mairu/bin/mairu vibe mutation "remember we use gRPC internally" -P my-project -k 5
 
 # File/Knowledge Ingestion
-./mairu/bin/mairu-agent ingest README.md --base-uri "contextfs://readme" -P my-project -y
+./mairu/bin/mairu ingest README.md --base-uri "contextfs://readme" -P my-project -y
 
 # Background context processing
-./mairu/bin/mairu-agent daemon ./src -P my-project
+./mairu/bin/mairu daemon ./src -P my-project
 
 # Web Scraping
-./mairu/bin/mairu-agent scrape https://example.com --max-depth 2 -P my-project
+./mairu/bin/mairu scrape https://example.com --max-depth 2 -P my-project
 ```
 
 ## Notes

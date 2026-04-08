@@ -20,20 +20,20 @@ make dashboard
 ```
 
 This starts:
-- `mairu-agent context-server` on port `8788`
+- `mairu context-server` on port `8788`
 - `mairu/ui` dev server on port `5173`
 
 ### 2) Run Mairu Agent (Go)
 
 ```bash
 make mairu-build
-./mairu/bin/mairu-agent tui
+./mairu/bin/mairu tui
 ```
 
 ### 3) Run Central Context Server
 
 ```bash
-./mairu/bin/mairu-agent context-server -p 8788
+./mairu/bin/mairu context-server -p 8788
 ```
 
 ## Data and Runtime Artifacts
@@ -45,5 +45,5 @@ Both paths are git-ignored.
 ## Naming Policy
 
 - Project name: **Mairu**
-- Go binary: `mairu-agent`
+- Go binary: `mairu`
 - Web UI: **Mairu UI**

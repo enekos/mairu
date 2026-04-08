@@ -25,7 +25,7 @@ impl zed::Extension for MairuExtension {
     ) -> Result<Command> {
         let settings = ContextServerSettings::for_project("mairu", project)?;
         
-        let mut command = "mairu-agent".to_string();
+        let mut command = "mairu".to_string();
         
         if let Some(settings) = settings.settings {
             if let Ok(settings) = serde_json::from_value::<MairuContextServerSettings>(settings) {
