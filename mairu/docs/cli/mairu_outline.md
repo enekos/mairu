@@ -9,7 +9,9 @@ mairu outline <file> [flags]
 ### Options
 
 ```
-  -h, --help   help for outline
+      --exports   Only show exported/public symbols
+  -h, --help      help for outline
+      --tree      Nest methods under their parent class
 ```
 
 ### Options inherited from parent commands

@@ -9,8 +9,12 @@ mairu map [dir] [flags]
 ### Options
 
 ```
-  -d, --depth int   Max depth to map (0 = unlimited)
-  -h, --help        help for map
+  -d, --depth int     Max depth to map (0 = unlimited)
+      --dirs          Include directory entries with aggregated token counts
+  -e, --ext string    Comma-separated extensions to filter (e.g. .go,.ts)
+  -h, --help          help for map
+      --min int       Only show files with >= N tokens
+      --sort string   Sort order: 'size' for descending token count (default: path order)
 ```
 
 ### Options inherited from parent commands

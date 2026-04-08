@@ -1,6 +1,6 @@
 ## mairu peek
 
-AI-optimized exact line extraction (JSON)
+AI-optimized file peeker (JSON)
 
 ```
 mairu peek <file> [flags]
@@ -10,8 +10,9 @@ mairu peek <file> [flags]
 
 ```
   -h, --help            help for peek
-  -l, --lines string    Line range to extract (e.g., 50-100)
-  -s, --symbol string   Symbol name to extract (e.g., myFunc)
+  -l, --lines string    Line range to peek (e.g. 10-20)
+  -N, --numbered        Prefix each line with its line number
+  -s, --symbol string   Symbol name to extract (finds bracket bounds, comma-separated for multiple)
 ```
 
 ### Options inherited from parent commands

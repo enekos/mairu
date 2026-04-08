@@ -3,15 +3,17 @@
 AI-optimized safe environment reader (JSON)
 
 ```
-mairu env [file] [flags]
+mairu env [file...] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help           help for env
-  -m, --match string   Only return keys matching regex pattern
-  -r, --reveal         Reveal non-sensitive values (like booleans, numbers, or non-credential strings)
+      --diff string       Compare with another env file, showing added/removed/changed keys
+  -h, --help              help for env
+  -m, --match string      Only return keys matching regex pattern
+      --required string   Comma-separated keys that must exist (exit 1 if missing)
+  -r, --reveal            Reveal non-sensitive values (like booleans, numbers, or non-credential strings)
 ```
 
 ### Options inherited from parent commands

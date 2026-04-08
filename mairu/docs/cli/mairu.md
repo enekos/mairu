@@ -45,7 +45,7 @@ mairu [prompt] [flags]
 * [mairu node](mairu_node.md)	 - ContextFS node operations
 * [mairu nudge](mairu_nudge.md)	 - Suggest mutations from transcript
 * [mairu outline](mairu_outline.md)	 - AI-optimized file skeleton (JSON)
-* [mairu peek](mairu_peek.md)	 - AI-optimized exact line extraction (JSON)
+* [mairu peek](mairu_peek.md)	 - AI-optimized file peeker (JSON)
 * [mairu scan](mairu_scan.md)	 - AI-optimized semantic search with token budget (JSON)
 * [mairu scrape](mairu_scrape.md)	 - Web scraping and content extraction tools
 * [mairu seed](mairu_seed.md)	 - Seed sample ContextFS data

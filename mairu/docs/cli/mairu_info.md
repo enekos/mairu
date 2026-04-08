@@ -9,7 +9,9 @@ mairu info [dir] [flags]
 ### Options
 
 ```
-  -h, --help   help for info
+  -e, --ext string   Comma-separated extensions to filter (e.g. .go,.ts)
+  -h, --help         help for info
+      --top int      Show top N largest files by token count
 ```
 
 ### Options inherited from parent commands

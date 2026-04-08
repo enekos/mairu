@@ -11,12 +11,16 @@ mairu scan <regex> [dir] [flags]
 ```
       --budget int           Token budget circuit breaker (default 3000)
   -C, --context int          Number of context lines around match
+  -x, --exclude string       Comma-separated glob patterns to exclude (e.g. vendor/*,*_test.go)
   -e, --ext string           Comma-separated extensions to filter (e.g. .go,.ts)
   -l, --files-with-matches   Only print matching filenames
+  -g, --group                Group matches by file
   -H, --heading              Attempt to find nearest function/class heading above match
   -h, --help                 help for scan
   -i, --ignore-case          Case-insensitive search
+  -v, --invert               Invert match (select non-matching lines)
   -n, --limit int            Max number of matches to return (0 = unlimited)
+  -m, --multi string         Additional patterns that must ALL match in the file (comma-separated, AND logic)
 ```
 
 ### Options inherited from parent commands
