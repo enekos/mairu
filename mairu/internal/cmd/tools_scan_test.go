@@ -80,3 +80,35 @@ func TestScanInvert(t *testing.T) {
 		}
 	}
 }
+
+func TestScanGroup(t *testing.T) {
+	resetScanFlags()
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "a.go"), []byte("Hello\nWorld\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "b.go"), []byte("Hello\nBye\n"), 0644)
+
+	scanGroup = true
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	scanCmd.Run(scanCmd, []string{"Hello", dir})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var raw map[string]interface{}
+	json.Unmarshal(buf.Bytes(), &raw)
+
+	grouped, ok := raw["grouped"]
+	if !ok {
+		t.Fatalf("expected 'grouped' key in output, got: %s", buf.String())
+	}
+	gmap, ok := grouped.(map[string]interface{})
+	if !ok || len(gmap) != 2 {
+		t.Errorf("expected 2 file groups, got %v", gmap)
+	}
+}

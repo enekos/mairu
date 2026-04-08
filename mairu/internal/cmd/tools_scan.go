@@ -54,6 +54,13 @@ type scanResult struct {
 	Matches   []scanMatch `json:"matches,omitempty"`
 }
 
+type scanGroupedResult struct {
+	BudgetHit bool                   `json:"budget_hit"`
+	LimitHit  bool                   `json:"limit_hit"`
+	Total     int                    `json:"total"`
+	Grouped   map[string][]scanMatch `json:"grouped"`
+}
+
 var scanCmd = &cobra.Command{
 	Use:   "scan <regex> [dir]",
 	Short: "AI-optimized semantic search with token budget (JSON)",
@@ -256,6 +263,23 @@ var scanCmd = &cobra.Command{
 			}
 			return nil
 		})
+
+		if scanGroup {
+			grouped := scanGroupedResult{
+				BudgetHit: res.BudgetHit,
+				LimitHit:  res.LimitHit,
+				Total:     res.Total,
+				Grouped:   make(map[string][]scanMatch),
+			}
+			for _, m := range res.Matches {
+				// Strip the file from inner match in grouped mode
+				inner := scanMatch{L: m.L, C: m.C, Heading: m.Heading}
+				grouped.Grouped[m.F] = append(grouped.Grouped[m.F], inner)
+			}
+			out, _ := json.Marshal(grouped)
+			fmt.Println(string(out))
+			return
+		}
 
 		out, _ := json.Marshal(res)
 		fmt.Println(string(out))
