@@ -415,3 +415,30 @@ func TestEnvMultiFile(t *testing.T) {
 		t.Errorf("expected 3 merged vars, got %d: %s", len(res.Vars), buf.String())
 	}
 }
+
+func TestSysEnhanced(t *testing.T) {
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	sysCmd.Run(sysCmd, []string{})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var raw map[string]interface{}
+	json.Unmarshal(buf.Bytes(), &raw)
+
+	if _, ok := raw["go_version"]; !ok {
+		t.Errorf("expected 'go_version' field, got: %s", buf.String())
+	}
+	if _, ok := raw["disk_free_gb"]; !ok {
+		t.Errorf("expected 'disk_free_gb' field, got: %s", buf.String())
+	}
+	if _, ok := raw["docker"]; !ok {
+		t.Errorf("expected 'docker' field, got: %s", buf.String())
+	}
+}

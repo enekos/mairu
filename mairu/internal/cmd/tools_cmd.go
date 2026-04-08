@@ -1,14 +1,19 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"math"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
+	"syscall"
+	"time"
 
 	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
@@ -143,11 +148,14 @@ var mapCmd = &cobra.Command{
 }
 
 type sysEntry struct {
-	OS     string `json:"os"`
-	Arch   string `json:"arch"`
-	NumCPU int    `json:"num_cpu"`
-	MemMB  uint64 `json:"mem_mb"`
-	// Ports could be implemented later if needed
+	OS          string  `json:"os"`
+	Arch        string  `json:"arch"`
+	NumCPU      int     `json:"num_cpu"`
+	MemMB       uint64  `json:"mem_mb"`
+	DiskFreeGB  float64 `json:"disk_free_gb"`
+	DiskTotalGB float64 `json:"disk_total_gb"`
+	GoVersion   string  `json:"go_version"`
+	Docker      bool    `json:"docker"`
 }
 
 var sysCmd = &cobra.Command{
@@ -159,10 +167,26 @@ var sysCmd = &cobra.Command{
 		runtime.ReadMemStats(&m)
 
 		info := sysEntry{
-			OS:     runtime.GOOS,
-			Arch:   runtime.GOARCH,
-			NumCPU: runtime.NumCPU(),
-			MemMB:  m.Sys / 1024 / 1024,
+			OS:        runtime.GOOS,
+			Arch:      runtime.GOARCH,
+			NumCPU:    runtime.NumCPU(),
+			MemMB:     m.Sys / 1024 / 1024,
+			GoVersion: runtime.Version(),
+		}
+
+		// Disk usage
+		var stat syscall.Statfs_t
+		cwd, _ := os.Getwd()
+		if err := syscall.Statfs(cwd, &stat); err == nil {
+			info.DiskFreeGB = math.Round(float64(stat.Bavail)*float64(stat.Bsize)/1e9*10) / 10
+			info.DiskTotalGB = math.Round(float64(stat.Blocks)*float64(stat.Bsize)/1e9*10) / 10
+		}
+
+		// Docker status
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+		if err := exec.CommandContext(ctx, "docker", "info").Run(); err == nil {
+			info.Docker = true
 		}
 
 		out, _ := json.Marshal(info)
