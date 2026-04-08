@@ -212,7 +212,12 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 			rankingScore = rs
 		}
 
-		score := scoreWithMeiliRanking(rankingScore, createdAt, importance, opts, defaults)
+		// Extract enrichment data for scoring (churn_score is promoted to top-level by the service layer)
+		var enrichmentData map[string]any
+		if cs, ok := doc["churn_score"].(float64); ok {
+			enrichmentData = map[string]any{"enrichment_churn_score": cs}
+		}
+		score := scoreWithMeiliRanking(rankingScore, createdAt, importance, opts, defaults, enrichmentData)
 		doc["_score"] = score
 
 		if opts.Highlight {

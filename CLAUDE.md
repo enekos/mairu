@@ -218,7 +218,7 @@ Agents are encouraged to use the `mairu` binary for token-dense, strictly parsab
 - `mairu map [dir] -d 2` -> Fast, `.gitignore` aware, token-counted directory tree
 - `mairu outline <file>` -> Emits imports and logic symbols (classes, functions) via AST
 - `mairu peek <file> -s <symbol>` -> Smart, bracket-aware symbol extraction (no `sed`/`head` needed!)
-- `mairu scan <regex> [dir] -C 1 -e .go -n 5` -> Token-budgeted regex search preventing context window blowouts
+- `mairu scan <regex> [dir] -C 1 -e .go -H -n 5` -> Token-budgeted regex search preventing context window blowouts
 - `mairu sys` -> Quick system status and memory check
 - `mairu info [dir]` -> Repository analytics (token sizes, file counts, extensions)
 - `mairu env [file] -r` -> Smart env reader. Extracts keys, flags secrets (`is_secret: true`), and safely reveals non-sensitive config values (booleans, ports)

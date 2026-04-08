@@ -14,6 +14,7 @@ type hybridWeights struct {
 	keyword    float64
 	recency    float64
 	importance float64
+	churn      float64
 }
 
 type scoredDoc struct {
@@ -29,20 +30,21 @@ type WeightOverrides struct {
 	Keyword    float64
 	Recency    float64
 	Importance float64
+	Churn      float64
 }
 
 func defaultMemoryWeights(overrides *WeightOverrides) hybridWeights {
-	w := hybridWeights{vector: 0.6, keyword: 0.2, recency: 0.05, importance: 0.15}
+	w := hybridWeights{vector: 0.6, keyword: 0.2, recency: 0.05, importance: 0.15, churn: 0.0}
 	return applyOverrides(w, overrides)
 }
 
 func defaultSkillWeights(overrides *WeightOverrides) hybridWeights {
-	w := hybridWeights{vector: 0.7, keyword: 0.3, recency: 0, importance: 0}
+	w := hybridWeights{vector: 0.7, keyword: 0.3, recency: 0, importance: 0, churn: 0.0}
 	return applyOverrides(w, overrides)
 }
 
 func defaultContextWeights(overrides *WeightOverrides) hybridWeights {
-	w := hybridWeights{vector: 0.65, keyword: 0.3, recency: 0.05, importance: 0}
+	w := hybridWeights{vector: 0.60, keyword: 0.30, recency: 0.05, importance: 0, churn: 0.05}
 	return applyOverrides(w, overrides)
 }
 
@@ -61,6 +63,9 @@ func applyOverrides(w hybridWeights, o *WeightOverrides) hybridWeights {
 	}
 	if o.Importance > 0 {
 		w.importance = o.Importance
+	}
+	if o.Churn > 0 {
+		w.churn = o.Churn
 	}
 	return w
 }
@@ -123,7 +128,9 @@ func effectiveWeights(opts SearchOptions, defaults hybridWeights) hybridWeights 
 	if opts.WeightImp > 0 {
 		w.importance = opts.WeightImp
 	}
-	total := w.vector + w.keyword + w.recency + w.importance
+	// Churn is not currently overridable per query, only via config defaults
+
+	total := w.vector + w.keyword + w.recency + w.importance + w.churn
 	if total <= 0 {
 		return defaults
 	}
@@ -132,10 +139,11 @@ func effectiveWeights(opts SearchOptions, defaults hybridWeights) hybridWeights 
 		keyword:    w.keyword / total,
 		recency:    w.recency / total,
 		importance: w.importance / total,
+		churn:      w.churn / total,
 	}
 }
 
-func scoreWithMeiliRanking(rankingScore float64, createdAt time.Time, importance int, opts SearchOptions, defaults hybridWeights) float64 {
+func scoreWithMeiliRanking(rankingScore float64, createdAt time.Time, importance int, opts SearchOptions, defaults hybridWeights, enrichmentData map[string]any) float64 {
 	weights := effectiveWeights(opts, defaults)
 
 	// rankingScore (0–1) comes from Meilisearch's hybrid vector+keyword
@@ -151,8 +159,16 @@ func scoreWithMeiliRanking(rankingScore float64, createdAt time.Time, importance
 		importanceScore = float64(importance) / 10.0
 	}
 
+	churnScore := 0.0
+	if enrichmentData != nil {
+		if cs, ok := enrichmentData["enrichment_churn_score"].(float64); ok {
+			churnScore = cs
+		}
+	}
+
 	score += recencyScore * weights.recency
 	score += importanceScore * weights.importance
+	score += churnScore * weights.churn
 
 	return score
 }

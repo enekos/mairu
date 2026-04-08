@@ -17,6 +17,22 @@ type Config struct {
 	Server    ServerConfig    `mapstructure:"server"`
 	Embedding EmbeddingConfig `mapstructure:"embedding"`
 	Output    OutputConfig    `mapstructure:"output"`
+	Enricher  EnricherConfig  `mapstructure:"enricher"`
+}
+
+type EnricherConfig struct {
+	GitIntent      GitIntentConfig      `mapstructure:"git_intent"`
+	ChangeVelocity ChangeVelocityConfig `mapstructure:"change_velocity"`
+}
+
+type GitIntentConfig struct {
+	Enabled    bool `mapstructure:"enabled"`
+	MaxCommits int  `mapstructure:"max_commits"`
+}
+
+type ChangeVelocityConfig struct {
+	Enabled      bool `mapstructure:"enabled"`
+	LookbackDays int  `mapstructure:"lookback_days"`
 }
 
 type APIConfig struct {
@@ -39,6 +55,7 @@ type WeightsConfig struct {
 	Keyword    float64 `mapstructure:"keyword"`
 	Recency    float64 `mapstructure:"recency"`
 	Importance float64 `mapstructure:"importance"`
+	Churn      float64 `mapstructure:"churn"`
 }
 
 type DaemonConfig struct {
@@ -83,15 +100,17 @@ type OutputConfig struct {
 func AllKeys() []string {
 	return []string{
 		"api.gemini_api_key", "api.meili_url", "api.meili_api_key",
-		"search.memories.vector", "search.memories.keyword", "search.memories.recency", "search.memories.importance",
-		"search.skills.vector", "search.skills.keyword", "search.skills.recency", "search.skills.importance",
-		"search.context.vector", "search.context.keyword", "search.context.recency", "search.context.importance",
+		"search.memories.vector", "search.memories.keyword", "search.memories.recency", "search.memories.importance", "search.memories.churn",
+		"search.skills.vector", "search.skills.keyword", "search.skills.recency", "search.skills.importance", "search.skills.churn",
+		"search.context.vector", "search.context.keyword", "search.context.recency", "search.context.importance", "search.context.churn",
 		"search.recency_scale", "search.recency_decay", "search.synonyms",
 		"daemon.concurrency", "daemon.max_file_size", "daemon.debounce", "daemon.max_content_chars",
 		"server.port", "server.projector_interval", "server.projector_batch", "server.read_timeout",
 		"server.sqlite_dsn", "server.auth_token", "server.moderation_enabled",
 		"embedding.model", "embedding.dimensions", "embedding.cache_size",
 		"output.format", "output.color", "output.verbose",
+		"enricher.git_intent.enabled", "enricher.git_intent.max_commits",
+		"enricher.change_velocity.enabled", "enricher.change_velocity.lookback_days",
 	}
 }
 
@@ -160,16 +179,19 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("search.memories.keyword", 0.2)
 	v.SetDefault("search.memories.recency", 0.05)
 	v.SetDefault("search.memories.importance", 0.15)
+	v.SetDefault("search.memories.churn", 0.0)
 
 	v.SetDefault("search.skills.vector", 0.7)
 	v.SetDefault("search.skills.keyword", 0.3)
 	v.SetDefault("search.skills.recency", 0.0)
 	v.SetDefault("search.skills.importance", 0.0)
+	v.SetDefault("search.skills.churn", 0.0)
 
 	v.SetDefault("search.context.vector", 0.65)
 	v.SetDefault("search.context.keyword", 0.3)
 	v.SetDefault("search.context.recency", 0.05)
 	v.SetDefault("search.context.importance", 0.0)
+	v.SetDefault("search.context.churn", 0.05)
 
 	v.SetDefault("search.recency_scale", "30d")
 	v.SetDefault("search.recency_decay", 0.5)
@@ -198,6 +220,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("output.format", "table")
 	v.SetDefault("output.color", true)
 	v.SetDefault("output.verbose", false)
+
+	// Enricher
+	v.SetDefault("enricher.git_intent.enabled", true)
+	v.SetDefault("enricher.git_intent.max_commits", 20)
+	v.SetDefault("enricher.change_velocity.enabled", true)
+	v.SetDefault("enricher.change_velocity.lookback_days", 180)
 }
 
 func bindLegacyEnv(v *viper.Viper) {
