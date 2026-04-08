@@ -82,6 +82,22 @@ var scanCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
+		var multiRes []*regexp.Regexp
+		if scanMulti != "" {
+			for _, p := range strings.Split(scanMulti, ",") {
+				p = strings.TrimSpace(p)
+				if scanIgnoreCase {
+					p = "(?i)" + p
+				}
+				mre, err := regexp.Compile(p)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error compiling multi regex: %v\n", err)
+					os.Exit(1)
+				}
+				multiRes = append(multiRes, mre)
+			}
+		}
+
 		// Pre-compile heading regex if needed
 		// This matches typical top-level declarations like `func ...`, `class ...`, `export const ...`
 		var headingRe *regexp.Regexp
@@ -166,6 +182,19 @@ var scanCmd = &cobra.Command{
 				content, err := os.ReadFile(path)
 				if err != nil {
 					return nil
+				}
+
+				if len(multiRes) > 0 {
+					allMatch := true
+					for _, mre := range multiRes {
+						if !mre.Match(content) {
+							allMatch = false
+							break
+						}
+					}
+					if !allMatch {
+						return nil
+					}
 				}
 
 				lines := strings.Split(string(content), "\n")

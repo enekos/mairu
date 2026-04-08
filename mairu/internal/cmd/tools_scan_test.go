@@ -112,3 +112,23 @@ func TestScanGroup(t *testing.T) {
 		t.Errorf("expected 2 file groups, got %v", gmap)
 	}
 }
+
+func TestScanMulti(t *testing.T) {
+	resetScanFlags()
+	dir := t.TempDir()
+	// File with both patterns
+	os.WriteFile(filepath.Join(dir, "auth.go"), []byte("func HandleAuth() {\n  token := validate()\n}\n"), 0644)
+	// File with only one pattern
+	os.WriteFile(filepath.Join(dir, "other.go"), []byte("func HandleOther() {\n  return\n}\n"), 0644)
+
+	scanMulti = "validate"
+	res := runScanCmd(t, "Handle", dir)
+
+	// Only auth.go has both "Handle" and "validate"
+	if res.Total != 1 {
+		t.Errorf("expected 1 match (only file with both patterns), got %d", res.Total)
+	}
+	if len(res.Matches) > 0 && res.Matches[0].F != "auth.go" {
+		t.Errorf("expected match in auth.go, got %s", res.Matches[0].F)
+	}
+}
