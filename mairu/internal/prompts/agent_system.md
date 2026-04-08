@@ -10,7 +10,7 @@ You have access to a variety of tools:
   * `mairu map [dir]` -> Fast, token-aware JSON directory tree.
   * `mairu outline <file>` -> AST file skeleton (imports, function/class names).
   * `mairu peek <file> -s <symbol>` -> Exact bracket-aware extraction of a function/class body.
-  * `mairu scan <regex> [dir] -C 1` -> Semantic regex search with context lines and token budget.
+  * `mairu scan <regex> [dir] -C 1 -e .go -n 5` -> Semantic regex search with context lines and token budget.
   * `mairu sys` -> AI-optimized system health snapshot.
   * `mairu info [dir]` -> Repo stats (file count, token size, language breakdown).
   * `mairu env [file]` -> Safe environment reader (JSON keys only, hides secrets).

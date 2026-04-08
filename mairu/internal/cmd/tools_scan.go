@@ -15,10 +15,14 @@ import (
 
 var scanBudget int
 var scanContext int
+var scanExtensions string
+var scanLimit int
 
 func init() {
-	scanCmd.Flags().IntVar(&scanBudget, "budget", 2000, "Token budget circuit breaker")
+	scanCmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
 	scanCmd.Flags().IntVarP(&scanContext, "context", "C", 0, "Number of context lines around match")
+	scanCmd.Flags().StringVarP(&scanExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
+	scanCmd.Flags().IntVarP(&scanLimit, "limit", "n", 0, "Max number of matches to return (0 = unlimited)")
 	rootCmd.AddCommand(scanCmd)
 }
 
@@ -30,6 +34,8 @@ type scanMatch struct {
 
 type scanResult struct {
 	BudgetHit bool        `json:"budget_hit"`
+	LimitHit  bool        `json:"limit_hit"`
+	Total     int         `json:"total"`
 	Matches   []scanMatch `json:"matches"`
 }
 
@@ -55,6 +61,17 @@ var scanCmd = &cobra.Command{
 			ignorer = gi
 		}
 
+		allowedExts := make(map[string]bool)
+		if scanExtensions != "" {
+			for _, ext := range strings.Split(scanExtensions, ",") {
+				ext = strings.TrimSpace(ext)
+				if !strings.HasPrefix(ext, ".") {
+					ext = "." + ext
+				}
+				allowedExts[strings.ToLower(ext)] = true
+			}
+		}
+
 		res := scanResult{Matches: []scanMatch{}}
 		var currentBytes int
 		// roughly 4 bytes per token
@@ -69,7 +86,7 @@ var scanCmd = &cobra.Command{
 			}
 
 			rel, _ := filepath.Rel(dir, path)
-			if rel == ".git" {
+			if rel == ".git" || rel == "node_modules" {
 				return filepath.SkipDir
 			}
 			if ignorer != nil && ignorer.MatchesPath(rel) {
@@ -81,7 +98,14 @@ var scanCmd = &cobra.Command{
 
 			if !d.IsDir() {
 				ext := strings.ToLower(filepath.Ext(path))
-				if ext == ".png" || ext == ".jpg" || ext == ".exe" || ext == ".bin" {
+
+				// Apply extension filter if provided
+				if len(allowedExts) > 0 && !allowedExts[ext] {
+					return nil
+				}
+
+				// Standard binary skip
+				if ext == ".png" || ext == ".jpg" || ext == ".exe" || ext == ".bin" || ext == ".pdf" || ext == ".mp4" || ext == ".zip" || ext == ".tar" || ext == ".gz" {
 					return nil
 				}
 
@@ -91,20 +115,49 @@ var scanCmd = &cobra.Command{
 				}
 
 				lines := strings.Split(string(content), "\n")
+
+				// To handle context overlapping correctly within a single file
+				var lastMatchEndIdx int = -1
+
 				for i, line := range lines {
 					if re.MatchString(line) {
+						res.Total++
+
+						// If we hit limits, we still want to count totals but we stop adding to Matches
+						if (scanLimit > 0 && len(res.Matches) >= scanLimit) || res.BudgetHit {
+							if !res.LimitHit && len(res.Matches) >= scanLimit {
+								res.LimitHit = true
+							}
+							continue
+						}
+
 						startIdx := i - scanContext
 						if startIdx < 0 {
 							startIdx = 0
 						}
+
+						// Prevent overlapping context blocks in the same file from duplicating lines
+						if startIdx <= lastMatchEndIdx {
+							startIdx = lastMatchEndIdx + 1
+						}
+
+						if startIdx > i {
+							// This match was completely subsumed by the previous match's context
+							continue
+						}
+
 						endIdx := i + scanContext
 						if endIdx >= len(lines) {
 							endIdx = len(lines) - 1
 						}
 
+						lastMatchEndIdx = endIdx
+
 						var snippet []string
 						for j := startIdx; j <= endIdx; j++ {
-							snippet = append(snippet, strings.TrimSpace(lines[j]))
+							// Don't totally trim space, just replace tabs with spaces for compact JSON
+							cleanLine := strings.ReplaceAll(lines[j], "\t", "  ")
+							snippet = append(snippet, cleanLine)
 						}
 
 						joined := strings.Join(snippet, "\n")
@@ -112,7 +165,7 @@ var scanCmd = &cobra.Command{
 
 						if currentBytes+matchBytes > maxBytes {
 							res.BudgetHit = true
-							return filepath.SkipDir
+							continue
 						}
 						currentBytes += matchBytes
 						res.Matches = append(res.Matches, scanMatch{
