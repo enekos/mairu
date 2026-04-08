@@ -20,6 +20,10 @@ var scanLimit int
 var scanIgnoreCase bool
 var scanFilesOnly bool
 var scanHeading bool
+var scanExclude string
+var scanGroup bool
+var scanInvert bool
+var scanMulti string
 
 func init() {
 	scanCmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
@@ -29,6 +33,7 @@ func init() {
 	scanCmd.Flags().BoolVarP(&scanIgnoreCase, "ignore-case", "i", false, "Case-insensitive search")
 	scanCmd.Flags().BoolVarP(&scanFilesOnly, "files-with-matches", "l", false, "Only print matching filenames")
 	scanCmd.Flags().BoolVarP(&scanHeading, "heading", "H", false, "Attempt to find nearest function/class heading above match")
+	scanCmd.Flags().StringVarP(&scanExclude, "exclude", "x", "", "Comma-separated glob patterns to exclude (e.g. vendor/*,*_test.go)")
 }
 
 type scanMatch struct {
@@ -90,6 +95,13 @@ var scanCmd = &cobra.Command{
 			}
 		}
 
+		var excludePatterns []string
+		if scanExclude != "" {
+			for _, p := range strings.Split(scanExclude, ",") {
+				excludePatterns = append(excludePatterns, strings.TrimSpace(p))
+			}
+		}
+
 		res := scanResult{}
 		if !scanFilesOnly {
 			res.Matches = []scanMatch{}
@@ -117,6 +129,17 @@ var scanCmd = &cobra.Command{
 					return filepath.SkipDir
 				}
 				return nil
+			}
+
+			if len(excludePatterns) > 0 {
+				for _, pat := range excludePatterns {
+					if matched, _ := filepath.Match(pat, rel); matched {
+						if d.IsDir() {
+							return filepath.SkipDir
+						}
+						return nil
+					}
+				}
 			}
 
 			if !d.IsDir() {

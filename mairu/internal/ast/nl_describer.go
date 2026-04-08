@@ -562,24 +562,40 @@ func describeExpression(node *sitter.Node, source []byte) string {
 	return fmt.Sprintf("`%s`", node.Content(source))
 }
 
-func DescribeSymbols(symbols []LogicSymbol, edges []LogicEdge) string {
+func DescribeSymbols(symbols []LogicSymbol, edges []LogicEdge, descriptions map[string]string) string {
 	if len(symbols) == 0 {
 		return ""
 	}
-	callsByFrom := map[string][]string{}
+
+	edgesByKindAndFrom := map[string]map[string][]string{}
 	for _, e := range edges {
-		callsByFrom[e.From] = append(callsByFrom[e.From], e.To)
+		if edgesByKindAndFrom[e.Kind] == nil {
+			edgesByKindAndFrom[e.Kind] = map[string][]string{}
+		}
+		edgesByKindAndFrom[e.Kind][e.From] = append(edgesByKindAndFrom[e.Kind][e.From], e.To)
 	}
+
 	var sections []string
 	for _, s := range symbols {
-		lines := []string{"## " + s.Name, "Symbol kind: " + s.Kind}
+		lines := []string{fmt.Sprintf("## [%s] %s", s.Kind, s.Name)}
 		if s.Doc != "" {
 			lines = append(lines, s.Doc)
 		}
-		if calls := callsByFrom[s.ID]; len(calls) > 0 {
-			lines = append(lines, "Calls "+strings.Join(calls, ", "))
+
+		if desc, ok := descriptions[s.ID]; ok && desc != "" {
+			lines = append(lines, desc)
 		}
-		lines = append(lines, "Returns a value.")
+
+		for kind, byFrom := range edgesByKindAndFrom {
+			if tos := byFrom[s.ID]; len(tos) > 0 {
+				kindTitle := kind
+				if len(kind) > 0 {
+					kindTitle = strings.ToUpper(kind[:1]) + kind[1:]
+				}
+				lines = append(lines, fmt.Sprintf("%s: %s", kindTitle, strings.Join(tos, ", ")))
+			}
+		}
+
 		sections = append(sections, strings.Join(lines, "\n"))
 	}
 	return strings.Join(sections, "\n\n")

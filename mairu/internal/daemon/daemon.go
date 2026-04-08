@@ -471,7 +471,7 @@ func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) 
 		if fg.RawContent != "" {
 			content = fg.RawContent
 		} else {
-			content = ast.DescribeSymbols(fg.Symbols, fg.Edges)
+			content = ast.DescribeSymbols(fg.Symbols, fg.Edges, fg.SymbolDescriptions)
 		}
 		if len(content) > maxContentChars {
 			content = content[:maxContentChars] + "\n\n...TRUNCATED"
@@ -688,15 +688,13 @@ func buildNLContent(symbols []symbol, edges []edge) string {
 	}
 	var parts []string
 	for _, s := range symbols {
-		lines := []string{fmt.Sprintf("## %s: %s", strings.ToUpper(s.Kind), s.Name)}
+		lines := []string{fmt.Sprintf("## [%s] %s", s.Kind, s.Name)}
 		if s.Doc != "" {
 			lines = append(lines, s.Doc)
 		}
-		calls := byFrom[s.ID]
-		if len(calls) > 0 {
-			lines = append(lines, "Calls "+strings.Join(calls, ", "))
+		if calls := byFrom[s.ID]; len(calls) > 0 {
+			lines = append(lines, "Dependencies: "+strings.Join(calls, ", "))
 		}
-		lines = append(lines, "Returns a computed value.")
 		parts = append(parts, strings.Join(lines, "\n"))
 	}
 	return strings.Join(parts, "\n\n")

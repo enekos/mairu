@@ -7,13 +7,20 @@ func EnrichDescriptions(descriptions map[string]string, edges []LogicEdge) map[s
 	for k, v := range descriptions {
 		out[k] = v
 	}
+
+	edgesByFrom := map[string][]string{}
 	for _, e := range edges {
-		existing := out[e.From]
+		edgesByFrom[e.From] = append(edgesByFrom[e.From], e.To)
+	}
+
+	for from, tos := range edgesByFrom {
+		existing := out[from]
 		if existing == "" {
 			existing = "Describes symbol."
 		}
-		out[e.From] = existing + " Calls " + e.To + "."
+		out[from] = existing + " Calls: " + strings.Join(tos, ", ") + "."
 	}
+
 	for k, v := range out {
 		out[k] = strings.TrimSpace(v)
 	}

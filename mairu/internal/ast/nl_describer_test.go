@@ -156,8 +156,9 @@ func TestDescribeSymbols(t *testing.T) {
 	out := DescribeSymbols(
 		[]LogicSymbol{{ID: "fn:validate", Name: "validate", Kind: "fn"}},
 		[]LogicEdge{{From: "fn:validate", To: "fn:trim", Kind: "call"}},
+		map[string]string{"fn:validate": "Validates input."},
 	)
-	if !strings.Contains(out, "validate") || !strings.Contains(out, "Returns") {
+	if !strings.Contains(out, "validate") || !strings.Contains(out, "Validates input.") || !strings.Contains(out, "Call: fn:trim") {
 		t.Fatalf("unexpected output: %s", out)
 	}
 }
