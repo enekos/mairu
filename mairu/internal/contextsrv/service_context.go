@@ -100,6 +100,23 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 					payload["parent_uri"] = *out.ParentURI
 				}
 
+				// Promote enrichment fields from metadata to top-level Meili fields
+				// so they're searchable/filterable.
+				if len(input.Metadata) > 0 {
+					var meta map[string]any
+					if err := json.Unmarshal(input.Metadata, &meta); err == nil {
+						if intent, ok := meta["enrichment_intent"].(string); ok && intent != "" {
+							payload["intent"] = intent
+						}
+						if score, ok := meta["enrichment_churn_score"].(float64); ok {
+							payload["churn_score"] = score
+						}
+						if label, ok := meta["enrichment_churn_label"].(string); ok && label != "" {
+							payload["churn_label"] = label
+						}
+					}
+				}
+
 				payload["_vectors"] = map[string]any{"default": nil}
 				if emb, ok := s.llmClient.(fallbackEmbedder); ok {
 					textToEmbed := out.Name + "\n" + out.Abstract + "\n" + out.Content

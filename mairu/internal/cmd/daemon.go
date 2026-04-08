@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"mairu/internal/daemon"
+	"mairu/internal/enricher"
 	"mairu/internal/llm"
 
 	"github.com/spf13/cobra"
@@ -66,6 +67,23 @@ func init() {
 					slog.Warn("failed to init Gemini for markdown summarization", "err", err)
 				}
 			}
+
+			appCfg := GetConfig()
+			var enrichers []enricher.Enricher
+			if appCfg.Enricher.GitIntent.Enabled {
+				enrichers = append(enrichers, &enricher.GitIntentEnricher{
+					MaxCommits: appCfg.Enricher.GitIntent.MaxCommits,
+				})
+			}
+			if appCfg.Enricher.ChangeVelocity.Enabled {
+				enrichers = append(enrichers, &enricher.ChangeVelocityEnricher{
+					LookbackDays: appCfg.Enricher.ChangeVelocity.LookbackDays,
+				})
+			}
+			if len(enrichers) > 0 {
+				opts.EnricherPipeline = enricher.NewPipeline(enrichers)
+			}
+
 			d := daemon.New(remoteManager{}, project, dir, opts)
 			d.LoadCache()
 			if err := d.ProcessAllFiles(context.Background()); err != nil {
