@@ -191,3 +191,106 @@ func TestInfoTop(t *testing.T) {
 		t.Errorf("expected big.go as top file, got %v", entry["p"])
 	}
 }
+
+func TestMapExtFilter(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "a.go"), []byte("package main\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "b.ts"), []byte("export {}\n"), 0644)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	mapDepth = 0
+	mapExtensions = ".go"
+	mapMin = 0
+	mapSort = ""
+	mapDirs = false
+	mapCmd.Run(mapCmd, []string{dir})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var entries []mapEntry
+	json.Unmarshal(buf.Bytes(), &entries)
+
+	if len(entries) != 1 {
+		t.Errorf("expected 1 .go file, got %d", len(entries))
+	}
+	if len(entries) > 0 && !strings.HasSuffix(entries[0].P, ".go") {
+		t.Errorf("expected .go file, got %s", entries[0].P)
+	}
+}
+
+func TestMapSortSize(t *testing.T) {
+	dir := t.TempDir()
+	os.WriteFile(filepath.Join(dir, "small.go"), []byte("x\n"), 0644)
+	os.WriteFile(filepath.Join(dir, "big.go"), []byte(strings.Repeat("x", 1000)), 0644)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	mapDepth = 0
+	mapExtensions = ""
+	mapMin = 0
+	mapSort = "size"
+	mapDirs = false
+	mapCmd.Run(mapCmd, []string{dir})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var entries []mapEntry
+	json.Unmarshal(buf.Bytes(), &entries)
+
+	if len(entries) < 2 {
+		t.Fatalf("expected at least 2 entries, got %d", len(entries))
+	}
+	if entries[0].T < entries[1].T {
+		t.Errorf("expected descending sort by size, got %d then %d", entries[0].T, entries[1].T)
+	}
+}
+
+func TestMapDirs(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	os.MkdirAll(sub, 0755)
+	os.WriteFile(filepath.Join(sub, "a.go"), []byte("package main\n"), 0644)
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	mapDepth = 0
+	mapExtensions = ""
+	mapMin = 0
+	mapSort = ""
+	mapDirs = true
+	mapCmd.Run(mapCmd, []string{dir})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var entries []map[string]interface{}
+	json.Unmarshal(buf.Bytes(), &entries)
+
+	hasDirEntry := false
+	for _, e := range entries {
+		if d, ok := e["d"]; ok && d == true {
+			hasDirEntry = true
+		}
+	}
+	if !hasDirEntry {
+		t.Errorf("expected directory entry with 'd' flag, got: %s", buf.String())
+	}
+}
