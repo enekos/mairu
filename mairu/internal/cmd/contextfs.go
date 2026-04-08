@@ -43,6 +43,8 @@ func init() {
 	rootCmd.AddCommand(newImpactCmd())
 	rootCmd.AddCommand(newAnalyzeGraphCmd())
 	rootCmd.AddCommand(newAnalyzeDiffCmd())
+	rootCmd.AddCommand(newGithubCmd())
+	rootCmd.AddCommand(newLinearCmd())
 }
 
 func contextServerURL() string {

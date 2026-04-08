@@ -24,6 +24,7 @@ type LogicEdge struct {
 // their relationships, and human-readable natural language descriptions.
 type FileGraph struct {
 	FileSummary        string
+	RawContent         string // if non-empty, used as-is for the content field instead of DescribeSymbols
 	Symbols            []LogicSymbol
 	Edges              []LogicEdge
 	Imports            []string

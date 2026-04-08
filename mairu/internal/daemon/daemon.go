@@ -27,6 +27,7 @@ const (
 
 var supportedExtensions = map[string]bool{
 	".ts": true, ".tsx": true, ".js": true, ".jsx": true, ".mjs": true, ".cjs": true, ".py": true, ".go": true,
+	".md": true, ".mdx": true,
 }
 
 var ignoredPathSegment = map[string]bool{
@@ -106,6 +107,7 @@ func New(manager Manager, project, watchDir string, opts Options) *Daemon {
 			ast.VueDescriber{},
 			ast.GoDescriber{},
 			ast.PythonDescriber{},
+			ast.MarkdownDescriber{},
 		},
 	}
 }
@@ -439,7 +441,11 @@ func (d *Daemon) summarizeSourceFile(filePath, src string) sourceSummary {
 			overview = overview[:maxContentChars] + "\n...TRUNCATED_BY_MAX_CONTENT_CHARS"
 		}
 
-		content = ast.DescribeSymbols(fg.Symbols, fg.Edges)
+		if fg.RawContent != "" {
+			content = fg.RawContent
+		} else {
+			content = ast.DescribeSymbols(fg.Symbols, fg.Edges)
+		}
 		if len(content) > maxContentChars {
 			content = content[:maxContentChars] + "\n\n...TRUNCATED"
 		}

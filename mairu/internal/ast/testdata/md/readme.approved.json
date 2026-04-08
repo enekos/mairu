@@ -1,0 +1,36 @@
+{
+  "file_summary": "My Project: A simple tool for managing context and memory.",
+  "symbols": [
+    {
+      "ID": "h1:My Project",
+      "Name": "My Project",
+      "Kind": "h1",
+      "Exported": false,
+      "Doc": ""
+    },
+    {
+      "ID": "h2:Installation",
+      "Name": "Installation",
+      "Kind": "h2",
+      "Exported": false,
+      "Doc": ""
+    },
+    {
+      "ID": "h2:Usage",
+      "Name": "Usage",
+      "Kind": "h2",
+      "Exported": false,
+      "Doc": ""
+    },
+    {
+      "ID": "h3:Advanced Usage",
+      "Name": "Advanced Usage",
+      "Kind": "h3",
+      "Exported": false,
+      "Doc": ""
+    }
+  ],
+  "edges": [],
+  "imports": [],
+  "symbol_descriptions": {}
+}

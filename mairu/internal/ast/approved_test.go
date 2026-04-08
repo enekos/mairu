@@ -36,6 +36,8 @@ var describers = map[string]LanguageDescriber{
 	".vue": VueDescriber{},
 	".tsx": TSXDescriber{},
 	".jsx": TSXDescriber{},
+	".md":  MarkdownDescriber{},
+	".mdx": MarkdownDescriber{},
 }
 
 // TestExtractFileGraph_Approved runs all testdata/*/*.input.* files through
