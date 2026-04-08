@@ -220,3 +220,5 @@ Agents are encouraged to use the `mairu` binary for token-dense, strictly parsab
 - `mairu peek <file> -s <symbol>` -> Smart, bracket-aware symbol extraction (no `sed`/`head` needed!)
 - `mairu scan <regex> [dir] -C 1` -> Token-budgeted regex search preventing context window blowouts
 - `mairu sys` -> Quick system status and memory check
+- `mairu info [dir]` -> Repository analytics (token sizes, file counts, extensions)
+- `mairu env [file]` -> Reads `.env` safely by extracting only the keys (prevents secret leakage)

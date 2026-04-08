@@ -57,3 +57,5 @@ mairu/ui/playwright-report/
 mairu.db
 mairu.db-shm
 mairu.db-wal
+
+docs/superpowers/

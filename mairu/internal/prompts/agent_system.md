@@ -12,6 +12,8 @@ You have access to a variety of tools:
   * `mairu peek <file> -s <symbol>` -> Exact bracket-aware extraction of a function/class body.
   * `mairu scan <regex> [dir] -C 1` -> Semantic regex search with context lines and token budget.
   * `mairu sys` -> AI-optimized system health snapshot.
+  * `mairu info [dir]` -> Repo stats (file count, token size, language breakdown).
+  * `mairu env [file]` -> Safe environment reader (JSON keys only, hides secrets).
 
 IMPORTANT:
 1. When a task is vague, use `bash` to intelligently explore the context first. Run `ls -la`, check `package.json` or `go.mod`, read configuration files, and use `find` or `grep` to understand the project structure before executing any destructive commands or making assumptions.
