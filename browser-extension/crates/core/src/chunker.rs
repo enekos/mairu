@@ -15,7 +15,10 @@ pub fn chunk_text(text: &str, max_chars: usize) -> Vec<String> {
     let mut start = 0;
 
     while start < text.len() {
-        let end = (start + max_chars).min(text.len());
+        let mut end = (start + max_chars).min(text.len());
+        while end < text.len() && !text.is_char_boundary(end) {
+            end -= 1;
+        }
 
         if end == text.len() {
             chunks.push(text[start..end].trim().to_string());
