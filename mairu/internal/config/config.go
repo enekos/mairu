@@ -96,24 +96,6 @@ type OutputConfig struct {
 	Verbose bool   `mapstructure:"verbose"`
 }
 
-// AllKeys returns all known config key names in dot-notation.
-func AllKeys() []string {
-	return []string{
-		"api.gemini_api_key", "api.meili_url", "api.meili_api_key",
-		"search.memories.vector", "search.memories.keyword", "search.memories.recency", "search.memories.importance", "search.memories.churn",
-		"search.skills.vector", "search.skills.keyword", "search.skills.recency", "search.skills.importance", "search.skills.churn",
-		"search.context.vector", "search.context.keyword", "search.context.recency", "search.context.importance", "search.context.churn",
-		"search.recency_scale", "search.recency_decay", "search.synonyms",
-		"daemon.concurrency", "daemon.max_file_size", "daemon.debounce", "daemon.max_content_chars",
-		"server.port", "server.projector_interval", "server.projector_batch", "server.read_timeout",
-		"server.sqlite_dsn", "server.auth_token", "server.moderation_enabled",
-		"embedding.model", "embedding.dimensions", "embedding.cache_size",
-		"output.format", "output.color", "output.verbose",
-		"enricher.git_intent.enabled", "enricher.git_intent.max_commits",
-		"enricher.change_velocity.enabled", "enricher.change_velocity.lookback_days",
-	}
-}
-
 // Load reads configuration using five-tier cascade:
 //  1. Hardcoded defaults
 //  2. User config (~/.config/mairu/config.toml)

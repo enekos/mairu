@@ -138,8 +138,6 @@ func (d *Daemon) getDescriber(filePath string) ast.LanguageDescriber {
 	return nil
 }
 
-func (d *Daemon) InitParsers() error { return nil }
-
 func (d *Daemon) SaveCache() error {
 	files := map[string]cacheEntry{}
 	for abs, fp := range d.fileFingerprints {

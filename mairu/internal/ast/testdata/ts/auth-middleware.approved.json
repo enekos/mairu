@@ -50,6 +50,6 @@
   ],
   "symbol_descriptions": {
     "fn:authenticate": "1. Assigns `req.headers.authorization` to `header`\n2. If `header` is falsy, calling `res.status(401).json` with `{ error: 'Missing token' }`; Returns\n3. Assigns calling `header.replace` with `'Bearer '`, `''` to `token`\n4. Attempts to Assigns `verify(token, process.env.JWT_SECRET!) as TokenPayload` to `payload`; assigning `payload` to `req.user`; calling `next`. If an error occurs (e), calling `res.status(403).json` with `{ error: 'Invalid token' }`",
-    "fn:requireRole": "1. Returns `function checkRole(req: Request, res: Response, next: NextFunction) {\n    if (req.user?.role !== role) {\n      res.status(403).json({ error: 'Forbidden' });\n      return;\n    }\n    next();\n  }`"
+    "fn:requireRole": "1. Returns a function"
   }
 }

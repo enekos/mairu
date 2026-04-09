@@ -2,7 +2,7 @@
 
 1. Assigns `0` to `evicted`
 2. Assigns calling `Date.now` to `now`
-3. Iterates over each `[key, entry]` in `cache`, If `now - entry.createdAt` is greater than `maxAge`, calling `cache.delete` with `key`; `evicted++`
+3. Iterates over each `[key, entry]` in `cache`, If `now - entry.createdAt` is greater than `maxAge`, calling `cache.delete` with `key`; increments `evicted`
 4. Returns `evicted`
 
 ## getOrSet (fn)

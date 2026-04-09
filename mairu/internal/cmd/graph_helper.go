@@ -89,11 +89,3 @@ func (g *LogicGraph) GetReverseDependencies() map[string][]string {
 	}
 	return reverseDeps
 }
-
-func (g *LogicGraph) GetForwardDependencies() map[string][]string {
-	deps := map[string][]string{}
-	for _, e := range g.Edges {
-		deps[e.From] = append(deps[e.From], e.To)
-	}
-	return deps
-}

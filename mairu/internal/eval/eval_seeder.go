@@ -38,16 +38,6 @@ type FixtureSpec struct {
 	Context  []ContextFixture `json:"context"`
 }
 
-func SeedEvalCases() []Case {
-	return []Case{
-		{
-			Query:    "authentication",
-			Expected: []string{"mem_1"},
-			Got:      []RetrievalResult{{ID: "mem_1", Score: 0.9}},
-		},
-	}
-}
-
 func SeedFixtures(ctx context.Context, svc *contextsrv.AppService, spec FixtureSpec) error {
 	for _, m := range spec.Memories {
 		_, err := svc.CreateMemory(contextsrv.MemoryCreateInput{

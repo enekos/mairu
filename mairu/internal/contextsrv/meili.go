@@ -40,11 +40,23 @@ func NewMeiliIndexer(host, apiKey string, embedder Embedder) *MeiliIndexer {
 func (m *MeiliIndexer) EnsureIndexes() error {
 	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols}
 	for _, idx := range indexes {
-		if _, err := m.client.CreateIndex(&meilisearch.IndexConfig{
+		task, err := m.client.CreateIndex(&meilisearch.IndexConfig{
 			Uid:        idx,
 			PrimaryKey: "id",
-		}); err != nil {
+		})
+		if err != nil {
 			return fmt.Errorf("create index %q: %w", idx, err)
+		}
+		if task != nil {
+			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
+		}
+		filterable := []interface{}{"project", "uri", "category", "owner"}
+		task, err = m.client.Index(idx).UpdateFilterableAttributes(&filterable)
+		if err != nil {
+			return fmt.Errorf("update filterable attributes for %q: %w", idx, err)
+		}
+		if task != nil {
+			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
 		}
 	}
 	return nil

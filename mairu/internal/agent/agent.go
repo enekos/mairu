@@ -555,7 +555,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 				Task:    task,
 			})
 
-			subOut := make(chan AgentEvent)
+			subOut := make(chan AgentEvent, 100)
 			go subAgent.RunStream(fullTask, subOut)
 
 			var subResult string
@@ -651,7 +651,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 }
 
 func (a *Agent) Run(prompt string) (string, error) {
-	outChan := make(chan AgentEvent)
+	outChan := make(chan AgentEvent, 100)
 	go a.RunStream(prompt, outChan)
 
 	var result string

@@ -163,8 +163,3 @@ func (w *Writer) Flush(ctx context.Context) (BatchResult, error) {
 	}
 	return w.indexer.BulkIndex(ctx, ops)
 }
-
-func (w *Writer) Shutdown(ctx context.Context) error {
-	_, err := w.Flush(ctx)
-	return err
-}

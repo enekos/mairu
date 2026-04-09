@@ -259,7 +259,13 @@ func parseTypeScript(source string) FileGraph {
 		fileSummary = "Empty or declaration-free source file."
 	} else {
 		var kindParts []string
-		for k, c := range kindCounts {
+		var kinds []string
+		for k := range kindCounts {
+			kinds = append(kinds, k)
+		}
+		sort.Strings(kinds)
+		for _, k := range kinds {
+			c := kindCounts[k]
 			plural := ""
 			if c > 1 {
 				plural = "s"

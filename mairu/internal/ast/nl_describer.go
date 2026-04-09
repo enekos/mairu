@@ -461,6 +461,13 @@ func describeExpression(node *sitter.Node, source []byte) string {
 		return ""
 	}
 
+	if node.Type() == "yield_expression" {
+		if node.NamedChildCount() > 0 {
+			return fmt.Sprintf("yields %s", describeExpression(node.NamedChild(0), source))
+		}
+		return "yields"
+	}
+
 	if node.Type() == "await_expression" {
 		if node.NamedChildCount() > 0 {
 			return fmt.Sprintf("awaits %s", describeExpression(node.NamedChild(0), source))
@@ -542,6 +549,36 @@ func describeExpression(node *sitter.Node, source []byte) string {
 			opWord = val
 		}
 		return fmt.Sprintf("%s %s %s", describeExpression(left, source), opWord, describeExpression(right, source))
+	}
+
+	if node.Type() == "update_expression" {
+		arg := node.ChildByFieldName("argument")
+		argText := ""
+		if arg != nil {
+			argText = arg.Content(source)
+		} else {
+			argText = "value"
+		}
+
+		content := node.Content(source)
+		if strings.Contains(content, "++") {
+			return fmt.Sprintf("increments `%s`", argText)
+		}
+		if strings.Contains(content, "--") {
+			return fmt.Sprintf("decrements `%s`", argText)
+		}
+	}
+
+	if node.Type() == "array" {
+		return fmt.Sprintf("an array with %d elements", node.NamedChildCount())
+	}
+
+	if node.Type() == "object" {
+		return fmt.Sprintf("an object with %d properties", node.NamedChildCount())
+	}
+
+	if node.Type() == "arrow_function" || node.Type() == "function_expression" {
+		return "a function"
 	}
 
 	if node.Type() == "template_string" {

@@ -65,6 +65,10 @@ func TestApprovedRetrieval(t *testing.T) {
 
 	indexer := contextsrv.NewMeiliIndexer(host, apiKey, nil)
 
+	if err := indexer.EnsureIndexes(); err != nil {
+		t.Fatalf("EnsureIndexes failed: %v", err)
+	}
+
 	// Skip gracefully if Meilisearch is not reachable.
 	if stats := indexer.ClusterStats(); stats == nil {
 		t.Skip("Meilisearch not reachable — set MEILI_URL or start Meilisearch to run integration tests")
@@ -232,6 +236,9 @@ func waitForIndexed(t *testing.T, indexer *contextsrv.MeiliIndexer, project stri
 			})
 			if err == nil && len(extractItems(res, domain)) > 0 {
 				break
+			}
+			if err != nil {
+				t.Logf("wait search error (%s): %v", domain, err)
 			}
 			select {
 			case <-ctx.Done():

@@ -62,6 +62,30 @@
       }
     },
     {
+      "type": "memory",
+      "payload": {
+        "id": "eval-mem-scraper-1",
+        "project": "eval-approved-test",
+        "content": "The web scraper uses Puppeteer for dynamic pages and cheerio for static HTML. Rate limiting is set to 1 request per second.",
+        "category": "architecture",
+        "owner": "agent",
+        "importance": 8,
+        "created_at": "2024-06-02T12:00:00Z"
+      }
+    },
+    {
+      "type": "memory",
+      "payload": {
+        "id": "eval-mem-scraper-2",
+        "project": "eval-approved-test",
+        "content": "Use Markdown extraction when scraping documentation pages. Convert all code blocks to properly fenced markdown blocks.",
+        "category": "practice",
+        "owner": "agent",
+        "importance": 5,
+        "created_at": "2024-06-02T13:00:00Z"
+      }
+    },
+    {
       "type": "skill",
       "payload": {
         "id": "eval-skill-auth-1",
@@ -151,6 +175,13 @@
       "query": "authentication architecture",
       "top_k": 5,
       "expected": ["contextfs://eval-approved-test/backend/auth", "contextfs://eval-approved-test/backend"]
+    },
+    {
+      "id": "scraper-mem",
+      "domain": "memory",
+      "query": "web page scraping dynamic content puppeteer markdown",
+      "top_k": 5,
+      "expected": ["eval-mem-scraper-1", "eval-mem-scraper-2"]
     }
   ]
 }

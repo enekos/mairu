@@ -1,0 +1,63 @@
+{
+  "file_summary": "Go file with 5 symbols.",
+  "symbols": [
+    {
+      "ID": "fn:MakeClosure",
+      "Name": "MakeClosure",
+      "Kind": "fn",
+      "Exported": true,
+      "Doc": "",
+      "Line": 28,
+      "Signature": "",
+      "ControlFlow": "return -\u003e calls ProcessFunc"
+    },
+    {
+      "ID": "mtd:ComplexType[T].DoSomething",
+      "Name": "ComplexType[T].DoSomething",
+      "Kind": "mtd",
+      "Exported": true,
+      "Doc": "",
+      "Line": 23,
+      "Signature": "",
+      "ControlFlow": "calls fmt.Println"
+    },
+    {
+      "ID": "type:ComplexType",
+      "Name": "ComplexType",
+      "Kind": "type",
+      "Exported": true,
+      "Doc": "",
+      "Line": 6,
+      "Signature": "",
+      "ControlFlow": ""
+    },
+    {
+      "ID": "type:Processor",
+      "Name": "Processor",
+      "Kind": "type",
+      "Exported": true,
+      "Doc": "",
+      "Line": 13,
+      "Signature": "",
+      "ControlFlow": ""
+    },
+    {
+      "ID": "type:StringMap",
+      "Name": "StringMap",
+      "Kind": "type",
+      "Exported": true,
+      "Doc": "",
+      "Line": 10,
+      "Signature": "",
+      "ControlFlow": ""
+    }
+  ],
+  "edges": [],
+  "imports": [
+    "fmt"
+  ],
+  "symbol_descriptions": {
+    "fn:MakeClosure": "Describes MakeClosure",
+    "mtd:ComplexType[T].DoSomething": "Describes ComplexType[T].DoSomething"
+  }
+}

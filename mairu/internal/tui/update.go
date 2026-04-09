@@ -968,7 +968,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.currentResponse = ""
 			m.toolEvents = nil
 
-			m.activeStream = make(chan agent.AgentEvent)
+			m.activeStream = make(chan agent.AgentEvent, 100)
 			go m.agent.RunStream(v, m.activeStream)
 
 			cmds = append(cmds, waitForStream(m.activeStream))
@@ -978,11 +978,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Type == "done" {
 			m.thinking = false
 			m.clearThinkingIndicator()
+
+			// If there's no text response but there are tool events,
+			// expand them by default so the user can see what the agent did.
+			expanded := false
+			if strings.TrimSpace(m.currentResponse) == "" && len(m.toolEvents) > 0 {
+				expanded = true
+			}
+
 			m.messages = append(m.messages, ChatMessage{
 				Role:       "Mairu",
 				Content:    m.currentResponse,
 				ToolEvents: m.toolEvents,
-				Expanded:   false,
+				Expanded:   expanded,
 			})
 			m.currentResponse = ""
 			m.currentBashOutput = ""
@@ -1054,6 +1062,24 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if msg.Type == "error" {
 			m.thinking = false
 			m.clearThinkingIndicator()
+
+			// Append the partial response before the error so it's not lost
+			if strings.TrimSpace(m.currentResponse) != "" || len(m.toolEvents) > 0 {
+				expanded := false
+				if strings.TrimSpace(m.currentResponse) == "" && len(m.toolEvents) > 0 {
+					expanded = true
+				}
+				m.messages = append(m.messages, ChatMessage{
+					Role:       "Mairu",
+					Content:    m.currentResponse,
+					ToolEvents: m.toolEvents,
+					Expanded:   expanded,
+				})
+			}
+			m.currentResponse = ""
+			m.currentBashOutput = ""
+			m.toolEvents = nil
+
 			m.messages = append(m.messages, ChatMessage{Role: "Error", Content: msg.Content})
 			m.activeStream = nil
 			m.pushInternalLog("error", "Agent stream error", msg.Content)

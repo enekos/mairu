@@ -1,0 +1,42 @@
+{
+  "file_summary": "File containing 3 exported symbols (3 fns): exampleIfElse, exampleSwitch, exampleLoops.",
+  "symbols": [
+    {
+      "ID": "fn:exampleIfElse",
+      "Name": "exampleIfElse",
+      "Kind": "fn",
+      "Exported": true,
+      "Doc": "",
+      "Line": 1,
+      "Signature": "",
+      "ControlFlow": "if -\u003e calls console.log -\u003e if -\u003e calls console.log"
+    },
+    {
+      "ID": "fn:exampleLoops",
+      "Name": "exampleLoops",
+      "Kind": "fn",
+      "Exported": true,
+      "Doc": "",
+      "Line": 23,
+      "Signature": "",
+      "ControlFlow": "loop -\u003e calls console.log -\u003e loop -\u003e calls console.log"
+    },
+    {
+      "ID": "fn:exampleSwitch",
+      "Name": "exampleSwitch",
+      "Kind": "fn",
+      "Exported": true,
+      "Doc": "",
+      "Line": 11,
+      "Signature": "",
+      "ControlFlow": "switch -\u003e calls console.log -\u003e return -\u003e throw"
+    }
+  ],
+  "edges": [],
+  "imports": [],
+  "symbol_descriptions": {
+    "fn:exampleIfElse": "1. If `x` is greater than `10`, calling `console.log` with `\"greater\"`. Otherwise, If `x` equals `10`, calling `console.log` with `\"equal\"`. Otherwise, calling `console.log` with `\"less\"`",
+    "fn:exampleLoops": "1. Loops with let i = 0; while i \u003c 5; i++: calling `console.log` with `i`\n2. Assigns `0` to `j`\n3. Loops while `j \u003c 5`: increments `j`\n4. Iterates over each `k` in `[1, 2, 3]`, calling `console.log` with `k`",
+    "fn:exampleSwitch": "1. Based on `val`: case \"A\": calling `console.log` with `\"A\"`; `break;`, case \"B\": Returns `1`, default: Throws a `Error` with message `\"unknown\"`"
+  }
+}

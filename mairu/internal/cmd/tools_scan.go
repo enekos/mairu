@@ -15,28 +15,42 @@ import (
 
 var scanBudget int
 var scanContext int
+var scanBeforeContext int
+var scanAfterContext int
 var scanExtensions string
 var scanLimit int
+var scanMaxCount int
 var scanIgnoreCase bool
 var scanFilesOnly bool
+var scanFilesWithoutMatch bool
 var scanHeading bool
 var scanExclude string
 var scanGroup bool
 var scanInvert bool
 var scanMulti string
+var scanWordRegexp bool
+var scanFixedStrings bool
+var scanHidden bool
 
 func init() {
 	scanCmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
 	scanCmd.Flags().IntVarP(&scanContext, "context", "C", 0, "Number of context lines around match")
+	scanCmd.Flags().IntVarP(&scanBeforeContext, "before-context", "B", 0, "Number of context lines before match")
+	scanCmd.Flags().IntVarP(&scanAfterContext, "after-context", "A", 0, "Number of context lines after match")
 	scanCmd.Flags().StringVarP(&scanExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
 	scanCmd.Flags().IntVarP(&scanLimit, "limit", "n", 0, "Max number of matches to return (0 = unlimited)")
+	scanCmd.Flags().IntVarP(&scanMaxCount, "max-count", "m", 0, "Max number of matches per file (0 = unlimited)")
 	scanCmd.Flags().BoolVarP(&scanIgnoreCase, "ignore-case", "i", false, "Case-insensitive search")
 	scanCmd.Flags().BoolVarP(&scanFilesOnly, "files-with-matches", "l", false, "Only print matching filenames")
+	scanCmd.Flags().BoolVarP(&scanFilesWithoutMatch, "files-without-match", "L", false, "Only print filenames that contain no matches")
 	scanCmd.Flags().BoolVarP(&scanHeading, "heading", "H", false, "Attempt to find nearest function/class heading above match")
 	scanCmd.Flags().StringVarP(&scanExclude, "exclude", "x", "", "Comma-separated glob patterns to exclude (e.g. vendor/*,*_test.go)")
 	scanCmd.Flags().BoolVarP(&scanGroup, "group", "g", false, "Group matches by file")
 	scanCmd.Flags().BoolVarP(&scanInvert, "invert", "v", false, "Invert match (select non-matching lines)")
-	scanCmd.Flags().StringVarP(&scanMulti, "multi", "m", "", "Additional patterns that must ALL match in the file (comma-separated, AND logic)")
+	scanCmd.Flags().StringVar(&scanMulti, "multi", "", "Additional patterns that must ALL match in the file (comma-separated, AND logic)")
+	scanCmd.Flags().BoolVarP(&scanWordRegexp, "word-regexp", "w", false, "Only match whole words")
+	scanCmd.Flags().BoolVarP(&scanFixedStrings, "fixed-strings", "F", false, "Treat pattern as a literal string instead of a regular expression")
+	scanCmd.Flags().BoolVar(&scanHidden, "hidden", false, "Search hidden files and directories")
 }
 
 type scanMatch struct {
@@ -72,6 +86,12 @@ var scanCmd = &cobra.Command{
 			dir = args[1]
 		}
 
+		if scanFixedStrings {
+			pattern = regexp.QuoteMeta(pattern)
+		}
+		if scanWordRegexp {
+			pattern = "\\b" + pattern + "\\b"
+		}
 		if scanIgnoreCase {
 			pattern = "(?i)" + pattern
 		}
@@ -86,6 +106,12 @@ var scanCmd = &cobra.Command{
 		if scanMulti != "" {
 			for _, p := range strings.Split(scanMulti, ",") {
 				p = strings.TrimSpace(p)
+				if scanFixedStrings {
+					p = regexp.QuoteMeta(p)
+				}
+				if scanWordRegexp {
+					p = "\\b" + p + "\\b"
+				}
 				if scanIgnoreCase {
 					p = "(?i)" + p
 				}
@@ -138,6 +164,15 @@ var scanCmd = &cobra.Command{
 		var currentBytes int
 		maxBytes := scanBudget * 4
 
+		var beforeContext, afterContext int
+		if scanContext > 0 {
+			beforeContext = scanContext
+			afterContext = scanContext
+		} else {
+			beforeContext = scanBeforeContext
+			afterContext = scanAfterContext
+		}
+
 		filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 			if err != nil {
 				return nil
@@ -147,6 +182,14 @@ var scanCmd = &cobra.Command{
 			}
 
 			rel, _ := filepath.Rel(dir, path)
+
+			if !scanHidden && strings.HasPrefix(d.Name(), ".") && d.Name() != "." && d.Name() != ".." {
+				if d.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
 			if rel == ".git" || rel == "node_modules" {
 				return filepath.SkipDir
 			}
@@ -200,6 +243,7 @@ var scanCmd = &cobra.Command{
 				lines := strings.Split(string(content), "\n")
 				var lastMatchEndIdx int = -1
 				fileHasMatch := false
+				fileMatchCount := 0
 
 				for i, line := range lines {
 					matched := re.MatchString(line)
@@ -207,13 +251,21 @@ var scanCmd = &cobra.Command{
 						matched = !matched
 					}
 					if matched {
+						fileHasMatch = true
+						fileMatchCount++
+
+						if scanFilesWithoutMatch {
+							break
+						}
+
 						if scanFilesOnly {
-							if !fileHasMatch {
-								res.Files = append(res.Files, rel)
-								res.Total++
-								fileHasMatch = true
-							}
-							break // Skip the rest of this file since we just need the filename
+							res.Files = append(res.Files, rel)
+							res.Total++
+							break
+						}
+
+						if scanMaxCount > 0 && fileMatchCount > scanMaxCount {
+							break
 						}
 
 						res.Total++
@@ -225,7 +277,7 @@ var scanCmd = &cobra.Command{
 							continue
 						}
 
-						startIdx := i - scanContext
+						startIdx := i - beforeContext
 						if startIdx < 0 {
 							startIdx = 0
 						}
@@ -238,7 +290,7 @@ var scanCmd = &cobra.Command{
 							continue
 						}
 
-						endIdx := i + scanContext
+						endIdx := i + afterContext
 						if endIdx >= len(lines) {
 							endIdx = len(lines) - 1
 						}
@@ -289,6 +341,11 @@ var scanCmd = &cobra.Command{
 						res.Matches = append(res.Matches, match)
 					}
 				}
+
+				if scanFilesWithoutMatch && !fileHasMatch {
+					res.Files = append(res.Files, rel)
+					res.Total++
+				}
 			}
 			return nil
 		})
@@ -320,7 +377,7 @@ var scanCmd = &cobra.Command{
 				fmt.Printf("Warning: Match limit hit (%d matches).\n", scanLimit)
 			}
 
-			if scanFilesOnly {
+			if scanFilesOnly || scanFilesWithoutMatch {
 				var files []string
 				seen := make(map[string]bool)
 				for _, f := range res.Files {

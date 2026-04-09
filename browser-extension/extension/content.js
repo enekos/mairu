@@ -75,19 +75,18 @@
     if (!el || el.nodeType !== 1) return '';
     let path = [];
     while (el && el.nodeType === 1) {
-      let selector = el.localName;
       if (el.id) {
-        selector += '#' + el.id;
-        path.unshift(selector);
+        path.unshift('#' + el.id);
         break;
       } else {
+        let selector = el.localName;
         let sib = el, nth = 1;
         while (sib = sib.previousElementSibling) {
-          if (sib.localName === el.localName) nth++;
+           if (sib.localName === el.localName) nth++;
         }
         if (nth !== 1) selector += ":nth-of-type(" + nth + ")";
+        path.unshift(selector);
       }
-      path.unshift(selector);
       el = el.parentNode;
     }
     return path.join(' > ');
@@ -105,6 +104,11 @@
       if (node.nodeType !== Node.ELEMENT_NODE) return '';
 
       const tag = node.localName;
+      
+      // Skip serializing contents of these tags to save payload size
+      if (tag === 'script' || tag === 'style' || tag === 'svg' || tag === 'noscript') {
+        return `<${tag}></${tag}>`;
+      }
       
       // Inline sync for inputs, textareas, selects (handles shadow DOM automatically)
       if (tag === 'input' || tag === 'textarea' || tag === 'select') {
