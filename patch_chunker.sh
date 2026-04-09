@@ -1,1 +1,0 @@
-sed -i '' 's/let end = (start + max_chars).min(text.len());/let mut end = (start + max_chars).min(text.len());\n        while end < text.len() \&\& !text.is_char_boundary(end) {\n            end -= 1;\n        }/' browser-extension/crates/core/src/chunker.rs
