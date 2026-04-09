@@ -86,26 +86,7 @@ func (a *Agent) FindFiles(pattern string) (string, error) {
 	return strings.Join(matches, "\n"), nil
 }
 
-// SearchCodebase runs ripgrep (if available) or standard grep.
+// SearchCodebase runs a fast concurrent semantic search in Go.
 func (a *Agent) SearchCodebase(query string) (string, error) {
-	// Let's try ripgrep first as it's much faster
-	cmd := exec.Command("rg", "-n", query)
-	cmd.Dir = a.root
-
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		// If ripgrep fails, maybe it's not installed. Fallback to our concurrent Go search.
-		return a.fallbackSearch(query)
-	}
-
-	res := StripANSI(string(out))
-	if len(res) > 10000 {
-		res = res[:10000] + "\n...[Output truncated, too many matches]"
-	}
-
-	if res == "" {
-		return "No matches found.", nil
-	}
-
-	return res, nil
+	return a.fallbackSearch(query)
 }

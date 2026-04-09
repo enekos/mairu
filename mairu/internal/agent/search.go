@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/charlievieth/fastwalk"
 	ignore "github.com/sabhiram/go-gitignore"
 )
 
@@ -109,7 +110,7 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 		}()
 	}
 
-	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+	err := fastwalk.Walk(nil, root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return nil
 		}
@@ -124,10 +125,10 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 
 		if d.IsDir() {
 			if defaultIgnores[d.Name()] {
-				return fs.SkipDir
+				return filepath.SkipDir
 			}
 			if ignorer != nil && ignorer.MatchesPath(rel+"/") {
-				return fs.SkipDir
+				return filepath.SkipDir
 			}
 			return nil
 		}

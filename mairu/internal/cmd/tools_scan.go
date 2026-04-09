@@ -1,14 +1,20 @@
 package cmd
 
 import (
+	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
+	"sync"
+	"sync/atomic"
 
+	"github.com/charlievieth/fastwalk"
 	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
 )
@@ -24,6 +30,10 @@ var scanExclude string
 var scanGroup bool
 var scanInvert bool
 var scanMulti string
+var scanFixedStrings bool
+var scanSmartCase bool
+var scanWordRegexp bool
+var scanOnlyMatching bool
 
 func init() {
 	scanCmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
@@ -37,11 +47,16 @@ func init() {
 	scanCmd.Flags().BoolVarP(&scanGroup, "group", "g", false, "Group matches by file")
 	scanCmd.Flags().BoolVarP(&scanInvert, "invert", "v", false, "Invert match (select non-matching lines)")
 	scanCmd.Flags().StringVarP(&scanMulti, "multi", "m", "", "Additional patterns that must ALL match in the file (comma-separated, AND logic)")
+	scanCmd.Flags().BoolVarP(&scanFixedStrings, "fixed-strings", "F", false, "Treat the pattern as a literal string instead of a regular expression")
+	scanCmd.Flags().BoolVarP(&scanSmartCase, "smart-case", "S", false, "Search case insensitively if the pattern is all lowercase, case sensitively otherwise")
+	scanCmd.Flags().BoolVarP(&scanWordRegexp, "word-regexp", "w", false, "Only show matches surrounded by word boundaries")
+	scanCmd.Flags().BoolVarP(&scanOnlyMatching, "only-matching", "O", false, "Print only the matched (non-empty) parts of a matching line")
 }
 
 type scanMatch struct {
 	F       string `json:"f"`
 	L       int    `json:"l,omitempty"`
+	EndL    int    `json:"end_l,omitempty"`
 	C       string `json:"c,omitempty"`
 	Heading string `json:"heading,omitempty"`
 }
@@ -72,6 +87,27 @@ var scanCmd = &cobra.Command{
 			dir = args[1]
 		}
 
+		if scanSmartCase {
+			hasUppercase := false
+			for _, r := range pattern {
+				if r >= 'A' && r <= 'Z' {
+					hasUppercase = true
+					break
+				}
+			}
+			if !hasUppercase {
+				scanIgnoreCase = true
+			}
+		}
+
+		if scanFixedStrings {
+			pattern = regexp.QuoteMeta(pattern)
+		}
+
+		if scanWordRegexp {
+			pattern = `\b` + pattern + `\b`
+		}
+
 		if scanIgnoreCase {
 			pattern = "(?i)" + pattern
 		}
@@ -86,7 +122,26 @@ var scanCmd = &cobra.Command{
 		if scanMulti != "" {
 			for _, p := range strings.Split(scanMulti, ",") {
 				p = strings.TrimSpace(p)
-				if scanIgnoreCase {
+
+				if scanFixedStrings {
+					p = regexp.QuoteMeta(p)
+				}
+				if scanWordRegexp {
+					p = `\b` + p + `\b`
+				}
+
+				if scanSmartCase {
+					hasUppercase := false
+					for _, r := range p {
+						if r >= 'A' && r <= 'Z' {
+							hasUppercase = true
+							break
+						}
+					}
+					if !hasUppercase {
+						p = "(?i)" + p
+					}
+				} else if scanIgnoreCase {
 					p = "(?i)" + p
 				}
 				mre, err := regexp.Compile(p)
@@ -98,8 +153,6 @@ var scanCmd = &cobra.Command{
 			}
 		}
 
-		// Pre-compile heading regex if needed
-		// This matches typical top-level declarations like `func ...`, `class ...`, `export const ...`
 		var headingRe *regexp.Regexp
 		if scanHeading {
 			headingRe = regexp.MustCompile(`^(?:export\s+|public\s+|private\s+|protected\s+)?(?:func|class|type|interface|def|const|let|var)\b|^\s*[a-zA-Z_]\w*\s*\(|^\s*type\s+`)
@@ -135,13 +188,251 @@ var scanCmd = &cobra.Command{
 			res.Files = []string{}
 		}
 
-		var currentBytes int
-		maxBytes := scanBudget * 4
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return nil
+		var currentBytes int32
+		maxBytes := int32(scanBudget * 4)
+
+		type fileJob struct {
+			path string
+			rel  string
+		}
+
+		jobs := make(chan fileJob, 1024)
+		results := make(chan interface{}, 1024)
+
+		var wg sync.WaitGroup
+		numWorkers := runtime.NumCPU()
+
+		// Start workers
+		for i := 0; i < numWorkers; i++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for job := range jobs {
+					if ctx.Err() != nil {
+						return
+					}
+
+					if len(multiRes) > 0 {
+						content, err := os.ReadFile(job.path)
+						if err != nil {
+							continue
+						}
+						allMatch := true
+						for _, mre := range multiRes {
+							if !mre.Match(content) {
+								allMatch = false
+								break
+							}
+						}
+						if !allMatch {
+							continue
+						}
+					}
+
+					file, err := os.Open(job.path)
+					if err != nil {
+						continue
+					}
+
+					scanner := bufio.NewScanner(file)
+
+					var currentHeading string
+					var ringBuffer []string
+					if scanContext > 0 {
+						ringBuffer = make([]string, 0, scanContext)
+					}
+
+					lineNum := 0
+
+					type activeHunk struct {
+						startL  int
+						endL    int
+						lines   []string
+						heading string
+						matched bool
+					}
+					var hunk *activeHunk
+
+					fileHasMatch := false
+
+					for scanner.Scan() {
+						if ctx.Err() != nil {
+							break
+						}
+						lineNum++
+						lineText := scanner.Text()
+						cleanLine := strings.ReplaceAll(lineText, "\t", "  ")
+
+						if scanHeading {
+							if headingRe.MatchString(cleanLine) || (len(cleanLine) > 0 && (cleanLine[0] != ' ' && cleanLine[0] != '/' && cleanLine[0] != '#')) {
+								h := strings.TrimSpace(cleanLine)
+								if len(h) > 80 {
+									h = h[:77] + "..."
+								}
+								currentHeading = h
+							}
+						}
+
+						matched := re.MatchString(cleanLine)
+						if scanInvert {
+							matched = !matched
+						}
+
+						if matched {
+							if scanOnlyMatching {
+								if scanInvert {
+									// -o with -v does not make sense conceptually (ripgrep handles this by taking -v precedence or skipping)
+									// Let's just output the whole line if inverted
+								} else {
+									matches := re.FindAllString(cleanLine, -1)
+									if len(matches) > 0 {
+										cleanLine = strings.Join(matches, "\n")
+									}
+								}
+							}
+
+							if scanFilesOnly {
+								if !fileHasMatch {
+									results <- job.rel
+									fileHasMatch = true
+								}
+								break
+							}
+
+							if hunk == nil {
+								// start new hunk
+								hunk = &activeHunk{
+									startL:  lineNum - len(ringBuffer),
+									endL:    lineNum + scanContext,
+									lines:   append([]string(nil), ringBuffer...),
+									heading: currentHeading,
+								}
+								if hunk.startL < 1 {
+									hunk.startL = 1
+								}
+							} else {
+								// extend hunk
+								hunk.endL = lineNum + scanContext
+							}
+							hunk.matched = true
+						}
+
+						if hunk != nil {
+							if lineNum <= hunk.endL {
+								hunk.lines = append(hunk.lines, cleanLine)
+							}
+
+							if lineNum == hunk.endL {
+								if ctx.Err() != nil {
+									break
+								}
+								joined := strings.Join(hunk.lines, "\n")
+								matchBytes := int32(len(job.rel) + len(joined) + len(hunk.heading) + 30)
+
+								if atomic.AddInt32(&currentBytes, matchBytes) > maxBytes {
+									if ctx.Err() == nil {
+										results <- fmt.Errorf("budget hit")
+										cancel()
+									}
+									break
+								}
+
+								select {
+								case results <- scanMatch{
+									F:       job.rel,
+									L:       hunk.startL,
+									EndL:    hunk.endL,
+									C:       joined,
+									Heading: hunk.heading,
+								}:
+								case <-ctx.Done():
+								}
+								hunk = nil
+							}
+						}
+
+						if scanContext > 0 {
+							ringBuffer = append(ringBuffer, cleanLine)
+							if len(ringBuffer) > scanContext {
+								ringBuffer = ringBuffer[1:]
+							}
+						}
+					}
+
+					// emit trailing hunk if EOF reached
+					if hunk != nil && hunk.matched && !scanFilesOnly && ctx.Err() == nil {
+						joined := strings.Join(hunk.lines, "\n")
+						matchBytes := int32(len(job.rel) + len(joined) + len(hunk.heading) + 30)
+
+						if atomic.AddInt32(&currentBytes, matchBytes) > maxBytes {
+							if ctx.Err() == nil {
+								results <- fmt.Errorf("budget hit")
+								cancel()
+							}
+						} else {
+							select {
+							case results <- scanMatch{
+								F:       job.rel,
+								L:       hunk.startL,
+								EndL:    hunk.startL + len(hunk.lines) - 1,
+								C:       joined,
+								Heading: hunk.heading,
+							}:
+							case <-ctx.Done():
+							}
+						}
+					}
+
+					file.Close()
+				}
+			}()
+		}
+
+		// Result collector
+		var collectorWg sync.WaitGroup
+		collectorWg.Add(1)
+		go func() {
+			defer collectorWg.Done()
+			seenFiles := make(map[string]bool)
+			for r := range results {
+				switch v := r.(type) {
+				case error:
+					if !res.LimitHit {
+						res.BudgetHit = true
+					}
+				case string:
+					if !seenFiles[v] {
+						res.Files = append(res.Files, v)
+						res.Total++
+						seenFiles[v] = true
+						if scanLimit > 0 && res.Total >= scanLimit {
+							res.LimitHit = true
+							cancel()
+						}
+					}
+				case scanMatch:
+					if scanLimit > 0 && res.Total >= scanLimit {
+						if !res.LimitHit {
+							res.LimitHit = true
+							cancel()
+						}
+						continue
+					}
+					res.Matches = append(res.Matches, v)
+					res.Total++
+				}
 			}
+		}()
+
+		// Walk dir
+		fastwalk.Walk(nil, dir, func(path string, d fs.DirEntry, err error) error {
+			if ctx.Err() != nil {
+				return filepath.SkipDir
+			}
+
 			if path == dir {
 				return nil
 			}
@@ -179,119 +470,19 @@ var scanCmd = &cobra.Command{
 					return nil
 				}
 
-				content, err := os.ReadFile(path)
-				if err != nil {
-					return nil
-				}
-
-				if len(multiRes) > 0 {
-					allMatch := true
-					for _, mre := range multiRes {
-						if !mre.Match(content) {
-							allMatch = false
-							break
-						}
-					}
-					if !allMatch {
-						return nil
-					}
-				}
-
-				lines := strings.Split(string(content), "\n")
-				var lastMatchEndIdx int = -1
-				fileHasMatch := false
-
-				for i, line := range lines {
-					matched := re.MatchString(line)
-					if scanInvert {
-						matched = !matched
-					}
-					if matched {
-						if scanFilesOnly {
-							if !fileHasMatch {
-								res.Files = append(res.Files, rel)
-								res.Total++
-								fileHasMatch = true
-							}
-							break // Skip the rest of this file since we just need the filename
-						}
-
-						res.Total++
-
-						if (scanLimit > 0 && len(res.Matches) >= scanLimit) || res.BudgetHit {
-							if !res.LimitHit && len(res.Matches) >= scanLimit {
-								res.LimitHit = true
-							}
-							continue
-						}
-
-						startIdx := i - scanContext
-						if startIdx < 0 {
-							startIdx = 0
-						}
-
-						if startIdx <= lastMatchEndIdx {
-							startIdx = lastMatchEndIdx + 1
-						}
-
-						if startIdx > i {
-							continue
-						}
-
-						endIdx := i + scanContext
-						if endIdx >= len(lines) {
-							endIdx = len(lines) - 1
-						}
-
-						lastMatchEndIdx = endIdx
-
-						var snippet []string
-						for j := startIdx; j <= endIdx; j++ {
-							cleanLine := strings.ReplaceAll(lines[j], "\t", "  ")
-							snippet = append(snippet, cleanLine)
-						}
-						joined := strings.Join(snippet, "\n")
-
-						// Extract Heading if requested
-						foundHeading := ""
-						if scanHeading {
-							for k := i; k >= 0; k-- {
-								hLine := lines[k]
-								// Fast check: look for our regex match, or a line with zero indentation that's not empty
-								if headingRe.MatchString(hLine) || (len(hLine) > 0 && (hLine[0] != ' ' && hLine[0] != '\t' && hLine[0] != '/' && hLine[0] != '#')) {
-									foundHeading = strings.TrimSpace(hLine)
-									// truncate if insanely long
-									if len(foundHeading) > 80 {
-										foundHeading = foundHeading[:77] + "..."
-									}
-									break
-								}
-							}
-						}
-
-						matchBytes := len(rel) + len(joined) + len(foundHeading) + 30
-
-						if currentBytes+matchBytes > maxBytes {
-							res.BudgetHit = true
-							continue
-						}
-						currentBytes += matchBytes
-
-						match := scanMatch{
-							F: rel,
-							L: i + 1,
-							C: joined,
-						}
-						if scanHeading && foundHeading != "" {
-							match.Heading = foundHeading
-						}
-
-						res.Matches = append(res.Matches, match)
-					}
+				select {
+				case jobs <- fileJob{path: path, rel: rel}:
+				case <-ctx.Done():
+					return filepath.SkipDir
 				}
 			}
 			return nil
 		})
+
+		close(jobs)
+		wg.Wait()
+		close(results)
+		collectorWg.Wait()
 
 		if outputFormat == "json" {
 			if scanGroup {
@@ -302,8 +493,7 @@ var scanCmd = &cobra.Command{
 					Grouped:   make(map[string][]scanMatch),
 				}
 				for _, m := range res.Matches {
-					inner := scanMatch{L: m.L, C: m.C, Heading: m.Heading}
-					grouped.Grouped[m.F] = append(grouped.Grouped[m.F], inner)
+					grouped.Grouped[m.F] = append(grouped.Grouped[m.F], m)
 				}
 				out, _ := json.Marshal(grouped)
 				fmt.Println(string(out))
