@@ -304,6 +304,9 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 				// Inject warning into the last tool result so the LLM sees it
 				// alongside the function responses.
 				lastIdx := len(results) - 1
+				if results[lastIdx].Response == nil {
+					results[lastIdx].Response = make(map[string]any)
+				}
 				results[lastIdx].Response["_loop_warning"] = NudgeMessage()
 			}
 			// --- End stuck detection ---
