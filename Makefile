@@ -148,9 +148,11 @@ eval-llm-vibe:
 	./llmeval/bin/llmeval --dataset ./llmeval/mairu_vibe_mutation_eval.json --model gemini-2.5-flash
 
 build-browser-extension:
-	cd browser-extension && cargo build --release
+	cd browser-extension && cargo build --release -p browser-extension-host
+	@echo "Building WASM for browser extension... (requires wasm-pack)"
+	cd browser-extension/crates/wasm && wasm-pack build --target web --out-dir ../../extension/pkg
 
-install-browser-extension:
+install-browser-extension: build-browser-extension
 	cd browser-extension && ./install.sh
 
 test-browser-extension:

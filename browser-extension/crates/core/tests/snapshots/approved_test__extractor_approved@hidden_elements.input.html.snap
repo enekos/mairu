@@ -14,6 +14,30 @@ input_file: crates/core/tests/testdata/html/hidden_elements.input.html
     },
     {
       "kind": "paragraph",
+      "text": "Hidden via attribute",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Hidden via aria-hidden",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Hidden via display none",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Hidden via visibility hidden",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
       "text": "Another visible paragraph",
       "depth": null,
       "selector": "p"

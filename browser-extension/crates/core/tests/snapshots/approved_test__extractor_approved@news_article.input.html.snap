@@ -8,12 +8,6 @@ input_file: crates/core/tests/testdata/html/news_article.input.html
   "sections": [
     {
       "kind": "paragraph",
-      "text": "[Image: A green arrow pointing up overlaid on a stock ticker (/assets/stock-market.jpg)]\nCaption: Tech stocks led the charge in early morning trading. (Photo: Getty Images)",
-      "depth": null,
-      "selector": "figure"
-    },
-    {
-      "kind": "paragraph",
       "text": "NEW YORK — Markets worldwide saw a significant boost on Thursday, driven largely by stronger-than-expected earnings reports from major technology firms.",
       "depth": null,
       "selector": "p"

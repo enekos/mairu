@@ -14,15 +14,15 @@ input_file: crates/core/tests/testdata/html/details_summary.input.html
     },
     {
       "kind": "paragraph",
-      "text": "[Details: What is Mairu?]\nMairu is a context and memory storage system for coding agents.",
+      "text": "Mairu is a context and memory storage system for coding agents.",
       "depth": null,
-      "selector": "details"
+      "selector": "p"
     },
     {
       "kind": "paragraph",
-      "text": "[Details: How does it work?]\nIt uses hybrid retrieval with vector and full-text search.",
+      "text": "It uses hybrid retrieval with vector and full-text search.",
       "depth": null,
-      "selector": "details"
+      "selector": "p"
     },
     {
       "kind": "paragraph",

@@ -12,6 +12,7 @@ import init, {
 } from "./pkg/mairu_ext_wasm.js";
 
 let wasmReady = false;
+let currentSessionId = null;
 const MAIRU_API_URL = "http://127.0.0.1:7080"; // default mairu API port
 const SYNC_INTERVAL_MS = 10000;
 const SYNC_BATCH_SIZE = 5;
@@ -19,15 +20,15 @@ const SYNC_BATCH_SIZE = 5;
 // Initialize WASM and session
 async function initialize() {
   await init();
-  const sessionId = `session-${Date.now()}`;
-  init_session(sessionId);
+  currentSessionId = `session-${Date.now()}`;
+  init_session(currentSessionId);
   wasmReady = true;
-  console.log("[mairu-ext] WASM initialized, session:", sessionId);
+  console.log("[mairu-ext] WASM initialized, session:", currentSessionId);
 }
 
 initialize();
 
-// Handle messages from content scripts
+// Handle messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!wasmReady) return;
 
@@ -45,6 +46,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         JSON.stringify(storage_state || {})
     );
     console.log("[mairu-ext] Processed page:", url, result);
+  } else if (message.type === "get_status") {
+    const pending = get_pending_sync();
+    sendResponse({
+      sessionId: currentSessionId,
+      summary: get_session_summary(),
+      pendingCount: pending ? pending.length : 0,
+      nativeHostConnected: nativePort !== null
+    });
+  } else if (message.type === "force_sync") {
+    syncToMairu().then(() => sendResponse({ success: true }));
+    return true; // Keep message channel open for async response
   }
 });
 

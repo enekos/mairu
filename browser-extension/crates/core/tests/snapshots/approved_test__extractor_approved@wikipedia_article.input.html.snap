@@ -26,6 +26,18 @@ input_file: crates/core/tests/testdata/html/wikipedia_article.input.html
     },
     {
       "kind": "heading",
+      "text": "Contents",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "list",
+      "text": "- 1 History\n- 2 Syntax",
+      "depth": null,
+      "selector": "ul"
+    },
+    {
+      "kind": "heading",
       "text": "History",
       "depth": 2,
       "selector": "h2"

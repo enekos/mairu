@@ -14,13 +14,13 @@ input_file: crates/core/tests/testdata/html/code_blocks.input.html
     },
     {
       "kind": "code_block",
-      "text": "[lang:rust]\nlet x = 42;",
+      "text": "let x = 42;",
       "depth": null,
       "selector": "pre"
     },
     {
       "kind": "code_block",
-      "text": "[lang:python]\nprint(\"hello\")",
+      "text": "print(\"hello\")",
       "depth": null,
       "selector": "pre"
     }

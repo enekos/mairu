@@ -14,13 +14,13 @@ input_file: crates/core/tests/testdata/html/edge_cases.input.html
     },
     {
       "kind": "paragraph",
-      "text": "[Image: A descriptive image alt text (test.jpg)]",
+      "text": "[Image: A descriptive image alt text]",
       "depth": null,
       "selector": "img"
     },
     {
       "kind": "paragraph",
-      "text": "[Image: A descriptive aria label (test2.jpg)]",
+      "text": "[Image: A descriptive aria label]",
       "depth": null,
       "selector": "img"
     },

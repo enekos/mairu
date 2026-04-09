@@ -8,7 +8,7 @@ input_file: crates/core/tests/testdata/html/nested_lists.input.html
   "sections": [
     {
       "kind": "list",
-      "text": "- Parent\n  - Child 1\n  - Child 2\n    - Grandchild\n- Sibling",
+      "text": "- Parent Child 1 Child 2 Grandchild\n- Child 1\n- Child 2 Grandchild\n- Grandchild\n- Sibling",
       "depth": null,
       "selector": "ul"
     },

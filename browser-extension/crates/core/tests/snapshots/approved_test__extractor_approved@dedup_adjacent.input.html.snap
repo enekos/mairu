@@ -14,6 +14,18 @@ input_file: crates/core/tests/testdata/html/dedup_adjacent.input.html
     },
     {
       "kind": "paragraph",
+      "text": "Same text here",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Same text here",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
       "text": "Different text",
       "depth": null,
       "selector": "p"

@@ -240,6 +240,31 @@
           } else {
              sendResponse({ error: `Element not found: ${message.selector}` });
           }
+        } else if (message.command === "scroll") {
+          const el = document.querySelector(message.selector);
+          if (el) {
+             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             sendResponse({ success: true, message: `Scrolled to ${message.selector}` });
+          } else if (message.direction) {
+             const amount = message.amount || window.innerHeight * 0.8;
+             if (message.direction === "down") window.scrollBy({ top: amount, behavior: 'smooth' });
+             else if (message.direction === "up") window.scrollBy({ top: -amount, behavior: 'smooth' });
+             else if (message.direction === "top") window.scrollTo({ top: 0, behavior: 'smooth' });
+             else if (message.direction === "bottom") window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+             sendResponse({ success: true, message: `Scrolled ${message.direction}` });
+          } else {
+             sendResponse({ error: `Element not found or no direction specified` });
+          }
+        } else if (message.command === "navigate") {
+          if (message.url) {
+             window.location.href = message.url;
+             sendResponse({ success: true, message: `Navigating to ${message.url}` });
+          } else if (message.back) {
+             window.history.back();
+             sendResponse({ success: true, message: `Navigating back` });
+          } else {
+             sendResponse({ error: `No URL specified for navigation` });
+          }
         } else {
           sendResponse({ error: `Unknown execute command: ${message.command}` });
         }

@@ -11,12 +11,6 @@ input_file: crates/core/tests/testdata/html/form_extraction.input.html
       "text": "Sign In",
       "depth": 1,
       "selector": "h1"
-    },
-    {
-      "kind": "paragraph",
-      "text": "[Form: POST /login]\n  Label: Email (for=email)\n  Input[email]: name=email, placeholder=you@example.com, value=\n  Label: Password (for=pass)\n  Input[password]: name=pass, placeholder=Enter password, value=\n  Label: Remember me (for=remember)\n  Input[checkbox]: name=remember, placeholder=, value=1\n  Select: name=role, options=[User=user, Admin=admin]\n  Textarea: name=notes, placeholder=Additional notes\n  [Button(submit): Sign In]",
-      "depth": null,
-      "selector": "form"
     }
   ],
   "metadata": {

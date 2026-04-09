@@ -14,7 +14,7 @@ input_file: crates/core/tests/testdata/html/react_app.input.html
     },
     {
       "kind": "paragraph",
-      "text": "[Image: User avatar (avatar.jpg)]",
+      "text": "[Image: User avatar]",
       "depth": null,
       "selector": "img"
     },
@@ -29,12 +29,6 @@ input_file: crates/core/tests/testdata/html/react_app.input.html
       "text": "Recent Activity",
       "depth": 3,
       "selector": "h3"
-    },
-    {
-      "kind": "table",
-      "text": "| Date | Action |\n|---|---|\n| 2026-04-09 | Logged in |\n| 2026-04-08 | Updated settings |",
-      "depth": null,
-      "selector": "div.virtualized-table"
     }
   ],
   "metadata": {

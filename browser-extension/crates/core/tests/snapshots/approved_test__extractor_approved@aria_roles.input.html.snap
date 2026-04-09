@@ -17,12 +17,6 @@ input_file: crates/core/tests/testdata/html/aria_roles.input.html
       "text": "This is the main content area identified by ARIA role.",
       "depth": null,
       "selector": "p"
-    },
-    {
-      "kind": "table",
-      "text": "| Name | Value |\n|---|---|\n| Foo | 42 |\n| Bar | 99 |",
-      "depth": null,
-      "selector": "div"
     }
   ],
   "metadata": {

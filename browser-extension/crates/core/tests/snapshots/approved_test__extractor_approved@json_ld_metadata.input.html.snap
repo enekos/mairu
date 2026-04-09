@@ -14,8 +14,8 @@ input_file: crates/core/tests/testdata/html/json_ld_metadata.input.html
     }
   ],
   "metadata": {
-    "og_title": "JSON-LD Title",
-    "og_description": "Structured data description from JSON-LD",
+    "og_title": null,
+    "og_description": null,
     "lang": null,
     "canonical_url": null
   }

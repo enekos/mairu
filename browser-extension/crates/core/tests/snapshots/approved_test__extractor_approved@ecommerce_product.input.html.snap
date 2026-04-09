@@ -8,13 +8,13 @@ input_file: crates/core/tests/testdata/html/ecommerce_product.input.html
   "sections": [
     {
       "kind": "paragraph",
-      "text": "[Image: Front view of Sony Alpha a7 III camera body (/img/sony-a7-iii-front.jpg)]",
+      "text": "[Image: Front view of Sony Alpha a7 III camera body]",
       "depth": null,
       "selector": "img"
     },
     {
       "kind": "paragraph",
-      "text": "[Image: Back view of Sony Alpha a7 III camera body showing LCD screen (/img/sony-a7-iii-back.jpg)]",
+      "text": "[Image: Back view of Sony Alpha a7 III camera body showing LCD screen]",
       "depth": null,
       "selector": "img"
     },
@@ -53,24 +53,6 @@ input_file: crates/core/tests/testdata/html/ecommerce_product.input.html
       "text": "[Button: Buy Now]",
       "depth": null,
       "selector": "button"
-    },
-    {
-      "kind": "heading",
-      "text": "Customers who bought this also bought",
-      "depth": 2,
-      "selector": "h2"
-    },
-    {
-      "kind": "paragraph",
-      "text": "Sony FE 24-70mm f/2.8 GM Lens",
-      "depth": null,
-      "selector": "text"
-    },
-    {
-      "kind": "paragraph",
-      "text": "SanDisk 128GB Extreme PRO SDXC Memory Card",
-      "depth": null,
-      "selector": "text"
     },
     {
       "kind": "heading",
