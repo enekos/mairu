@@ -39,7 +39,10 @@ type ToolSignature struct {
 }
 
 func NewToolSignature(name string, args map[string]any) ToolSignature {
-	raw, _ := json.Marshal(args)
+	raw, err := json.Marshal(args)
+	if err != nil {
+		panic(fmt.Sprintf("stuck_detector: cannot marshal args for tool %q: %v", name, err))
+	}
 	h := sha256.Sum256(raw)
 	return ToolSignature{Name: name, ArgsHash: fmt.Sprintf("%x", h)}
 }

@@ -1,13 +1,11 @@
 package agent
 
 import (
-	"encoding/json"
 	"testing"
 )
 
 func sig(name string, args map[string]any) ToolSignature {
-	raw, _ := json.Marshal(args)
-	return ToolSignature{Name: name, ArgsHash: string(raw)}
+	return NewToolSignature(name, args)
 }
 
 func TestStuckDetector_RepeatedAction_OK(t *testing.T) {
