@@ -24,6 +24,8 @@ type Agent struct {
 	root    string
 	apiKey  string
 
+	stuckDetector *StuckDetector
+
 	Unattended bool
 
 	mu           sync.Mutex
@@ -65,11 +67,12 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 	}
 
 	return &Agent{
-		llm:        llmProvider,
-		indexer:    indexer,
-		root:       projectRoot,
-		apiKey:     apiKey,
-		Unattended: unattended,
+		llm:           llmProvider,
+		indexer:       indexer,
+		root:          projectRoot,
+		apiKey:        apiKey,
+		stuckDetector: NewStuckDetector(),
+		Unattended:    unattended,
 	}, nil
 }
 
@@ -284,8 +287,29 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 			}
 			wg.Wait()
 
+			// --- Stuck detection ---
+			for _, fc := range functionCalls {
+				a.stuckDetector.Record(NewToolSignature(fc.Name, fc.Args))
+			}
+
+			switch verdict := a.stuckDetector.Check(); verdict {
+			case VerdictStop:
+				a.emitLog(outChan, "StuckDetector: stop verdict — terminating loop")
+				outChan <- AgentEvent{Type: "error", Content: StopMessage()}
+				outChan <- AgentEvent{Type: "done"}
+				return nil
+			case VerdictNudge:
+				a.emitLog(outChan, "StuckDetector: nudge verdict — injecting warning")
+				outChan <- AgentEvent{Type: "status", Content: "⚠️ Loop detected — nudging agent to try a different approach"}
+				// Inject warning into the last tool result so the LLM sees it
+				// alongside the function responses.
+				lastIdx := len(results) - 1
+				results[lastIdx].Response["_loop_warning"] = NudgeMessage()
+			}
+			// --- End stuck detection ---
+
 			nextIter := a.llm.SendFunctionResponsesStream(ctx, results)
-			return a.handleIterator(ctx, nextIter, outChan) // recurse, then exit this frame
+			return a.handleIterator(ctx, nextIter, outChan)
 		}
 	}
 	outChan <- AgentEvent{Type: "done"}
