@@ -16,18 +16,18 @@ pub fn simhash(text: &str) -> u64 {
     for window in words.windows(2) {
         let shingle = format!("{} {}", window[0], window[1]);
         let h = hash_token(&shingle);
-        for i in 0..64u32 {
+        for (i, count) in counts.iter_mut().enumerate() {
             if (h >> i) & 1 == 1 {
-                counts[i as usize] += 1;
+                *count += 1;
             } else {
-                counts[i as usize] -= 1;
+                *count -= 1;
             }
         }
     }
 
     let mut result: u64 = 0;
-    for i in 0..64 {
-        if counts[i] > 0 {
+    for (i, &count) in counts.iter().enumerate() {
+        if count > 0 {
             result |= 1u64 << i;
         }
     }
