@@ -1,0 +1,58 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/nextjs_app_dir.input.html
+---
+{
+  "title": "Next.js Dashboard App",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Dashboard",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "heading",
+      "text": "Collected",
+      "depth": 3,
+      "selector": "h3"
+    },
+    {
+      "kind": "paragraph",
+      "text": "$12,000",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "Recent Invoices",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Michael Novotny",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "michael@novotny.com",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "$3,200",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": "A typical Next.js app",
+    "lang": "en",
+    "canonical_url": null
+  }
+}

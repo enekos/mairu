@@ -1,0 +1,15 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/forum_thread.input.html
+---
+{
+  "title": "What's the best framework for building a new web app in 2026? : webdev",
+  "sections": [],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": "en",
+    "canonical_url": null
+  }
+}

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta
+      name="description"
+      content="Web site created using create-react-app"
+    />
+    <link rel="apple-touch-icon" href="/logo192.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>React App</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root">
+        <div class="App">
+            <header class="App-header">
+                <img src="/static/media/logo.6ce24c58.svg" class="App-logo" alt="logo" />
+                <p>
+                    Edit <code>src/App.js</code> and save to reload.
+                </p>
+                <a class="App-link" href="https://reactjs.org" target="_blank" rel="noopener noreferrer">
+                    Learn React
+                </a>
+            </header>
+            <main class="content-area">
+                <section data-testid="user-profile">
+                    <h2>User Profile</h2>
+                    <div class="profile-card">
+                        <img src="avatar.jpg" alt="User avatar" aria-label="Profile picture"/>
+                        <div class="info">
+                            <span class="name">Jane Doe</span>
+                            <span class="role">Software Engineer</span>
+                        </div>
+                        <button aria-label="Edit Profile" class="btn-edit">Edit</button>
+                    </div>
+                </section>
+                <section data-testid="data-table">
+                    <h3>Recent Activity</h3>
+                    <div role="table" aria-label="Activity Table" class="virtualized-table">
+                        <div role="rowgroup">
+                            <div role="row" class="header-row">
+                                <span role="columnheader">Date</span>
+                                <span role="columnheader">Action</span>
+                            </div>
+                        </div>
+                        <div role="rowgroup" class="body-rows">
+                            <div role="row">
+                                <span role="cell">2026-04-09</span>
+                                <span role="cell">Logged in</span>
+                            </div>
+                            <div role="row">
+                                <span role="cell">2026-04-08</span>
+                                <span role="cell">Updated settings</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+  </body>
+</html>

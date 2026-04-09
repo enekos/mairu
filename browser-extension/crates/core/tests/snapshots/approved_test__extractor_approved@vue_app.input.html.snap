@@ -1,0 +1,46 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/vue_app.input.html
+---
+{
+  "title": "Vue 3 Dashboard",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Total Users",
+      "depth": 3,
+      "selector": "h3"
+    },
+    {
+      "kind": "paragraph",
+      "text": "14,203",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "Revenue",
+      "depth": 3,
+      "selector": "h3"
+    },
+    {
+      "kind": "paragraph",
+      "text": "$45,000",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "Monthly Growth",
+      "depth": 2,
+      "selector": "h2"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": "en",
+    "canonical_url": null
+  }
+}

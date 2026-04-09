@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Vue 3 Dashboard</title>
+</head>
+<body>
+    <div id="app" data-v-app="">
+        <div class="layout" data-v-7ba5bd90="">
+            <aside class="sidebar noise" data-v-7ba5bd90="">
+                <nav>
+                    <a href="/dashboard" class="router-link-active">Dashboard</a>
+                    <a href="/settings">Settings</a>
+                </nav>
+            </aside>
+            <main class="main-content" data-v-7ba5bd90="">
+                <header class="topbar" data-v-12345678="">
+                    <h1>Analytics Overview</h1>
+                    <div class="user-menu">
+                        <img src="/avatar.png" alt="Admin user" class="avatar" data-v-12345678="">
+                        <span>Welcome, Admin</span>
+                    </div>
+                </header>
+                <div class="stats-grid" data-v-87654321="">
+                    <div class="stat-card" data-v-87654321="">
+                        <h3 class="stat-title">Total Users</h3>
+                        <p class="stat-value">14,203</p>
+                    </div>
+                    <div class="stat-card" data-v-87654321="">
+                        <h3 class="stat-title">Revenue</h3>
+                        <p class="stat-value">$45,000</p>
+                    </div>
+                </div>
+                <section class="chart-section">
+                    <h2>Monthly Growth</h2>
+                    <!-- A canvas chart should be ignored/handled gracefully -->
+                    <canvas id="growthChart" width="400" height="200"></canvas>
+                </section>
+                
+                <!-- Vue's teleport or modals often end up here -->
+                <div class="modal cookie-banner" data-v-00000000="" style="display: block;">
+                    <p>We use cookies. Deal with it.</p>
+                    <button>Accept All</button>
+                </div>
+            </main>
+        </div>
+    </div>
+</body>
+</html>

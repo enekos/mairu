@@ -2,6 +2,7 @@
 use crate::types::{ContentSection, PageMetadata, SectionKind};
 use scraper::{ElementRef, Html, Selector};
 
+#[derive(serde::Serialize)]
 pub struct ExtractedPage {
     pub title: String,
     pub sections: Vec<ContentSection>,

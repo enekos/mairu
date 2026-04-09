@@ -1,0 +1,11 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: chunks
+input_file: crates/core/tests/testdata/text/unicode_multibyte.input.txt
+---
+[
+  "あああああああああああああああああああああああああああああああああ",
+  "あああああああああああああああああああああああああああああああああ",
+  "あああああああああああああああああああああああああああああああああ",
+  "あ"
+]

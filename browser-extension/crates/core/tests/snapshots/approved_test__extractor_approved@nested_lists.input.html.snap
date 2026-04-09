@@ -1,0 +1,28 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/nested_lists.input.html
+---
+{
+  "title": "",
+  "sections": [
+    {
+      "kind": "list",
+      "text": "- Parent\n  - Child 1\n  - Child 2\n    - Grandchild\n- Sibling",
+      "depth": null,
+      "selector": "ul"
+    },
+    {
+      "kind": "list",
+      "text": "- First\n- Second",
+      "depth": null,
+      "selector": "ol"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

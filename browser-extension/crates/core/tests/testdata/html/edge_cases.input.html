@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edge Cases</title>
+</head>
+<body>
+    <script>
+        console.log("This should not be extracted.");
+    </script>
+    <style>
+        body { color: red; }
+    </style>
+
+    <div class="content">
+        <div>
+            <span>
+                This is a very long stray text node that does not live inside a paragraph tag but should still be captured because it exceeds the length heuristic of 20 characters.
+            </span>
+        </div>
+        
+        <!-- Short text node that should be skipped -->
+        <div>Short text</div>
+        
+        <img src="test.jpg" alt="A descriptive image alt text">
+        <img src="test2.jpg" aria-label="A descriptive aria label">
+        
+        <a href="https://example.com/download">Download the file here</a>
+        
+        <button>Click Me</button>
+    </div>
+</body>
+</html>

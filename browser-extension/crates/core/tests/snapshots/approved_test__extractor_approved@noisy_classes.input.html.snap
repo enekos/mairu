@@ -1,0 +1,34 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/noisy_classes.input.html
+---
+{
+  "title": "Noisy Page",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Important Content",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "This paragraph should be extracted.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "This second paragraph should also be extracted.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

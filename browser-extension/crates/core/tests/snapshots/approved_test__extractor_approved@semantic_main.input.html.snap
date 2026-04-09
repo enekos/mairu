@@ -1,0 +1,40 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/semantic_main.input.html
+---
+{
+  "title": "Semantic Article",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "The semantic web",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "This is the core content of the page.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "A section inside the article",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "paragraph",
+      "text": "More relevant text here.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": "en",
+    "canonical_url": null
+  }
+}

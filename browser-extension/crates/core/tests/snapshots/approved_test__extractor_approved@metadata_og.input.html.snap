@@ -1,0 +1,22 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/metadata_og.input.html
+---
+{
+  "title": "Should be overridden by OG",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "Content goes here.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": "The Real Title",
+    "og_description": "This is the OpenGraph description.",
+    "lang": "fr",
+    "canonical_url": "https://example.com/canonical-url"
+  }
+}

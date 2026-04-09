@@ -1,0 +1,4 @@
+This is the first sentence. It should be split here. 
+This is the second sentence, and it has a comma! 
+What about a question mark? Yes, that works too. 
+This sentence is extremely long and will probably hit the max character limit before it actually reaches a proper punctuation mark, forcing the chunker to split on a space instead of a punctuation mark.

@@ -1,0 +1,19 @@
+<html><body>
+<h1>Sign In</h1>
+<form action="/login" method="post">
+    <label for="email">Email</label>
+    <input type="email" name="email" placeholder="you@example.com">
+    <label for="pass">Password</label>
+    <input type="password" name="pass" placeholder="Enter password">
+    <div class="options">
+        <label for="remember">Remember me</label>
+        <input type="checkbox" name="remember" value="1">
+    </div>
+    <select name="role">
+        <option value="user">User</option>
+        <option value="admin">Admin</option>
+    </select>
+    <textarea name="notes" placeholder="Additional notes"></textarea>
+    <button type="submit">Sign In</button>
+</form>
+</body></html>

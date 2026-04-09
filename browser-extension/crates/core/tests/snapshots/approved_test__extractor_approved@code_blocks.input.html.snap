@@ -1,0 +1,34 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/code_blocks.input.html
+---
+{
+  "title": "",
+  "sections": [
+    {
+      "kind": "code_block",
+      "text": "fn main() {}",
+      "depth": null,
+      "selector": "pre"
+    },
+    {
+      "kind": "code_block",
+      "text": "[lang:rust]\nlet x = 42;",
+      "depth": null,
+      "selector": "pre"
+    },
+    {
+      "kind": "code_block",
+      "text": "[lang:python]\nprint(\"hello\")",
+      "depth": null,
+      "selector": "pre"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

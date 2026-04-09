@@ -1,0 +1,34 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/headings.input.html
+---
+{
+  "title": "",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Main Title",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "heading",
+      "text": "Sub Title",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "heading",
+      "text": "Third Level",
+      "depth": 3,
+      "selector": "h3"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

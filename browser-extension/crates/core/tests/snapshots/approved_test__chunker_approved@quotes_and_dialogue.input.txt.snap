@@ -1,0 +1,11 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: chunks
+input_file: crates/core/tests/testdata/text/quotes_and_dialogue.input.txt
+---
+[
+  "\"Hello there,\" said Alice, her voice echoing in the empty hall. \"Is anyone home?",
+  "\"\n\"I am,\" replied a deep, booming voice from the shadows. \"But you shouldn't be.",
+  "\"\nAlice stepped back. The door slammed shut behind her! What was she going to do now?",
+  "She had to think quickly. (Or at least she thought she did.) She reached into her pocket."
+]

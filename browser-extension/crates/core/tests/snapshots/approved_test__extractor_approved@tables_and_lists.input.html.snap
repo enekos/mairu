@@ -1,0 +1,58 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/tables_and_lists.input.html
+---
+{
+  "title": "Tables and Lists",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Data structures",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "heading",
+      "text": "Shopping List",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "list",
+      "text": "- Apples\n- Bananas\n- Cherries",
+      "depth": null,
+      "selector": "ul"
+    },
+    {
+      "kind": "heading",
+      "text": "Steps",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "list",
+      "text": "- Wake up\n- Drink coffee\n- Write code",
+      "depth": null,
+      "selector": "ol"
+    },
+    {
+      "kind": "heading",
+      "text": "User Database",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "table",
+      "text": "| ID | Name | Role |\n|---|---|---|\n| 1 | Alice | Admin |\n| 2 | Bob | User |",
+      "depth": null,
+      "selector": "table"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

@@ -1,0 +1,46 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/figure_figcaption.input.html
+---
+{
+  "title": "",
+  "sections": [
+    {
+      "kind": "heading",
+      "text": "Quarterly Report",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Below are the key figures from this quarter.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Image: Sales chart (chart.png)]\nCaption: Figure 1: Quarterly sales by region",
+      "depth": null,
+      "selector": "figure"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Image: Growth trends (growth.png)]\nCaption: Figure 2: Year-over-year growth",
+      "depth": null,
+      "selector": "figure"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Overall performance exceeded expectations.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}
