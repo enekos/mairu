@@ -162,6 +162,7 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Warning: Failed to compact context: %v", err)}
 		a.emitLog(outChan, "Failed to compact context: %v", err)
 	}
+	a.stuckDetector.Reset()
 
 	fullPrompt := prompt
 	if a.llm.IsNewSession() {

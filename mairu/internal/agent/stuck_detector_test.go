@@ -109,3 +109,17 @@ func TestStuckDetector_BatchRecord(t *testing.T) {
 		t.Fatalf("expected Nudge after batch of 3 identical, got %v", v)
 	}
 }
+
+func TestStuckDetector_Reset(t *testing.T) {
+	d := NewStuckDetector()
+	for i := 0; i < 5; i++ {
+		d.Record(sig("bash", map[string]any{"command": "ls"}))
+	}
+	if v := d.Check(); v != VerdictStop {
+		t.Fatalf("expected Stop before reset, got %v", v)
+	}
+	d.Reset()
+	if v := d.Check(); v != VerdictOK {
+		t.Fatalf("expected OK after reset, got %v", v)
+	}
+}

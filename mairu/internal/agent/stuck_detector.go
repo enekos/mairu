@@ -62,6 +62,11 @@ func (d *StuckDetector) Record(sig ToolSignature) {
 	}
 }
 
+// Reset clears the history. Call this when starting a new user turn.
+func (d *StuckDetector) Reset() {
+	d.history = d.history[:0]
+}
+
 func (d *StuckDetector) RecordBatch(sigs []ToolSignature) {
 	for _, s := range sigs {
 		d.Record(s)
