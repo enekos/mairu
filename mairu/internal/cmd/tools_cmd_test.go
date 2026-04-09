@@ -14,6 +14,7 @@ func TestMapCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	outputFormat = "json"
 	mapCmd.Run(mapCmd, []string{"."})
 
 	w.Close()
@@ -33,6 +34,7 @@ func TestSysCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	outputFormat = "json"
 	sysCmd.Run(sysCmd, []string{})
 
 	w.Close()
@@ -52,6 +54,7 @@ func TestInfoCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	outputFormat = "json"
 	infoCmd.Run(infoCmd, []string{"."})
 
 	w.Close()
@@ -129,6 +132,7 @@ func TestInfoStructuredOutput(t *testing.T) {
 
 	infoTop = 0
 	infoExtensions = ""
+	outputFormat = "json"
 	infoCmd.Run(infoCmd, []string{dir})
 
 	w.Close()
@@ -171,6 +175,7 @@ func TestInfoTop(t *testing.T) {
 
 	infoTop = 1
 	infoExtensions = ""
+	outputFormat = "json"
 	infoCmd.Run(infoCmd, []string{dir})
 
 	w.Close()
@@ -206,6 +211,7 @@ func TestMapExtFilter(t *testing.T) {
 	mapMin = 0
 	mapSort = ""
 	mapDirs = false
+	outputFormat = "json"
 	mapCmd.Run(mapCmd, []string{dir})
 
 	w.Close()
@@ -239,6 +245,7 @@ func TestMapSortSize(t *testing.T) {
 	mapMin = 0
 	mapSort = "size"
 	mapDirs = false
+	outputFormat = "json"
 	mapCmd.Run(mapCmd, []string{dir})
 
 	w.Close()
@@ -273,6 +280,7 @@ func TestMapDirs(t *testing.T) {
 	mapMin = 0
 	mapSort = ""
 	mapDirs = true
+	outputFormat = "json"
 	mapCmd.Run(mapCmd, []string{dir})
 
 	w.Close()
@@ -421,6 +429,7 @@ func TestSysEnhanced(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	outputFormat = "json"
 	sysCmd.Run(sysCmd, []string{})
 
 	w.Close()

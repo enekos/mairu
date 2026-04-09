@@ -7,7 +7,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "Validates JWT tokens and attaches user info to the request.",
-      "Line": 11
+      "Line": 11,
+      "Signature": "(req: Request, res: Response, next: NextFunction)"
     },
     {
       "ID": "fn:requireRole",
@@ -15,7 +16,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "Checks if the authenticated user has the required role.",
-      "Line": 29
+      "Line": 29,
+      "Signature": "(role: string)"
     },
     {
       "ID": "iface:TokenPayload",
@@ -23,7 +25,8 @@
       "Kind": "iface",
       "Exported": false,
       "Doc": "",
-      "Line": 4
+      "Line": 4,
+      "Signature": ""
     }
   ],
   "edges": [

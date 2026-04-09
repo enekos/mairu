@@ -142,8 +142,35 @@ var mapCmd = &cobra.Command{
 			})
 		}
 
-		out, _ := json.Marshal(entries)
-		fmt.Println(string(out))
+		if outputFormat == "json" {
+			out, _ := json.Marshal(entries)
+			fmt.Println(string(out))
+		} else {
+			items := make([]map[string]any, len(entries))
+			for i, e := range entries {
+				items[i] = map[string]any{
+					"path":   e.P,
+					"tokens": e.T,
+					"is_dir": e.Dir,
+				}
+			}
+			f := GetFormatter()
+			f.PrintItems(
+				[]string{"path", "tokens", "type"},
+				items,
+				func(item map[string]any) map[string]string {
+					typ := "file"
+					if item["is_dir"].(bool) {
+						typ = "dir"
+					}
+					return map[string]string{
+						"path":   fmt.Sprintf("%v", item["path"]),
+						"tokens": fmt.Sprintf("%v", item["tokens"]),
+						"type":   typ,
+					}
+				},
+			)
+		}
 	},
 }
 
@@ -189,7 +216,23 @@ var sysCmd = &cobra.Command{
 			info.Docker = true
 		}
 
-		out, _ := json.Marshal(info)
-		fmt.Println(string(out))
+		if outputFormat == "json" {
+			out, _ := json.Marshal(info)
+			fmt.Println(string(out))
+		} else {
+			f := GetFormatter()
+			f.PrintTable(
+				[]string{"os", "arch", "cpu", "mem_mb", "disk_free_gb", "disk_total_gb", "docker"},
+				[]map[string]string{{
+					"os":            info.OS,
+					"arch":          info.Arch,
+					"cpu":           fmt.Sprintf("%d", info.NumCPU),
+					"mem_mb":        fmt.Sprintf("%d", info.MemMB),
+					"disk_free_gb":  fmt.Sprintf("%.1f", info.DiskFreeGB),
+					"disk_total_gb": fmt.Sprintf("%.1f", info.DiskTotalGB),
+					"docker":        fmt.Sprintf("%v", info.Docker),
+				}},
+			)
+		}
 	},
 }

@@ -7,7 +7,8 @@
       "Kind": "fn",
       "Exported": false,
       "Doc": "",
-      "Line": 21
+      "Line": 21,
+      "Signature": "(ms: number)"
     },
     {
       "ID": "fn:withRetry",
@@ -15,7 +16,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "",
-      "Line": 1
+      "Line": 1,
+      "Signature": "(\n  fn: () =\u003e Promise\u003cany\u003e,\n  maxAttempts: number,\n  delayMs: number\n)"
     }
   ],
   "edges": [

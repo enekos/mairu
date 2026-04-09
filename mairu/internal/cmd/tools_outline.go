@@ -19,14 +19,18 @@ var outlineTree bool
 func init() {
 	outlineCmd.Flags().BoolVar(&outlineExports, "exports", false, "Only show exported/public symbols")
 	outlineCmd.Flags().BoolVar(&outlineTree, "tree", false, "Nest methods under their parent class")
+	outlineCmd.Flags().BoolVar(&outlineFull, "full", false, "Include variables, fields, and properties in output")
 }
 
+var outlineFull bool
+
 type outlineSymbol struct {
-	Kind     string          `json:"kind"`
-	Name     string          `json:"name"`
-	Line     int             `json:"l"`
-	Exported bool            `json:"exported,omitempty"`
-	Children []outlineSymbol `json:"children,omitempty"`
+	Kind      string          `json:"kind"`
+	Name      string          `json:"name"`
+	Line      int             `json:"l"`
+	Exported  bool            `json:"exported,omitempty"`
+	Signature string          `json:"sig,omitempty"`
+	Children  []outlineSymbol `json:"children,omitempty"`
 }
 
 type outlineResult struct {
@@ -97,6 +101,11 @@ var outlineCmd = &cobra.Command{
 		classChildren := make(map[string][]outlineSymbol) // className -> methods
 
 		for _, s := range graph.Symbols {
+			// In non-full mode, skip variables, fields, and imports in symbols array
+			if !outlineFull && (s.Kind == "var" || s.Kind == "const" || s.Kind == "field" || s.Kind == "prop") {
+				continue
+			}
+
 			exported := isExportedSymbol(s, describer.LanguageID())
 
 			if outlineExports && !exported {
@@ -110,9 +119,14 @@ var outlineCmd = &cobra.Command{
 				Exported: exported,
 			}
 
-			if outlineTree && s.Kind == "mtd" {
-				// Extract class name from ID like "mtd:ClassName.methodName"
-				parts := strings.SplitN(strings.TrimPrefix(s.ID, "mtd:"), ".", 2)
+			// Add signature if the language describer captured it
+			if s.Signature != "" {
+				os.Signature = s.Signature
+			}
+
+			if outlineTree && (s.Kind == "mtd" || s.Kind == "prop" || s.Kind == "field") {
+				// Extract class name from ID like "mtd:ClassName.methodName" or "prop:ClassName.propName"
+				parts := strings.SplitN(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(s.ID, "mtd:"), "prop:"), "field:"), ".", 2)
 				if len(parts) == 2 {
 					classChildren[parts[0]] = append(classChildren[parts[0]], os)
 					continue
@@ -139,7 +153,49 @@ var outlineCmd = &cobra.Command{
 			Symbols: symbols,
 		}
 
-		out, _ := json.Marshal(res)
-		fmt.Println(string(out))
+		if outputFormat == "json" {
+			out, _ := json.Marshal(res)
+			fmt.Println(string(out))
+		} else {
+			f := GetFormatter()
+			fmt.Printf("File: %s\n", res.F)
+			if len(res.Imports) > 0 {
+				fmt.Printf("Imports: %d\n", len(res.Imports))
+			}
+
+			if len(res.Symbols) > 0 {
+				fmt.Println("\nSymbols:")
+				var processSymbols func([]outlineSymbol, string) []map[string]any
+				processSymbols = func(syms []outlineSymbol, prefix string) []map[string]any {
+					var flat []map[string]any
+					for _, s := range syms {
+						flat = append(flat, map[string]any{
+							"kind": s.Kind,
+							"name": prefix + s.Name,
+							"line": s.Line,
+							"sig":  s.Signature,
+						})
+						if len(s.Children) > 0 {
+							flat = append(flat, processSymbols(s.Children, prefix+"  ")...)
+						}
+					}
+					return flat
+				}
+
+				items := processSymbols(res.Symbols, "")
+				f.PrintItems(
+					[]string{"line", "kind", "name", "signature"},
+					items,
+					func(item map[string]any) map[string]string {
+						return map[string]string{
+							"line":      fmt.Sprintf("%v", item["line"]),
+							"kind":      fmt.Sprintf("%v", item["kind"]),
+							"name":      fmt.Sprintf("%v", item["name"]),
+							"signature": fmt.Sprintf("%v", item["sig"]),
+						}
+					},
+				)
+			}
+		}
 	},
 }

@@ -7,7 +7,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "",
-      "Line": 10
+      "Line": 10,
+      "Signature": "(cache: Map\u003cstring, Entry\u003e, maxAge: number)"
     },
     {
       "ID": "fn:getOrSet",
@@ -15,7 +16,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "",
-      "Line": 1
+      "Line": 1,
+      "Signature": "(cache: Map\u003cstring, any\u003e, key: string, compute: () =\u003e any)"
     },
     {
       "ID": "fn:warmUp",
@@ -23,7 +25,8 @@
       "Kind": "fn",
       "Exported": true,
       "Doc": "",
-      "Line": 22
+      "Line": 22,
+      "Signature": "(cache: Map\u003cstring, any\u003e, keys: string[], loader: (k: string) =\u003e any)"
     }
   ],
   "edges": [],

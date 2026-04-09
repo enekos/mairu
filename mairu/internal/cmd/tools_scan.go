@@ -293,24 +293,105 @@ var scanCmd = &cobra.Command{
 			return nil
 		})
 
-		if scanGroup {
-			grouped := scanGroupedResult{
-				BudgetHit: res.BudgetHit,
-				LimitHit:  res.LimitHit,
-				Total:     res.Total,
-				Grouped:   make(map[string][]scanMatch),
+		if outputFormat == "json" {
+			if scanGroup {
+				grouped := scanGroupedResult{
+					BudgetHit: res.BudgetHit,
+					LimitHit:  res.LimitHit,
+					Total:     res.Total,
+					Grouped:   make(map[string][]scanMatch),
+				}
+				for _, m := range res.Matches {
+					inner := scanMatch{L: m.L, C: m.C, Heading: m.Heading}
+					grouped.Grouped[m.F] = append(grouped.Grouped[m.F], inner)
+				}
+				out, _ := json.Marshal(grouped)
+				fmt.Println(string(out))
+				return
 			}
-			for _, m := range res.Matches {
-				// Strip the file from inner match in grouped mode
-				inner := scanMatch{L: m.L, C: m.C, Heading: m.Heading}
-				grouped.Grouped[m.F] = append(grouped.Grouped[m.F], inner)
-			}
-			out, _ := json.Marshal(grouped)
+			out, _ := json.Marshal(res)
 			fmt.Println(string(out))
-			return
-		}
+		} else {
+			f := GetFormatter()
+			if res.BudgetHit {
+				fmt.Println("Warning: Token budget hit, results truncated.")
+			}
+			if res.LimitHit {
+				fmt.Printf("Warning: Match limit hit (%d matches).\n", scanLimit)
+			}
 
-		out, _ := json.Marshal(res)
-		fmt.Println(string(out))
+			if scanFilesOnly {
+				var files []string
+				seen := make(map[string]bool)
+				for _, f := range res.Files {
+					if !seen[f] {
+						seen[f] = true
+						files = append(files, f)
+					}
+				}
+				items := make([]map[string]any, len(files))
+				for i, file := range files {
+					items[i] = map[string]any{"file": file}
+				}
+				f.PrintItems([]string{"file"}, items, func(item map[string]any) map[string]string {
+					return map[string]string{"file": fmt.Sprintf("%v", item["file"])}
+				})
+			} else if scanGroup {
+				grouped := make(map[string][]scanMatch)
+				for _, m := range res.Matches {
+					grouped[m.F] = append(grouped[m.F], m)
+				}
+				for file, matches := range grouped {
+					fmt.Printf("\n%s:\n", file)
+					items := make([]map[string]any, len(matches))
+					for i, m := range matches {
+						items[i] = map[string]any{
+							"line":    m.L,
+							"content": m.C,
+							"heading": m.Heading,
+						}
+					}
+					cols := []string{"line", "content"}
+					if scanHeading {
+						cols = []string{"line", "heading", "content"}
+					}
+					f.PrintItems(cols, items, func(item map[string]any) map[string]string {
+						res := map[string]string{
+							"line":    fmt.Sprintf("%v", item["line"]),
+							"content": fmt.Sprintf("%v", item["content"]),
+						}
+						if scanHeading {
+							res["heading"] = fmt.Sprintf("%v", item["heading"])
+						}
+						return res
+					})
+				}
+			} else {
+				items := make([]map[string]any, len(res.Matches))
+				for i, m := range res.Matches {
+					items[i] = map[string]any{
+						"file":    m.F,
+						"line":    m.L,
+						"content": m.C,
+						"heading": m.Heading,
+					}
+				}
+				cols := []string{"file", "line", "content"}
+				if scanHeading {
+					cols = []string{"file", "line", "heading", "content"}
+				}
+				f.PrintItems(cols, items, func(item map[string]any) map[string]string {
+					res := map[string]string{
+						"file":    fmt.Sprintf("%v", item["file"]),
+						"line":    fmt.Sprintf("%v", item["line"]),
+						"content": fmt.Sprintf("%v", item["content"]),
+					}
+					if scanHeading {
+						res["heading"] = fmt.Sprintf("%v", item["heading"])
+					}
+					return res
+				})
+			}
+		}
 	},
 }

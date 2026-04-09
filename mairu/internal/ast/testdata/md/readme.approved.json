@@ -7,7 +7,8 @@
       "Kind": "h1",
       "Exported": false,
       "Doc": "",
-      "Line": 1
+      "Line": 1,
+      "Signature": ""
     },
     {
       "ID": "h2:Installation",
@@ -15,7 +16,8 @@
       "Kind": "h2",
       "Exported": false,
       "Doc": "",
-      "Line": 5
+      "Line": 5,
+      "Signature": ""
     },
     {
       "ID": "h2:Usage",
@@ -23,7 +25,8 @@
       "Kind": "h2",
       "Exported": false,
       "Doc": "",
-      "Line": 9
+      "Line": 9,
+      "Signature": ""
     },
     {
       "ID": "h3:Advanced Usage",
@@ -31,7 +34,8 @@
       "Kind": "h3",
       "Exported": false,
       "Doc": "",
-      "Line": 13
+      "Line": 13,
+      "Signature": ""
     }
   ],
   "edges": [],

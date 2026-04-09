@@ -165,7 +165,76 @@ var infoCmd = &cobra.Command{
 			res.Top = allFiles[:n]
 		}
 
-		out, _ := json.Marshal(res)
-		fmt.Println(string(out))
+		if outputFormat == "json" {
+			out, _ := json.Marshal(res)
+			fmt.Println(string(out))
+		} else {
+			f := GetFormatter()
+			f.PrintTable(
+				[]string{"total_files", "total_tokens", "total_lines"},
+				[]map[string]string{{
+					"total_files":  fmt.Sprintf("%d", res.Files),
+					"total_tokens": fmt.Sprintf("%d", res.Tokens),
+					"total_lines":  fmt.Sprintf("%d", res.Lines),
+				}},
+			)
+
+			if len(res.Languages) > 0 {
+				fmt.Println("\nBy Extension:")
+				var exts []string
+				for k := range res.Languages {
+					exts = append(exts, k)
+				}
+				sort.Slice(exts, func(i, j int) bool { return res.Languages[exts[i]].Tokens > res.Languages[exts[j]].Tokens })
+
+				extItems := make([]map[string]any, len(exts))
+				for i, ext := range exts {
+					st := res.Languages[ext]
+					extItems[i] = map[string]any{
+						"ext":    ext,
+						"files":  st.Files,
+						"tokens": st.Tokens,
+						"lines":  st.Lines,
+						"pct":    st.Pct,
+					}
+				}
+				f.PrintItems(
+					[]string{"ext", "files", "tokens", "lines", "pct"},
+					extItems,
+					func(item map[string]any) map[string]string {
+						return map[string]string{
+							"ext":    fmt.Sprintf("%v", item["ext"]),
+							"files":  fmt.Sprintf("%v", item["files"]),
+							"tokens": fmt.Sprintf("%v", item["tokens"]),
+							"lines":  fmt.Sprintf("%v", item["lines"]),
+							"pct":    fmt.Sprintf("%.1f%%", item["pct"].(float64)*100),
+						}
+					},
+				)
+			}
+
+			if len(res.Top) > 0 {
+				fmt.Println("\nTop Files:")
+				topItems := make([]map[string]any, len(res.Top))
+				for i, t := range res.Top {
+					topItems[i] = map[string]any{
+						"path":   t.P,
+						"tokens": t.T,
+						"lines":  t.L,
+					}
+				}
+				f.PrintItems(
+					[]string{"path", "tokens", "lines"},
+					topItems,
+					func(item map[string]any) map[string]string {
+						return map[string]string{
+							"path":   fmt.Sprintf("%v", item["path"]),
+							"tokens": fmt.Sprintf("%v", item["tokens"]),
+							"lines":  fmt.Sprintf("%v", item["lines"]),
+						}
+					},
+				)
+			}
+		}
 	},
 }

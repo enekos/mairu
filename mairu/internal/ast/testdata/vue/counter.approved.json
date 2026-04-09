@@ -7,7 +7,8 @@
       "Kind": "fn",
       "Exported": false,
       "Doc": "",
-      "Line": 12
+      "Line": 12,
+      "Signature": ""
     },
     {
       "ID": "fn:increment",
@@ -15,7 +16,8 @@
       "Kind": "fn",
       "Exported": false,
       "Doc": "",
-      "Line": 8
+      "Line": 8,
+      "Signature": ""
     },
     {
       "ID": "fn:reset",
@@ -23,7 +25,8 @@
       "Kind": "fn",
       "Exported": false,
       "Doc": "",
-      "Line": 18
+      "Line": 18,
+      "Signature": ""
     },
     {
       "ID": "fn:useCounter",
@@ -31,7 +34,8 @@
       "Kind": "fn",
       "Exported": false,
       "Doc": "",
-      "Line": 4
+      "Line": 4,
+      "Signature": ""
     }
   ],
   "edges": [

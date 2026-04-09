@@ -20,6 +20,7 @@ func TestOutlineStructuredSymbols(t *testing.T) {
 
 	outlineExports = false
 	outlineTree = false
+	outputFormat = "json"
 	outlineCmd.Run(outlineCmd, []string{tmpFile.Name()})
 
 	w.Close()
@@ -64,6 +65,7 @@ func TestOutlineExportsFilter(t *testing.T) {
 
 	outlineExports = true
 	outlineTree = false
+	outputFormat = "json"
 	outlineCmd.Run(outlineCmd, []string{tmpFile.Name()})
 
 	w.Close()
