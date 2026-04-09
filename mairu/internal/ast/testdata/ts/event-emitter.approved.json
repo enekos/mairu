@@ -17,7 +17,7 @@
       "Exported": true,
       "Doc": "Removes all listeners for a given event, or all events if none specified.",
       "Line": 34,
-      "Signature": "(event?: string)"
+      "Signature": ""
     },
     {
       "ID": "mtd:EventEmitter.emit",
@@ -26,7 +26,7 @@
       "Exported": true,
       "Doc": "Fires all listeners registered for the given event.",
       "Line": 23,
-      "Signature": "(event: string, ...args: any[])"
+      "Signature": ""
     },
     {
       "ID": "mtd:EventEmitter.off",
@@ -35,7 +35,7 @@
       "Exported": true,
       "Doc": "Removes a previously registered listener.",
       "Line": 15,
-      "Signature": "(event: string, listener: Listener)"
+      "Signature": ""
     },
     {
       "ID": "mtd:EventEmitter.on",
@@ -44,16 +44,7 @@
       "Exported": true,
       "Doc": "Registers a listener for the given event name.",
       "Line": 7,
-      "Signature": "(event: string, listener: Listener)"
-    },
-    {
-      "ID": "prop:EventEmitter.listeners",
-      "Name": "listeners",
-      "Kind": "prop",
-      "Exported": false,
-      "Doc": "",
-      "Line": 4,
-      "Signature": ": Map\u003cstring, Set\u003cListener\u003e\u003e"
+      "Signature": ""
     },
     {
       "ID": "type:Listener",

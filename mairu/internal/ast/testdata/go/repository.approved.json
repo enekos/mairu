@@ -8,7 +8,7 @@
       "Exported": false,
       "Doc": "",
       "Line": 36,
-      "Signature": "(ctx context.Context, db *sql.DB, name string) (*Record, error)"
+      "Signature": ""
     },
     {
       "ID": "fn:Delete",
@@ -17,7 +17,7 @@
       "Exported": false,
       "Doc": "",
       "Line": 46,
-      "Signature": "(ctx context.Context, db *sql.DB, id string) error"
+      "Signature": ""
     },
     {
       "ID": "fn:FindByID",
@@ -26,7 +26,7 @@
       "Exported": false,
       "Doc": "",
       "Line": 10,
-      "Signature": "(ctx context.Context, db *sql.DB, id string) (*Record, error)"
+      "Signature": ""
     },
     {
       "ID": "fn:ListRecent",
@@ -35,7 +35,7 @@
       "Exported": false,
       "Doc": "",
       "Line": 19,
-      "Signature": "(ctx context.Context, db *sql.DB, limit int) ([]Record, error)"
+      "Signature": ""
     },
     {
       "ID": "fn:generateID",
@@ -44,7 +44,7 @@
       "Exported": false,
       "Doc": "",
       "Line": 51,
-      "Signature": "() string"
+      "Signature": ""
     }
   ],
   "edges": [
