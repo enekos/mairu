@@ -69,28 +69,6 @@ fn extract_metadata(doc: &Html, meta: &mut PageMetadata) -> String {
 }
 
 fn find_main_content(doc: &Html) -> Option<ElementRef<'_>> {
-    // Priority heuristics to find the real content
-    let candidate_selectors = [
-        "article",
-        "main",
-        "[role='main']",
-        ".main-content",
-        "#main-content",
-        ".post-content",
-        ".article-content",
-        ".content",
-        "#content",
-    ];
-
-    for selector_str in candidate_selectors {
-        if let Ok(sel) = Selector::parse(selector_str) {
-            if let Some(el) = doc.select(&sel).next() {
-                // Return the first match
-                return Some(el);
-            }
-        }
-    }
-
     // Fallback to body
     if let Ok(sel) = Selector::parse("body") {
         return doc.select(&sel).next();
@@ -102,15 +80,14 @@ fn find_main_content(doc: &Html) -> Option<ElementRef<'_>> {
 
 // Nodes we completely ignore
 const SKIP_TAGS: &[&str] = &[
-    "nav", "footer", "header", "aside", "script", "style", "noscript", "iframe", "svg", "form",
-    "canvas", "video", "audio", "map", "menu",
+    "script", "style", "noscript", "iframe", "svg", "canvas", "video", "audio", "map",
 ];
 
-// Substrings in id or class that usually indicate boilerplate
-const NOISE_CLASSES: &[&str] = &[
-    "ad-", "ads", "banner", "sidebar", "menu", "popup", "modal", "cookie", "comments", "share",
-    "social", "widget",
-];
+fn is_hidden(node: ElementRef) -> bool {
+    let style = node.value().attr("style").unwrap_or("");
+    let s = style.replace(" ", "");
+    s.contains("display:none") || s.contains("visibility:hidden")
+}
 
 fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
     let tag = node.value().name();
@@ -120,13 +97,9 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
         return;
     }
 
-    // 2. Skip noisy classes/ids
-    let class_str = node.value().attr("class").unwrap_or("");
-    let id_str = node.value().attr("id").unwrap_or("");
-    for noise in NOISE_CLASSES {
-        if class_str.contains(noise) || id_str.contains(noise) {
-            return;
-        }
+    // 2. Skip explicitly hidden elements
+    if is_hidden(node) {
+        return;
     }
 
     // 3. Process structural nodes
@@ -243,6 +216,49 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             }
             return;
         }
+        "input" | "textarea" | "select" => {
+            let name = node.value().attr("name").unwrap_or("");
+            let id = node.value().attr("id").unwrap_or("");
+            let placeholder = node.value().attr("placeholder").unwrap_or("");
+            let value = node.value().attr("value").unwrap_or("");
+
+            let mut desc = vec![];
+            if !name.is_empty() {
+                desc.push(format!("name=\"{}\"", name));
+            }
+            if !id.is_empty() {
+                desc.push(format!("id=\"{}\"", id));
+            }
+            if !placeholder.is_empty() {
+                desc.push(format!("placeholder=\"{}\"", placeholder));
+            }
+            if !value.is_empty() {
+                desc.push(format!("value=\"{}\"", value));
+            }
+
+            let attrs = if desc.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", desc.join(" "))
+            };
+
+            sections.push(ContentSection {
+                kind: SectionKind::Paragraph,
+                text: format!("[Form Element: {}{}]", tag, attrs),
+                depth: None,
+                selector: tag.to_string(),
+            });
+            return;
+        }
+        "form" => {
+            // We want to process children of form, but optionally add a marker
+            sections.push(ContentSection {
+                kind: SectionKind::Paragraph,
+                text: "[Form Start]".to_string(),
+                depth: None,
+                selector: "form".to_string(),
+            });
+        }
         _ => {}
     }
 
@@ -272,11 +288,32 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
 // Collects text including children (for p, headings, links)
 fn collect_text(node: ElementRef) -> String {
     let mut result = String::new();
-    for text in node.text() {
-        result.push_str(text);
-        // add a space after block elements might be needed, but scraper's .text()
-        // just concatenates text nodes. We will pad slightly.
-        result.push(' ');
+
+    for child in node.children() {
+        if let Some(child_el) = ElementRef::wrap(child) {
+            let tag = child_el.value().name();
+            if tag == "a" {
+                let href = child_el.value().attr("href").unwrap_or("").to_string();
+                let text = collect_text(child_el).trim().to_string();
+                if !text.is_empty() {
+                    result.push_str(&format!(" [{}]({}) ", text, href));
+                }
+            } else if tag == "img" {
+                let alt = child_el.value().attr("alt").unwrap_or("");
+                let aria_label = child_el.value().attr("aria-label").unwrap_or("");
+                if !alt.is_empty() {
+                    result.push_str(&format!(" [Image: {}] ", alt));
+                } else if !aria_label.is_empty() {
+                    result.push_str(&format!(" [Image: {}] ", aria_label));
+                }
+            } else if tag == "br" {
+                result.push('\n');
+            } else {
+                result.push_str(&collect_text(child_el));
+            }
+        } else if let Some(text_node) = child.value().as_text() {
+            result.push_str(text_node);
+        }
     }
 
     let mut cleaned = result.split_whitespace().collect::<Vec<_>>().join(" ");
@@ -296,16 +333,45 @@ fn collect_text(node: ElementRef) -> String {
 }
 
 fn extract_list(node: ElementRef) -> Vec<String> {
-    let mut items = Vec::new();
-    if let Ok(sel) = Selector::parse("li") {
-        for li in node.select(&sel) {
-            let text = collect_text(li).trim().to_string();
-            if !text.is_empty() {
-                items.push(format!("- {}", text));
+    fn extract_list_recursive(node: ElementRef, depth: usize) -> Vec<String> {
+        let mut items = Vec::new();
+        let indent = "  ".repeat(depth);
+
+        for child in node.children() {
+            if let Some(child_el) = ElementRef::wrap(child) {
+                let tag = child_el.value().name();
+                if tag == "li" {
+                    // Extract text directly within the li (excluding nested lists initially)
+                    let mut text = String::new();
+                    let mut nested_items = Vec::new();
+
+                    for li_child in child_el.children() {
+                        if let Some(li_child_el) = ElementRef::wrap(li_child) {
+                            let child_tag = li_child_el.value().name();
+                            if child_tag == "ul" || child_tag == "ol" {
+                                nested_items.extend(extract_list_recursive(li_child_el, depth + 1));
+                            } else {
+                                text.push_str(&collect_text(li_child_el));
+                            }
+                        } else if let Some(text_node) = li_child.value().as_text() {
+                            text.push_str(text_node);
+                        }
+                    }
+
+                    let cleaned_text = text.trim();
+                    if !cleaned_text.is_empty() {
+                        items.push(format!("{}- {}", indent, cleaned_text));
+                    }
+                    items.extend(nested_items);
+                } else if tag == "ul" || tag == "ol" {
+                    items.extend(extract_list_recursive(child_el, depth));
+                }
             }
         }
+        items
     }
-    items
+
+    extract_list_recursive(node, 0)
 }
 
 fn extract_table(node: ElementRef) -> String {
@@ -400,7 +466,7 @@ mod tests {
     }
 
     #[test]
-    fn test_strips_nav_and_footer() {
+    fn test_does_not_strip_nav_and_footer() {
         let html = r#"<html><body>
             <nav><a href="/">Home</a></nav>
             <main><p>Content here.</p></main>
@@ -409,8 +475,9 @@ mod tests {
         let result = extract(html);
         let texts: Vec<_> = result.sections.iter().map(|s| &s.text).collect();
         assert!(texts.iter().any(|t| t.contains("Content here.")));
-        assert!(!texts.iter().any(|t| t.contains("Copyright")));
-        assert!(!texts.iter().any(|t| t.contains("Home")));
+        // We now EXPECT these to be present so the agent can see them!
+        assert!(texts.iter().any(|t| t.contains("Copyright")));
+        assert!(texts.iter().any(|t| t.contains("Home")));
     }
 
     #[test]
@@ -460,21 +527,24 @@ mod tests {
     }
 
     #[test]
-    fn test_semantic_main_extraction() {
+    fn test_semantic_main_extraction_disabled() {
+        // We disabled aggressive main extraction and noise classes
+        // so the agent can see the whole page.
         let html = r#"<html><body>
-            <div class="sidebar">Sidebar crap</div>
+            <div class="sidebar">Sidebar crap that is very long indeed</div>
             <main>
                 <h1>Real Title</h1>
                 <p>Real content</p>
             </main>
-            <div class="ad-banner">Buy now!</div>
+            <div class="ad-banner">Buy now! Limited time offer!</div>
         </body></html>"#;
         let result = extract(html);
         let texts: Vec<_> = result.sections.iter().map(|s| &s.text).collect();
         assert!(texts.iter().any(|t| t.contains("Real Title")));
         assert!(texts.iter().any(|t| t.contains("Real content")));
-        assert!(!texts.iter().any(|t| t.contains("Sidebar crap")));
-        assert!(!texts.iter().any(|t| t.contains("Buy now!")));
+        // We now EXPECT these to be present
+        assert!(texts.iter().any(|t| t.contains("Sidebar crap")));
+        assert!(texts.iter().any(|t| t.contains("Buy now!")));
     }
 
     #[test]
@@ -497,5 +567,49 @@ mod tests {
         assert!(tables[0].text.contains("|---|---|"));
         assert!(tables[0].text.contains("| Alice | 30 |"));
         assert!(tables[0].text.contains("| Bob | 25 |"));
+    }
+
+    #[test]
+    fn test_extract_form_elements() {
+        let html = r#"<html><body>
+            <form>
+                <input name="username" placeholder="Enter Username">
+                <input type="password" id="pass">
+                <select name="role"></select>
+                <textarea id="bio">My bio</textarea>
+                <button>Submit</button>
+            </form>
+        </body></html>"#;
+        let result = extract(html);
+        let texts: Vec<_> = result.sections.iter().map(|s| s.text.as_str()).collect();
+
+        assert!(texts.contains(&"[Form Start]"));
+        assert!(texts.iter().any(|t| t
+            .contains("[Form Element: input name=\"username\" placeholder=\"Enter Username\"]")));
+        assert!(texts
+            .iter()
+            .any(|t| t.contains("[Form Element: input id=\"pass\"]")));
+        assert!(texts
+            .iter()
+            .any(|t| t.contains("[Form Element: select name=\"role\"]")));
+        assert!(texts
+            .iter()
+            .any(|t| t.contains("[Form Element: textarea id=\"bio\"]")));
+        assert!(texts.iter().any(|t| t.contains("[Button: Submit]")));
+    }
+
+    #[test]
+    fn test_ignores_hidden_elements() {
+        let html = r#"<html><body>
+            <div style="display: none">Hidden 1</div>
+            <div style="visibility:hidden;">Hidden 2</div>
+            <div style="display: block"><p>Visible</p></div>
+        </body></html>"#;
+        let result = extract(html);
+        let texts: Vec<_> = result.sections.iter().map(|s| s.text.as_str()).collect();
+
+        assert!(!texts.iter().any(|t| t.contains("Hidden 1")));
+        assert!(!texts.iter().any(|t| t.contains("Hidden 2")));
+        assert!(texts.iter().any(|t| t.contains("Visible")));
     }
 }

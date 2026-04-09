@@ -11,6 +11,48 @@ input_file: crates/core/tests/testdata/html/form_extraction.input.html
       "text": "Sign In",
       "depth": 1,
       "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Start]",
+      "depth": null,
+      "selector": "form"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: input name=\"email\" placeholder=\"you@example.com\"]",
+      "depth": null,
+      "selector": "input"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: input name=\"pass\" placeholder=\"Enter password\"]",
+      "depth": null,
+      "selector": "input"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: input name=\"remember\" value=\"1\"]",
+      "depth": null,
+      "selector": "input"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: select name=\"role\"]",
+      "depth": null,
+      "selector": "select"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: textarea name=\"notes\" placeholder=\"Additional notes\"]",
+      "depth": null,
+      "selector": "textarea"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Sign In]",
+      "depth": null,
+      "selector": "button"
     }
   ],
   "metadata": {

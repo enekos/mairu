@@ -7,6 +7,24 @@ input_file: crates/core/tests/testdata/html/react_app.input.html
   "title": "React App",
   "sections": [
     {
+      "kind": "paragraph",
+      "text": "[Image: logo]",
+      "depth": null,
+      "selector": "img"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Edit src/App.js and save to reload.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "link",
+      "text": "Learn React (https://reactjs.org)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
       "kind": "heading",
       "text": "User Profile",
       "depth": 2,

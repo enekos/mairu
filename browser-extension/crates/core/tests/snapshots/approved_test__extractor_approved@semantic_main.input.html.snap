@@ -7,6 +7,12 @@ input_file: crates/core/tests/testdata/html/semantic_main.input.html
   "title": "Semantic Article",
   "sections": [
     {
+      "kind": "list",
+      "text": "- Home\n- About",
+      "depth": null,
+      "selector": "ul"
+    },
+    {
       "kind": "heading",
       "text": "The semantic web",
       "depth": 1,
@@ -27,6 +33,18 @@ input_file: crates/core/tests/testdata/html/semantic_main.input.html
     {
       "kind": "paragraph",
       "text": "More relevant text here.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Related links over here",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Copyright 2026",
       "depth": null,
       "selector": "p"
     }

@@ -7,6 +7,24 @@ input_file: crates/core/tests/testdata/html/nextjs_app_dir.input.html
   "title": "Next.js Dashboard App",
   "sections": [
     {
+      "kind": "link",
+      "text": "Acme Corp (/)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "link",
+      "text": "Home (/dashboard)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "link",
+      "text": "Invoices (/dashboard/invoices)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
       "kind": "heading",
       "text": "Dashboard",
       "depth": 1,

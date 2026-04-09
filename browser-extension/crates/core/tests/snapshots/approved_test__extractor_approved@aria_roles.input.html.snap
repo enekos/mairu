@@ -7,6 +7,18 @@ input_file: crates/core/tests/testdata/html/aria_roles.input.html
   "title": "",
   "sections": [
     {
+      "kind": "link",
+      "text": "Home (/)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "link",
+      "text": "About (/about)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
       "kind": "heading",
       "text": "Main Content",
       "depth": 1,
@@ -15,6 +27,12 @@ input_file: crates/core/tests/testdata/html/aria_roles.input.html
     {
       "kind": "paragraph",
       "text": "This is the main content area identified by ARIA role.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Related links",
       "depth": null,
       "selector": "p"
     }

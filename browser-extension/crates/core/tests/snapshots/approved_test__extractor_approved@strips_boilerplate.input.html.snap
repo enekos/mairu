@@ -7,8 +7,32 @@ input_file: crates/core/tests/testdata/html/strips_boilerplate.input.html
   "title": "",
   "sections": [
     {
+      "kind": "link",
+      "text": "Home (/)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "link",
+      "text": "About (/about)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
       "kind": "paragraph",
       "text": "Content here.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Copyright 2026",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Sidebar ad",
       "depth": null,
       "selector": "p"
     }

@@ -5,7 +5,92 @@ input_file: crates/core/tests/testdata/html/forum_thread.input.html
 ---
 {
   "title": "What's the best framework for building a new web app in 2026? : webdev",
-  "sections": [],
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "[Button: ↑]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: ↓]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "heading",
+      "text": "What's the best framework for building a new web app in 2026?",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "I've been out of the loop for a few years. Last time I built something it was React + Redux. Now I'm hearing about SvelteKit, Next.js App Router, Astro, HTMX, and a bunch of others.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "What is the current consensus for a mid-sized SaaS application?",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Comment]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Share]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Save]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "heading",
+      "text": "Top Comments",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "paragraph",
+      "text": "If you want standard, go with Next.js. But honestly, SvelteKit is an absolute joy to work with. The state management is so much simpler than React.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "React 19 actually solved a lot of those state issues. With the new compiler, you don't even need useMemo or useCallback anymore.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Just use Go + HTMX. Stop overcomplicating things with massive JS bundles.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "About Community",
+      "depth": 2,
+      "selector": "h2"
+    },
+    {
+      "kind": "paragraph",
+      "text": "A community dedicated to all things web development.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
   "metadata": {
     "og_title": null,
     "og_description": null,

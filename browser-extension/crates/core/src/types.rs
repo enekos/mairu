@@ -90,7 +90,7 @@ mod hex_serde {
 #[serde(tag = "type", content = "data")]
 #[serde(rename_all = "snake_case")]
 pub enum BrowserResponse {
-    Current(PageSnapshot),
+    Current(Box<PageSnapshot>),
     History(Vec<NavEvent>),
     Search(Vec<SearchResult>),
     Session(SessionSummary),

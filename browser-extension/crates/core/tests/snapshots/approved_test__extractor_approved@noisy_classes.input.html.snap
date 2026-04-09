@@ -7,6 +7,12 @@ input_file: crates/core/tests/testdata/html/noisy_classes.input.html
   "title": "Noisy Page",
   "sections": [
     {
+      "kind": "paragraph",
+      "text": "Buy this product now!",
+      "depth": null,
+      "selector": "p"
+    },
+    {
       "kind": "heading",
       "text": "Important Content",
       "depth": 1,
@@ -20,9 +26,45 @@ input_file: crates/core/tests/testdata/html/noisy_classes.input.html
     },
     {
       "kind": "paragraph",
+      "text": "[Button: Share on Facebook]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Share on Twitter]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "paragraph",
       "text": "This second paragraph should also be extracted.",
       "depth": null,
       "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "Menu",
+      "depth": 3,
+      "selector": "h3"
+    },
+    {
+      "kind": "list",
+      "text": "- Link 1\n- Link 2",
+      "depth": null,
+      "selector": "ul"
+    },
+    {
+      "kind": "paragraph",
+      "text": "We use cookies to improve your experience.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Accept]",
+      "depth": null,
+      "selector": "button"
     }
   ],
   "metadata": {

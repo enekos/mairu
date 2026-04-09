@@ -14,26 +14,36 @@ pub fn init_session(session_id: &str) {
     });
 }
 
-#[wasm_bindgen]
-pub fn process_page(
-    url: &str,
-    html: &str,
-    timestamp: u64,
-    selection: Option<String>,
-    active_element: Option<String>,
-    console_errors_json: &str,
-    network_errors_json: &str,
-    visual_rects_json: &str,
-    storage_state_json: &str,
-) -> JsValue {
-    let console_errors: Vec<String> = serde_json::from_str(console_errors_json).unwrap_or_default();
-    let network_errors: Vec<String> = serde_json::from_str(network_errors_json).unwrap_or_default();
-    let visual_rects: std::collections::HashMap<String, String> =
-        serde_json::from_str(visual_rects_json).unwrap_or_default();
-    let storage_state: std::collections::HashMap<String, String> =
-        serde_json::from_str(storage_state_json).unwrap_or_default();
+#[derive(serde::Deserialize)]
+pub struct ProcessPageArgs {
+    pub url: String,
+    pub html: String,
+    pub timestamp: u64,
+    pub selection: Option<String>,
+    pub active_element: Option<String>,
+    pub console_errors_json: String,
+    pub network_errors_json: String,
+    pub visual_rects_json: String,
+    pub storage_state_json: String,
+}
 
-    let extracted = extractor::extract(html);
+#[wasm_bindgen]
+pub fn process_page(args_val: JsValue) -> JsValue {
+    let args: ProcessPageArgs = match serde_wasm_bindgen::from_value(args_val) {
+        Ok(a) => a,
+        Err(_) => return JsValue::NULL,
+    };
+
+    let console_errors: Vec<String> =
+        serde_json::from_str(&args.console_errors_json).unwrap_or_default();
+    let network_errors: Vec<String> =
+        serde_json::from_str(&args.network_errors_json).unwrap_or_default();
+    let visual_rects: std::collections::HashMap<String, String> =
+        serde_json::from_str(&args.visual_rects_json).unwrap_or_default();
+    let storage_state: std::collections::HashMap<String, String> =
+        serde_json::from_str(&args.storage_state_json).unwrap_or_default();
+
+    let extracted = extractor::extract(&args.html);
     let content_hash = dedup::simhash(
         &extracted
             .sections
@@ -44,14 +54,14 @@ pub fn process_page(
     );
 
     let snapshot = PageSnapshot {
-        url: url.to_string(),
+        url: args.url,
         title: extracted.title,
-        timestamp,
+        timestamp: args.timestamp,
         content_hash,
         sections: extracted.sections,
         metadata: extracted.metadata,
-        selection,
-        active_element,
+        selection: args.selection,
+        active_element: args.active_element,
         console_errors,
         network_errors,
         visual_rects,

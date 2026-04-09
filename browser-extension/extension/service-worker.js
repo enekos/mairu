@@ -34,17 +34,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.type === "page_content") {
     const { url, html, timestamp, selection, active_element, console_errors, network_errors, visual_rects, storage_state } = message.payload;
-    const result = process_page(
+    const result = process_page({
         url, 
         html, 
         timestamp, 
         selection, 
         active_element, 
-        JSON.stringify(console_errors || []),
-        JSON.stringify(network_errors || []),
-        JSON.stringify(visual_rects || {}),
-        JSON.stringify(storage_state || {})
-    );
+        console_errors_json: JSON.stringify(console_errors || []),
+        network_errors_json: JSON.stringify(network_errors || []),
+        visual_rects_json: JSON.stringify(visual_rects || {}),
+        storage_state_json: JSON.stringify(storage_state || {})
+    });
     console.log("[mairu-ext] Processed page:", url, result);
   } else if (message.type === "get_status") {
     const pending = get_pending_sync();
@@ -214,7 +214,7 @@ async function syncToMairu() {
       }
 
       const body = {
-        uri: `contextfs://browser/${btoa(page.url)}`,
+        uri: `contextfs://browser/${btoa(unescape(encodeURIComponent(page.url)))}`,
         project: "browser",
         name: page.title,
         abstract: page.sections.slice(0, 1).map((s) => s.text).join(" ").slice(0, 200),

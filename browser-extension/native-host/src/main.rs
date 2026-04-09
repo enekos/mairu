@@ -30,14 +30,10 @@ fn main() {
 
     // Thread to read responses from Chrome extension
     thread::spawn(move || {
-        loop {
-            if let Some(msg) = read_message() {
-                if let Some(id) = msg.get("id").and_then(|i| i.as_str()) {
-                    let mut reqs = pending_clone.lock().unwrap();
-                    reqs.insert(id.to_string(), msg);
-                }
-            } else {
-                break; // Stdin closed, extension disconnected
+        while let Some(msg) = read_message() {
+            if let Some(id) = msg.get("id").and_then(|i| i.as_str()) {
+                let mut reqs = pending_clone.lock().unwrap();
+                reqs.insert(id.to_string(), msg);
             }
         }
         std::process::exit(0);

@@ -14,13 +14,13 @@ input_file: crates/core/tests/testdata/html/wikipedia_article.input.html
     },
     {
       "kind": "table",
-      "text": "| Rust |\n|---|\n| Designed by | Graydon Hoare |\n| First appeared | July 7, 2010; 13 years ago [1] |",
+      "text": "| Rust |\n|---|\n| Designed by | Graydon Hoare |\n| First appeared | July 7, 2010; 13 years ago[[1]](#cite_note-1) |",
       "depth": null,
       "selector": "table"
     },
     {
       "kind": "paragraph",
-      "text": "Rust is a multi-paradigm , general-purpose programming language that emphasizes performance, type safety, and concurrency . It enforces memory safety—meaning that all references point to valid memory—without a traditional garbage collector .",
+      "text": "Rust is a [multi-paradigm](/wiki/Multi-paradigm_programming_language) , general-purpose [programming language](/wiki/Programming_language) that emphasizes performance, type safety, and [concurrency](/wiki/Concurrency_(computer_science)) . It enforces memory safety—meaning that all references point to valid memory—without a traditional [garbage collector](/wiki/Garbage_collection_(computer_science)) .",
       "depth": null,
       "selector": "p"
     },
@@ -44,7 +44,7 @@ input_file: crates/core/tests/testdata/html/wikipedia_article.input.html
     },
     {
       "kind": "paragraph",
-      "text": "The language grew out of a personal project begun in 2006 by Mozilla employee Graydon Hoare. [8]",
+      "text": "The language grew out of a personal project begun in 2006 by Mozilla employee Graydon Hoare.[[8]](#cite_note-8)",
       "depth": null,
       "selector": "p"
     },

@@ -7,6 +7,30 @@ input_file: crates/core/tests/testdata/html/vue_app.input.html
   "title": "Vue 3 Dashboard",
   "sections": [
     {
+      "kind": "link",
+      "text": "Dashboard (/dashboard)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "link",
+      "text": "Settings (/settings)",
+      "depth": null,
+      "selector": "a"
+    },
+    {
+      "kind": "heading",
+      "text": "Analytics Overview",
+      "depth": 1,
+      "selector": "h1"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Image: Admin user]",
+      "depth": null,
+      "selector": "img"
+    },
+    {
       "kind": "heading",
       "text": "Total Users",
       "depth": 3,
@@ -35,6 +59,18 @@ input_file: crates/core/tests/testdata/html/vue_app.input.html
       "text": "Monthly Growth",
       "depth": 2,
       "selector": "h2"
+    },
+    {
+      "kind": "paragraph",
+      "text": "We use cookies. Deal with it.",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Accept All]",
+      "depth": null,
+      "selector": "button"
     }
   ],
   "metadata": {
