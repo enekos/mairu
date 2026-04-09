@@ -232,6 +232,28 @@ func (g *GeminiProvider) SetupTools() {
 				Required: []string{"path"},
 			},
 		},
+		{
+			Name:        "browser_context",
+			Description: "Get real-time browser context from the Mairu browser extension.",
+			Parameters: &genai.Schema{
+				Type: genai.TypeObject,
+				Properties: map[string]*genai.Schema{
+					"command": {
+						Type:        genai.TypeString,
+						Description: "The command to run: current, history, search, or session.",
+					},
+					"query": {
+						Type:        genai.TypeString,
+						Description: "The search query (only for 'search' command).",
+					},
+					"limit": {
+						Type:        genai.TypeInteger,
+						Description: "The limit for search results (only for 'search' command).",
+					},
+				},
+				Required: []string{"command"},
+			},
+		},
 	}
 
 	g.model.Tools = []*genai.Tool{

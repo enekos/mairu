@@ -618,6 +618,22 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			result = map[string]any{"status": "success"}
 		}
 
+	case "browser_context":
+		command, _ := funcCall.Args["command"].(string)
+		query, _ := funcCall.Args["query"].(string)
+		limitF, ok := funcCall.Args["limit"].(float64)
+		limit := 5
+		if ok {
+			limit = int(limitF)
+		}
+		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🌐 Browser: %s", command)}
+		resp, err := queryBrowserContext(command, query, limit)
+		if err != nil {
+			result = map[string]any{"error": err.Error()}
+		} else {
+			result = map[string]any{"response": resp}
+		}
+
 	default:
 		result = map[string]any{"error": "unknown function"}
 	}
