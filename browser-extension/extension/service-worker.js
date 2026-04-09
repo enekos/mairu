@@ -32,8 +32,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!wasmReady) return;
 
   if (message.type === "page_content") {
-    const { url, html, timestamp, selection, active_element, console_errors } = message.payload;
-    const result = process_page(url, html, timestamp, selection, active_element, JSON.stringify(console_errors || []));
+    const { url, html, timestamp, selection, active_element, console_errors, network_errors, visual_rects, storage_state } = message.payload;
+    const result = process_page(
+        url, 
+        html, 
+        timestamp, 
+        selection, 
+        active_element, 
+        JSON.stringify(console_errors || []),
+        JSON.stringify(network_errors || []),
+        JSON.stringify(visual_rects || {}),
+        JSON.stringify(storage_state || {})
+    );
     console.log("[mairu-ext] Processed page:", url, result);
   }
 });
@@ -88,6 +98,23 @@ async function syncToMairu() {
       }
       if (page.console_errors && page.console_errors.length > 0) {
         extraContent += `\n\n### Console Errors\n${page.console_errors.join("\n")}\n`;
+      }
+      if (page.network_errors && page.network_errors.length > 0) {
+        extraContent += `\n\n### Network Errors\n${page.network_errors.join("\n")}\n`;
+      }
+      
+      if (page.storage_state && Object.keys(page.storage_state).length > 0) {
+        extraContent += `\n\n### Storage State\n`;
+        for (const [key, value] of Object.entries(page.storage_state)) {
+            extraContent += `- **${key}**: ${value}\n`;
+        }
+      }
+
+      if (page.visual_rects && Object.keys(page.visual_rects).length > 0) {
+        extraContent += `\n\n### Visual Layout (Bounding Rects)\n`;
+        for (const [key, value] of Object.entries(page.visual_rects)) {
+            extraContent += `- \`${key}\`: ${value}\n`;
+        }
       }
 
       const body = {

@@ -41,6 +41,9 @@ pub struct PageSnapshot {
     pub selection: Option<String>,
     pub active_element: Option<String>,
     pub console_errors: Vec<String>,
+    pub network_errors: Vec<String>,
+    pub visual_rects: std::collections::HashMap<String, String>,
+    pub storage_state: std::collections::HashMap<String, String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -138,6 +141,9 @@ mod tests {
             selection: None,
             active_element: None,
             console_errors: vec![],
+            network_errors: vec![],
+            visual_rects: std::collections::HashMap::new(),
+            storage_state: std::collections::HashMap::new(),
         };
         let json = serde_json::to_string(&snap).unwrap();
         // content_hash should be a hex string, not a number

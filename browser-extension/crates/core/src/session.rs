@@ -140,6 +140,9 @@ mod tests {
             selection: None,
             active_element: None,
             console_errors: vec![],
+            network_errors: vec![],
+            visual_rects: std::collections::HashMap::new(),
+            storage_state: std::collections::HashMap::new(),
         }
     }
 

@@ -22,8 +22,16 @@ pub fn process_page(
     selection: Option<String>,
     active_element: Option<String>,
     console_errors_json: &str,
+    network_errors_json: &str,
+    visual_rects_json: &str,
+    storage_state_json: &str,
 ) -> JsValue {
     let console_errors: Vec<String> = serde_json::from_str(console_errors_json).unwrap_or_default();
+    let network_errors: Vec<String> = serde_json::from_str(network_errors_json).unwrap_or_default();
+    let visual_rects: std::collections::HashMap<String, String> =
+        serde_json::from_str(visual_rects_json).unwrap_or_default();
+    let storage_state: std::collections::HashMap<String, String> =
+        serde_json::from_str(storage_state_json).unwrap_or_default();
 
     let extracted = extractor::extract(html);
     let content_hash = dedup::simhash(
@@ -45,6 +53,9 @@ pub fn process_page(
         selection,
         active_element,
         console_errors,
+        network_errors,
+        visual_rects,
+        storage_state,
     };
 
     let is_new = SESSION.with(|s| {

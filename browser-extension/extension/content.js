@@ -7,11 +7,13 @@
   const MUTATION_DEBOUNCE_MS = 2000;
   let debounceTimer = null;
   let consoleErrors = [];
+  let networkErrors = [];
 
-  // 1. Inject script to trap console errors
+  // 1. Inject script to trap console errors & network requests
   const script = document.createElement('script');
   script.textContent = `
     (function() {
+      // Console Errors
       const originalError = console.error;
       console.error = function(...args) {
         window.postMessage({ type: '__MAIRU_ERROR', error: args.map(a => String(a)).join(' ') }, '*');
@@ -23,15 +25,48 @@
       window.addEventListener('unhandledrejection', function(e) {
         window.postMessage({ type: '__MAIRU_ERROR', error: 'Unhandled Rejection: ' + e.reason }, '*');
       });
+
+      // Fetch interception
+      const originalFetch = window.fetch;
+      window.fetch = async function(...args) {
+        try {
+          const response = await originalFetch.apply(this, args);
+          if (!response.ok) {
+            window.postMessage({ type: '__MAIRU_NETWORK_ERROR', error: \`Fetch failed: \${response.status} \${response.statusText} for \${args[0]}\` }, '*');
+          }
+          return response;
+        } catch (err) {
+          window.postMessage({ type: '__MAIRU_NETWORK_ERROR', error: \`Fetch network error: \${err.message} for \${args[0]}\` }, '*');
+          throw err;
+        }
+      };
+
+      // XHR interception
+      const originalXHR = window.XMLHttpRequest.prototype.open;
+      window.XMLHttpRequest.prototype.open = function(method, url) {
+        this.addEventListener('load', function() {
+          if (this.status >= 400) {
+             window.postMessage({ type: '__MAIRU_NETWORK_ERROR', error: \`XHR failed: \${this.status} \${this.statusText} for \${url}\` }, '*');
+          }
+        });
+        this.addEventListener('error', function() {
+           window.postMessage({ type: '__MAIRU_NETWORK_ERROR', error: \`XHR network error for \${url}\` }, '*');
+        });
+        return originalXHR.apply(this, arguments);
+      };
     })();
   `;
   document.documentElement.appendChild(script);
   script.remove();
 
   window.addEventListener('message', (event) => {
-    if (event.data && event.data.type === '__MAIRU_ERROR') {
+    if (!event.data) return;
+    if (event.data.type === '__MAIRU_ERROR') {
       consoleErrors.push(event.data.error);
       if (consoleErrors.length > 50) consoleErrors.shift(); // keep last 50
+    } else if (event.data.type === '__MAIRU_NETWORK_ERROR') {
+      networkErrors.push(event.data.error);
+      if (networkErrors.length > 50) networkErrors.shift(); // keep last 50
     }
   });
 
@@ -116,6 +151,37 @@
     }
     const active_element = getCssSelector(activeEl);
 
+    // Capture visual layout of primary structural elements
+    const visual_rects = {};
+    const primaryElements = document.querySelectorAll('header, nav, main, article, aside, footer, h1, h2, form, button, input');
+    primaryElements.forEach(el => {
+       const selector = getCssSelector(el);
+       if (selector && !visual_rects[selector]) {
+         const rect = el.getBoundingClientRect();
+         // Only capture visible elements
+         if (rect.width > 0 && rect.height > 0) {
+            visual_rects[selector] = \`x:\${Math.round(rect.x)},y:\${Math.round(rect.y)},w:\${Math.round(rect.width)},h:\${Math.round(rect.height)}\`;
+         }
+       }
+    });
+
+    // Capture storage state securely
+    const storage_state = {};
+    try {
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            const val = localStorage.getItem(key);
+            storage_state[\`localStorage[\${key}]\`] = val.length > 200 ? val.substring(0, 200) + '...' : val;
+        }
+    } catch(e) {}
+    try {
+        for (let i = 0; i < sessionStorage.length; i++) {
+            const key = sessionStorage.key(i);
+            const val = sessionStorage.getItem(key);
+            storage_state[\`sessionStorage[\${key}]\`] = val.length > 200 ? val.substring(0, 200) + '...' : val;
+        }
+    } catch(e) {}
+
     chrome.runtime.sendMessage({
       type: "page_content",
       payload: {
@@ -125,6 +191,9 @@
         selection: selection || null,
         active_element: active_element || null,
         console_errors: consoleErrors,
+        network_errors: networkErrors,
+        visual_rects: visual_rects,
+        storage_state: storage_state,
       },
     });
   }
