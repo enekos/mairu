@@ -17,6 +17,9 @@ llmeval/llmeval
 **/.gocache/
 *.test
 *.out
+browser-extension/target/
+browser-extension/browser-extension-host
+browser-extension/crates/wasm/pkg/
 
 # Environment and secrets
 .env
