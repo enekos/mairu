@@ -8,7 +8,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 12,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     },
     {
       "ID": "fn:increment",
@@ -17,7 +18,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 8,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     },
     {
       "ID": "fn:reset",
@@ -26,7 +28,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 18,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     },
     {
       "ID": "fn:useCounter",
@@ -35,7 +38,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 4,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     }
   ],
   "edges": [

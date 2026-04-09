@@ -1,41 +1,45 @@
 {
-  "file_summary": "Go file graph extracted.",
+  "file_summary": "Go file with 5 symbols.",
   "symbols": [
     {
       "ID": "fn:Create",
       "Name": "Create",
       "Kind": "fn",
-      "Exported": false,
+      "Exported": true,
       "Doc": "",
       "Line": 36,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls generateID -\u003e calls time.Now().UTC -\u003e calls time.Now -\u003e calls db.ExecContext -\u003e if -\u003e return -\u003e calls fmt.Errorf -\u003e return -\u003e calls FindByID"
     },
     {
       "ID": "fn:Delete",
       "Name": "Delete",
       "Kind": "fn",
-      "Exported": false,
+      "Exported": true,
       "Doc": "",
       "Line": 46,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls db.ExecContext -\u003e return"
     },
     {
       "ID": "fn:FindByID",
       "Name": "FindByID",
       "Kind": "fn",
-      "Exported": false,
+      "Exported": true,
       "Doc": "",
       "Line": 10,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls db.QueryRowContext -\u003e if -\u003e calls row.Scan -\u003e return -\u003e calls fmt.Errorf -\u003e return"
     },
     {
       "ID": "fn:ListRecent",
       "Name": "ListRecent",
       "Kind": "fn",
-      "Exported": false,
+      "Exported": true,
       "Doc": "",
       "Line": 19,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls db.QueryContext -\u003e if -\u003e return -\u003e calls rows.Close -\u003e loop -\u003e calls rows.Next -\u003e if -\u003e calls rows.Scan -\u003e return -\u003e calls append -\u003e return -\u003e calls rows.Err"
     },
     {
       "ID": "fn:generateID",
@@ -44,117 +48,23 @@
       "Exported": false,
       "Doc": "",
       "Line": 51,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "return -\u003e calls fmt.Sprintf -\u003e calls time.Now().UnixNano -\u003e calls time.Now"
     }
   ],
   "edges": [
     {
       "From": "fn:Create",
-      "To": "fn:Delete",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Create",
       "To": "fn:FindByID",
       "Kind": "call"
     },
     {
       "From": "fn:Create",
-      "To": "fn:ListRecent",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Create",
       "To": "fn:generateID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Delete",
-      "To": "fn:Create",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Delete",
-      "To": "fn:FindByID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Delete",
-      "To": "fn:ListRecent",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:Delete",
-      "To": "fn:generateID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:FindByID",
-      "To": "fn:Create",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:FindByID",
-      "To": "fn:Delete",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:FindByID",
-      "To": "fn:ListRecent",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:FindByID",
-      "To": "fn:generateID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:ListRecent",
-      "To": "fn:Create",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:ListRecent",
-      "To": "fn:Delete",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:ListRecent",
-      "To": "fn:FindByID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:ListRecent",
-      "To": "fn:generateID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:generateID",
-      "To": "fn:Create",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:generateID",
-      "To": "fn:Delete",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:generateID",
-      "To": "fn:FindByID",
-      "Kind": "call"
-    },
-    {
-      "From": "fn:generateID",
-      "To": "fn:ListRecent",
       "Kind": "call"
     }
   ],
-  "imports": [
-    "context",
-    "database/sql",
-    "fmt",
-    "time"
-  ],
+  "imports": [],
   "symbol_descriptions": {
     "fn:Create": "Describes Create",
     "fn:Delete": "Describes Delete",

@@ -25,12 +25,13 @@ func init() {
 var outlineFull bool
 
 type outlineSymbol struct {
-	Kind      string          `json:"kind"`
-	Name      string          `json:"name"`
-	Line      int             `json:"l"`
-	Exported  bool            `json:"exported,omitempty"`
-	Signature string          `json:"sig,omitempty"`
-	Children  []outlineSymbol `json:"children,omitempty"`
+	Kind        string          `json:"kind"`
+	Name        string          `json:"name"`
+	Line        int             `json:"l"`
+	Exported    bool            `json:"exported,omitempty"`
+	Signature   string          `json:"sig,omitempty"`
+	Description string          `json:"desc,omitempty"`
+	Children    []outlineSymbol `json:"children,omitempty"`
 }
 
 type outlineResult struct {
@@ -113,10 +114,11 @@ var outlineCmd = &cobra.Command{
 			}
 
 			os := outlineSymbol{
-				Kind:     s.Kind,
-				Name:     s.Name,
-				Line:     s.Line,
-				Exported: exported,
+				Kind:        s.Kind,
+				Name:        s.Name,
+				Line:        s.Line,
+				Exported:    exported,
+				Description: s.ControlFlow,
 			}
 
 			// Add signature if the language describer captured it
@@ -174,6 +176,7 @@ var outlineCmd = &cobra.Command{
 							"name": prefix + s.Name,
 							"line": s.Line,
 							"sig":  s.Signature,
+							"desc": s.Description,
 						})
 						if len(s.Children) > 0 {
 							flat = append(flat, processSymbols(s.Children, prefix+"  ")...)
@@ -184,14 +187,23 @@ var outlineCmd = &cobra.Command{
 
 				items := processSymbols(res.Symbols, "")
 				f.PrintItems(
-					[]string{"line", "kind", "name", "signature"},
+					[]string{"line", "kind", "name", "signature", "description"},
 					items,
 					func(item map[string]any) map[string]string {
+						desc := fmt.Sprintf("%v", item["desc"])
+						desc = strings.ReplaceAll(desc, "\n", " ")
+						if desc == "<nil>" || desc == "" {
+							desc = ""
+						} else if len(desc) > 100 {
+							desc = desc[:97] + "..."
+						}
+
 						return map[string]string{
-							"line":      fmt.Sprintf("%v", item["line"]),
-							"kind":      fmt.Sprintf("%v", item["kind"]),
-							"name":      fmt.Sprintf("%v", item["name"]),
-							"signature": fmt.Sprintf("%v", item["sig"]),
+							"line":        fmt.Sprintf("%v", item["line"]),
+							"kind":        fmt.Sprintf("%v", item["kind"]),
+							"name":        fmt.Sprintf("%v", item["name"]),
+							"signature":   fmt.Sprintf("%v", item["sig"]),
+							"description": desc,
 						}
 					},
 				)

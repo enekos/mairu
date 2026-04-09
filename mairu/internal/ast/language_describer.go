@@ -7,13 +7,14 @@ import (
 )
 
 type LogicSymbol struct {
-	ID        string
-	Name      string
-	Kind      string
-	Exported  bool
-	Doc       string
-	Line      int
-	Signature string
+	ID          string
+	Name        string
+	Kind        string
+	Exported    bool
+	Doc         string
+	Line        int
+	Signature   string
+	ControlFlow string
 }
 
 // LogicEdge represents a relationship between two LogicSymbols, such as a function call.

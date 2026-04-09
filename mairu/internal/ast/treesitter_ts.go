@@ -18,10 +18,11 @@ type CallableNodeRef struct {
 }
 
 func parseTypeScript(source string) FileGraph {
+	sourceBytes := []byte(source)
 	parser := sitter.NewParser()
 	defer parser.Close()
 	parser.SetLanguage(typescript.GetLanguage())
-	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(source))
+	tree, _ := parser.ParseCtx(context.Background(), nil, sourceBytes)
 	if tree != nil {
 		defer tree.Close()
 	}
@@ -70,7 +71,7 @@ func parseTypeScript(source string) FileGraph {
 			if isExport {
 				sourceNode := child.ChildByFieldName("source")
 				if sourceNode != nil {
-					modName := stripQuotes(sourceNode.Content([]byte(source)))
+					modName := stripQuotes(sourceNode.Content(sourceBytes))
 					if modName != "" {
 						addEdge(LogicEdge{Kind: "import", From: "file", To: "module:" + modName})
 					}
@@ -83,7 +84,7 @@ func parseTypeScript(source string) FileGraph {
 		case "import_statement":
 			sourceNode := declNode.ChildByFieldName("source")
 			if sourceNode != nil {
-				modName := stripQuotes(sourceNode.Content([]byte(source)))
+				modName := stripQuotes(sourceNode.Content(sourceBytes))
 				if modName != "" {
 					addEdge(LogicEdge{Kind: "import", From: "file", To: "module:" + modName})
 				}
@@ -93,16 +94,16 @@ func parseTypeScript(source string) FileGraph {
 			nameNode := declNode.ChildByFieldName("name")
 			className := "anonymous_class"
 			if nameNode != nil {
-				className = nameNode.Content([]byte(source))
+				className = nameNode.Content(sourceBytes)
 			}
 			classId := "cls:" + className
-			pushSymbol(LogicSymbol{ID: classId, Kind: "cls", Name: className, Exported: isExport, Doc: extractJsDoc(child, []byte(source)), Line: int(declNode.StartPoint().Row) + 1})
+			pushSymbol(LogicSymbol{ID: classId, Kind: "cls", Name: className, Exported: isExport, Doc: extractJsDoc(child, sourceBytes), Line: int(declNode.StartPoint().Row) + 1})
 
-			superClass := getExtendsClause(declNode, []byte(source))
+			superClass := getExtendsClause(declNode, sourceBytes)
 			if superClass != "" {
 				addEdge(LogicEdge{Kind: "extends", From: classId, To: "type:" + superClass})
 			}
-			for _, impl := range getImplementsClause(declNode, []byte(source)) {
+			for _, impl := range getImplementsClause(declNode, sourceBytes) {
 				addEdge(LogicEdge{Kind: "implements", From: classId, To: "type:" + impl})
 			}
 
@@ -110,10 +111,10 @@ func parseTypeScript(source string) FileGraph {
 				mNameNode := method.ChildByFieldName("name")
 				methodName := ""
 				if mNameNode != nil {
-					methodName = mNameNode.Content([]byte(source))
+					methodName = mNameNode.Content(sourceBytes)
 				}
 				methodId := "mtd:" + className + "." + methodName
-				pushSymbol(LogicSymbol{ID: methodId, Kind: "mtd", Name: methodName, Exported: isExport, Doc: extractJsDoc(method, []byte(source)), Line: int(method.StartPoint().Row) + 1})
+				pushSymbol(LogicSymbol{ID: methodId, Kind: "mtd", Name: methodName, Exported: isExport, Doc: extractJsDoc(method, sourceBytes), Line: int(method.StartPoint().Row) + 1})
 				methodByClassAndName[className+"."+methodName] = methodId
 				methodIdsByName[methodName] = append(methodIdsByName[methodName], methodId)
 				callableNodes = append(callableNodes, CallableNodeRef{SymbolID: methodId, ClassName: className, Node: method})
@@ -123,14 +124,14 @@ func parseTypeScript(source string) FileGraph {
 			nameNode := declNode.ChildByFieldName("name")
 			fnName := "anonymous_fn"
 			if nameNode != nil {
-				fnName = nameNode.Content([]byte(source))
+				fnName = nameNode.Content(sourceBytes)
 			}
 			fnId := "fn:" + fnName
-			pushSymbol(LogicSymbol{ID: fnId, Kind: "fn", Name: fnName, Exported: isExport, Doc: extractJsDoc(child, []byte(source)), Line: int(declNode.StartPoint().Row) + 1})
+			pushSymbol(LogicSymbol{ID: fnId, Kind: "fn", Name: fnName, Exported: isExport, Doc: extractJsDoc(child, sourceBytes), Line: int(declNode.StartPoint().Row) + 1})
 			callableNodes = append(callableNodes, CallableNodeRef{SymbolID: fnId, ClassName: "", Node: declNode})
 
 		case "lexical_declaration", "variable_declaration":
-			doc := extractJsDoc(child, []byte(source))
+			doc := extractJsDoc(child, sourceBytes)
 			for j := 0; j < int(declNode.NamedChildCount()); j++ {
 				declarator := declNode.NamedChild(j)
 				if declarator.Type() != "variable_declarator" {
@@ -139,7 +140,7 @@ func parseTypeScript(source string) FileGraph {
 				vNameNode := declarator.ChildByFieldName("name")
 				variableName := ""
 				if vNameNode != nil {
-					variableName = vNameNode.Content([]byte(source))
+					variableName = vNameNode.Content(sourceBytes)
 				}
 				symbolId := "var:" + variableName
 				pushSymbol(LogicSymbol{ID: symbolId, Kind: "var", Name: variableName, Exported: isExport, Doc: doc, Line: int(declarator.StartPoint().Row) + 1})
@@ -150,37 +151,37 @@ func parseTypeScript(source string) FileGraph {
 			nameNode := declNode.ChildByFieldName("name")
 			name := ""
 			if nameNode != nil {
-				name = nameNode.Content([]byte(source))
+				name = nameNode.Content(sourceBytes)
 			}
-			pushSymbol(LogicSymbol{ID: "iface:" + name, Kind: "iface", Name: name, Exported: isExport, Doc: extractJsDoc(child, []byte(source)), Line: int(declNode.StartPoint().Row) + 1})
+			pushSymbol(LogicSymbol{ID: "iface:" + name, Kind: "iface", Name: name, Exported: isExport, Doc: extractJsDoc(child, sourceBytes), Line: int(declNode.StartPoint().Row) + 1})
 
 		case "enum_declaration":
 			nameNode := declNode.ChildByFieldName("name")
 			name := ""
 			if nameNode != nil {
-				name = nameNode.Content([]byte(source))
+				name = nameNode.Content(sourceBytes)
 			}
-			pushSymbol(LogicSymbol{ID: "enum:" + name, Kind: "enum", Name: name, Exported: isExport, Doc: extractJsDoc(child, []byte(source)), Line: int(declNode.StartPoint().Row) + 1})
+			pushSymbol(LogicSymbol{ID: "enum:" + name, Kind: "enum", Name: name, Exported: isExport, Doc: extractJsDoc(child, sourceBytes), Line: int(declNode.StartPoint().Row) + 1})
 
 		case "type_alias_declaration":
 			nameNode := declNode.ChildByFieldName("name")
 			name := ""
 			if nameNode != nil {
-				name = nameNode.Content([]byte(source))
+				name = nameNode.Content(sourceBytes)
 			}
-			pushSymbol(LogicSymbol{ID: "type:" + name, Kind: "type", Name: name, Exported: isExport, Doc: extractJsDoc(child, []byte(source)), Line: int(declNode.StartPoint().Row) + 1})
+			pushSymbol(LogicSymbol{ID: "type:" + name, Kind: "type", Name: name, Exported: isExport, Doc: extractJsDoc(child, sourceBytes), Line: int(declNode.StartPoint().Row) + 1})
 		}
 	}
 
 	for _, callable := range callableNodes {
 		walkForType(callable.Node, "call_expression", func(callExpr *sitter.Node) {
-			targetId := resolveCallTarget(callExpr, callable.ClassName, methodByClassAndName, methodIdsByName, nameToSymbolIds, symbolById, []byte(source))
+			targetId := resolveCallTarget(callExpr, callable.ClassName, methodByClassAndName, methodIdsByName, nameToSymbolIds, symbolById, sourceBytes)
 			if targetId != "" {
 				addEdge(LogicEdge{Kind: "call", From: callable.SymbolID, To: targetId})
 			}
 		})
 		walkForType(callable.Node, "identifier", func(identifier *sitter.Node) {
-			name := identifier.Content([]byte(source))
+			name := identifier.Content(sourceBytes)
 			variableId, ok := moduleVariableByName[name]
 			if !ok {
 				return
@@ -197,7 +198,7 @@ func parseTypeScript(source string) FileGraph {
 		})
 	}
 
-	imports := collectImports(root, []byte(source))
+	imports := collectImports(root, sourceBytes)
 
 	var finalEdges []LogicEdge
 	for _, v := range edgesMap {
@@ -206,18 +207,28 @@ func parseTypeScript(source string) FileGraph {
 
 	symbolDescriptions := make(map[string]string)
 	for _, callable := range callableNodes {
-		symbolDescriptions[callable.SymbolID] = DescribeStatements(callable.Node, []byte(source))
+		symbolDescriptions[callable.SymbolID] = DescribeStatements(callable.Node, sourceBytes)
 	}
+
+	for i, sym := range symbols {
+		for _, callable := range callableNodes {
+			if callable.SymbolID == sym.ID {
+				symbols[i].ControlFlow = SummarizeControlFlow(callable.Node, sourceBytes)
+				break
+			}
+		}
+	}
+
 	for i := 0; i < int(root.NamedChildCount()); i++ {
 		child := root.NamedChild(i)
 		if child.Type() == "class_declaration" {
 			nameNode := child.ChildByFieldName("name")
 			className := "anonymous_class"
 			if nameNode != nil {
-				className = nameNode.Content([]byte(source))
+				className = nameNode.Content(sourceBytes)
 			}
 			classId := "cls:" + className
-			superClass := getExtendsClause(child, []byte(source))
+			superClass := getExtendsClause(child, sourceBytes)
 			extendsStr := ""
 			if superClass != "" {
 				extendsStr = " extends " + superClass
@@ -226,7 +237,7 @@ func parseTypeScript(source string) FileGraph {
 			for _, m := range getClassMethods(child) {
 				n := m.ChildByFieldName("name")
 				if n != nil {
-					methodNames = append(methodNames, n.Content([]byte(source)))
+					methodNames = append(methodNames, n.Content(sourceBytes))
 				}
 			}
 			symbolDescriptions[classId] = "Class `" + className + "`" + extendsStr + " with methods: " + strings.Join(methodNames, ", ")
@@ -267,6 +278,11 @@ func parseTypeScript(source string) FileGraph {
 	}
 }
 
+var (
+	reJsDocStar     = regexp.MustCompile(`^\s*\*\s?`)
+	reJsDocSentence = regexp.MustCompile(`^(.+?\.)\s`)
+)
+
 func extractJsDoc(node *sitter.Node, source []byte) string {
 	candidate := node.PrevNamedSibling()
 	for candidate != nil && candidate.Type() == "decorator" {
@@ -288,9 +304,8 @@ func extractJsDoc(node *sitter.Node, source []byte) string {
 
 	lines := strings.Split(stripped, "\n")
 	var cleanedLines []string
-	re := regexp.MustCompile(`^\s*\*\s?`)
 	for _, line := range lines {
-		cleanedLines = append(cleanedLines, re.ReplaceAllString(line, ""))
+		cleanedLines = append(cleanedLines, reJsDocStar.ReplaceAllString(line, ""))
 	}
 	stripped = strings.Join(cleanedLines, " ")
 	stripped = strings.TrimSpace(stripped)
@@ -302,8 +317,7 @@ func extractJsDoc(node *sitter.Node, source []byte) string {
 	beforeTags := strings.SplitN(stripped, " @", 2)[0]
 	beforeTags = strings.TrimSpace(beforeTags)
 
-	reSentence := regexp.MustCompile(`^(.+?\.)\s`)
-	matches := reSentence.FindStringSubmatch(beforeTags + " ")
+	matches := reJsDocSentence.FindStringSubmatch(beforeTags + " ")
 	firstSentence := beforeTags
 	if len(matches) > 1 {
 		firstSentence = matches[1]

@@ -8,7 +8,8 @@
       "Exported": true,
       "Doc": "Validates JWT tokens and attaches user info to the request.",
       "Line": 11,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "if -\u003e calls res.status(401).json -\u003e calls res.status -\u003e return -\u003e calls header.replace -\u003e try/catch -\u003e calls verify -\u003e calls next -\u003e calls res.status(403).json -\u003e calls res.status"
     },
     {
       "ID": "fn:requireRole",
@@ -17,7 +18,8 @@
       "Exported": true,
       "Doc": "Checks if the authenticated user has the required role.",
       "Line": 29,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "return -\u003e if -\u003e calls res.status(403).json -\u003e calls res.status -\u003e return -\u003e calls next"
     },
     {
       "ID": "iface:TokenPayload",
@@ -26,7 +28,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 4,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     }
   ],
   "edges": [

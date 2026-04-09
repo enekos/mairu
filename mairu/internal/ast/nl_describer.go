@@ -292,6 +292,8 @@ func describeExpressionStatement(node *sitter.Node, source []byte) string {
 	return strings.TrimSpace(node.Content(source))
 }
 
+var reNumberPrefix = regexp.MustCompile(`^\d+\.\s*`)
+
 func describeBlockInline(node *sitter.Node, source []byte) string {
 	if node == nil {
 		return "does nothing"
@@ -303,8 +305,7 @@ func describeBlockInline(node *sitter.Node, source []byte) string {
 		}
 		if count == 1 {
 			stmt := describeStatement(node.NamedChild(0), source)
-			re := regexp.MustCompile(`^\d+\.\s*`)
-			return re.ReplaceAllString(stmt, "")
+			return reNumberPrefix.ReplaceAllString(stmt, "")
 		}
 		var stmts []string
 		for i := 0; i < int(count); i++ {
@@ -599,4 +600,68 @@ func DescribeSymbols(symbols []LogicSymbol, edges []LogicEdge, descriptions map[
 		sections = append(sections, strings.Join(lines, "\n"))
 	}
 	return strings.Join(sections, "\n\n")
+}
+
+func SummarizeControlFlow(node *sitter.Node, source []byte) string {
+	if node == nil {
+		return ""
+	}
+	// Depending on the language and node type, the body might be "body" or "block"
+	body := node.ChildByFieldName("body")
+	if body == nil {
+		// Try to find a block directly if no body field (e.g. for some Go nodes)
+		for i := 0; i < int(node.NamedChildCount()); i++ {
+			if node.NamedChild(i).Type() == "block" || node.NamedChild(i).Type() == "statement_block" {
+				body = node.NamedChild(i)
+				break
+			}
+		}
+	}
+	if body == nil {
+		return ""
+	}
+
+	var actions []string
+
+	var walk func(*sitter.Node)
+	walk = func(n *sitter.Node) {
+		t := n.Type()
+		if t == "if_statement" {
+			actions = append(actions, "if")
+		} else if t == "for_statement" || t == "for_in_statement" || t == "while_statement" || t == "do_statement" || t == "for_clause" || t == "range_clause" {
+			actions = append(actions, "loop")
+		} else if t == "try_statement" {
+			actions = append(actions, "try/catch")
+		} else if t == "throw_statement" || t == "panic_statement" {
+			actions = append(actions, "throw")
+		} else if t == "return_statement" {
+			actions = append(actions, "return")
+		} else if t == "switch_statement" || t == "type_switch_statement" || t == "expression_switch_statement" {
+			actions = append(actions, "switch")
+		} else if t == "call_expression" {
+			fn := n.ChildByFieldName("function")
+			if fn != nil {
+				actions = append(actions, "calls "+fn.Content(source))
+			}
+		}
+
+		for i := 0; i < int(n.NamedChildCount()); i++ {
+			walk(n.NamedChild(i))
+		}
+	}
+
+	walk(body)
+
+	if len(actions) == 0 {
+		return "linear"
+	}
+
+	var clean []string
+	for i, a := range actions {
+		if i == 0 || actions[i-1] != a {
+			clean = append(clean, a)
+		}
+	}
+
+	return strings.Join(clean, " -> ")
 }

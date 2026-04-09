@@ -8,7 +8,8 @@
       "Exported": true,
       "Doc": "",
       "Line": 10,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls Date.now -\u003e loop -\u003e if -\u003e calls cache.delete -\u003e return"
     },
     {
       "ID": "fn:getOrSet",
@@ -17,7 +18,8 @@
       "Exported": true,
       "Doc": "",
       "Line": 1,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "if -\u003e calls cache.has -\u003e return -\u003e calls cache.get -\u003e calls compute -\u003e calls cache.set -\u003e return"
     },
     {
       "ID": "fn:warmUp",
@@ -26,7 +28,8 @@
       "Exported": true,
       "Doc": "",
       "Line": 22,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "loop -\u003e if -\u003e calls cache.has -\u003e calls loader -\u003e calls cache.set"
     }
   ],
   "edges": [],

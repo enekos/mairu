@@ -84,6 +84,9 @@ func TestAnalyzeDiffE2E(t *testing.T) {
 		t.Skip("git not available or failed to init")
 	}
 
+	cwd, _ := os.Getwd()
+	defer os.Chdir(cwd)
+
 	err = os.Chdir(dir)
 	if err != nil {
 		t.Fatal(err)

@@ -8,7 +8,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 21,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "return -\u003e calls setTimeout"
     },
     {
       "ID": "fn:withRetry",
@@ -17,7 +18,8 @@
       "Exported": true,
       "Doc": "",
       "Line": 1,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "loop -\u003e try/catch -\u003e calls fn -\u003e return -\u003e if -\u003e calls sleep -\u003e calls Math.pow -\u003e throw"
     }
   ],
   "edges": [

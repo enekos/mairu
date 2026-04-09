@@ -113,6 +113,9 @@ func init() {
 		outlineCmd,
 		peekCmd,
 		scanCmd,
+		dockerCmd,
+		procCmd,
+		devCmd,
 	)
 
 	// Subsystems & Workflows

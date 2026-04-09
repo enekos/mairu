@@ -8,7 +8,8 @@
       "Exported": true,
       "Doc": "",
       "Line": 3,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     },
     {
       "ID": "mtd:EventEmitter.clear",
@@ -17,7 +18,8 @@
       "Exported": true,
       "Doc": "Removes all listeners for a given event, or all events if none specified.",
       "Line": 34,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "if -\u003e calls this.listeners.delete -\u003e calls this.listeners.clear"
     },
     {
       "ID": "mtd:EventEmitter.emit",
@@ -26,7 +28,8 @@
       "Exported": true,
       "Doc": "Fires all listeners registered for the given event.",
       "Line": 23,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls this.listeners.get -\u003e if -\u003e return -\u003e loop -\u003e calls fn"
     },
     {
       "ID": "mtd:EventEmitter.off",
@@ -35,7 +38,8 @@
       "Exported": true,
       "Doc": "Removes a previously registered listener.",
       "Line": 15,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "calls this.listeners.get -\u003e if -\u003e calls set.delete"
     },
     {
       "ID": "mtd:EventEmitter.on",
@@ -44,7 +48,8 @@
       "Exported": true,
       "Doc": "Registers a listener for the given event name.",
       "Line": 7,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": "if -\u003e calls this.listeners.has -\u003e calls this.listeners.set -\u003e calls this.listeners.get(event)!.add -\u003e calls this.listeners.get"
     },
     {
       "ID": "type:Listener",
@@ -53,7 +58,8 @@
       "Exported": false,
       "Doc": "",
       "Line": 1,
-      "Signature": ""
+      "Signature": "",
+      "ControlFlow": ""
     }
   ],
   "edges": [
