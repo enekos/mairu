@@ -207,6 +207,49 @@
     debounceTimer = setTimeout(captureAndSend, MUTATION_DEBOUNCE_MS);
   });
 
+  // Listen for execution commands from background script (from Agent)
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === "execute") {
+      try {
+        if (message.command === "click") {
+          const el = document.querySelector(message.selector);
+          if (el) {
+            el.click();
+            sendResponse({ success: true, message: `Clicked ${message.selector}` });
+          } else {
+            sendResponse({ error: `Element not found: ${message.selector}` });
+          }
+        } else if (message.command === "fill") {
+          const el = document.querySelector(message.selector);
+          if (el) {
+            el.value = message.value;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+            el.dispatchEvent(new Event('change', { bubbles: true }));
+            sendResponse({ success: true, message: `Filled ${message.selector}` });
+          } else {
+             sendResponse({ error: `Element not found: ${message.selector}` });
+          }
+        } else if (message.command === "highlight") {
+          const el = document.querySelector(message.selector);
+          if (el) {
+             const origBorder = el.style.border;
+             el.style.border = "3px solid red";
+             setTimeout(() => { el.style.border = origBorder; }, 3000);
+             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+             sendResponse({ success: true, message: `Highlighted ${message.selector}` });
+          } else {
+             sendResponse({ error: `Element not found: ${message.selector}` });
+          }
+        } else {
+          sendResponse({ error: `Unknown execute command: ${message.command}` });
+        }
+      } catch (e) {
+         sendResponse({ error: `Execution failed: ${e.message}` });
+      }
+      return true; // Indicates async response
+    }
+  });
+
   observer.observe(document.body, {
     childList: true,
     subtree: true,

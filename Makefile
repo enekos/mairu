@@ -6,6 +6,7 @@ SHELL := /bin/bash
 .PHONY: fmt-go fmt-go-check lint-go test-go test-go-race test-go-cover check-go check-go-ci install-hooks
 .PHONY: eval-retrieval eval-seed eval-llm
 .PHONY: meili-up meili-down meili-status meili-clean setup-no-docker dev-no-docker mairu-no-docker
+.PHONY: build-browser-extension install-browser-extension test-browser-extension
 
 help:
 	@echo "mairu monorepo Makefile"
@@ -21,6 +22,11 @@ help:
 	@echo "  make check-go-ci        Run CI-grade Go checks (includes race)"
 	@echo "  make install-hooks      Install local git pre-commit hook"
 	@echo "  make clean              Remove dist artifacts"
+	@echo
+	@echo "Browser Extension:"
+	@echo "  make build-browser-extension    Build the browser extension and native host"
+	@echo "  make install-browser-extension  Install the native host for Chrome"
+	@echo "  make test-browser-extension     Run tests for the browser extension"
 	@echo
 	@echo "Runtime:"
 	@echo "  make setup              Initialize indexes (requires Meilisearch)"
@@ -140,3 +146,12 @@ eval-llm:
 eval-llm-vibe:
 	cd llmeval && go build -o bin/llmeval ./cmd/llmeval
 	./llmeval/bin/llmeval --dataset ./llmeval/mairu_vibe_mutation_eval.json --model gemini-2.5-flash
+
+build-browser-extension:
+	cd browser-extension && cargo build --release
+
+install-browser-extension:
+	cd browser-extension && ./install.sh
+
+test-browser-extension:
+	cd browser-extension && cargo test

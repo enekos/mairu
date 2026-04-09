@@ -46,7 +46,11 @@ fn main() {
     let mut request_counter = 0;
 
     for mut request in server.incoming_requests() {
-        if request.method() == &Method::Post && request.url() == "/query" {
+        if request.method() == &Method::Post
+            && (request.url() == "/query"
+                || request.url() == "/execute"
+                || request.url() == "/screenshot")
+        {
             let mut content = String::new();
             request
                 .as_reader()
@@ -59,6 +63,14 @@ fn main() {
 
                 if let Value::Object(ref mut map) = json {
                     map.insert("id".to_string(), Value::String(req_id.clone()));
+                    if request.url() == "/execute" {
+                        map.insert("type".to_string(), Value::String("execute".to_string()));
+                    } else if request.url() == "/screenshot" {
+                        map.insert(
+                            "command".to_string(),
+                            Value::String("screenshot".to_string()),
+                        );
+                    }
                 }
 
                 if write_message(&json).is_ok() {

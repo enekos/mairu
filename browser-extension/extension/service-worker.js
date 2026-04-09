@@ -48,11 +48,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-// Handle native messaging from mairu chat (via native host)
-chrome.runtime.onConnectExternal.addListener((port) => {
-  port.onMessage.addListener((msg) => {
+let nativePort = null;
+
+function connectNativeHost() {
+  nativePort = chrome.runtime.connectNative('com.mairu.browser_context');
+  
+  nativePort.onMessage.addListener((msg) => {
     if (!wasmReady) {
-      port.postMessage({ error: "WASM not ready" });
+      nativePort.postMessage({ id: msg.id, error: "WASM not ready" });
       return;
     }
 
@@ -70,11 +73,92 @@ chrome.runtime.onConnectExternal.addListener((port) => {
       case "session":
         response = get_session_summary();
         break;
+      case "screenshot":
+        chrome.tabs.captureVisibleTab(null, { format: "jpeg", quality: 50 }, (dataUrl) => {
+          if (chrome.runtime.lastError) {
+             nativePort.postMessage({ id: msg.id, error: chrome.runtime.lastError.message });
+          } else {
+             nativePort.postMessage({ id: msg.id, dataUrl });
+          }
+        });
+        return; // Async response handled in callback
       default:
-        response = { error: `Unknown command: ${msg.command}` };
+        // If it's an execute command, forward it to the active tab's content script
+        if (msg.type === "execute") {
+          chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+             if (tabs[0]) {
+               chrome.tabs.sendMessage(tabs[0].id, msg, (contentResponse) => {
+                  nativePort.postMessage({ id: msg.id, ...contentResponse });
+               });
+             } else {
+               nativePort.postMessage({ id: msg.id, error: "No active tab found" });
+             }
+          });
+          return; // Async response handled in callback
+        } else {
+          response = { error: `Unknown command: ${msg.command}` };
+        }
     }
-    port.postMessage(response);
+    
+    // Always include the request ID in the response so the native host can route it
+    nativePort.postMessage({ id: msg.id, ...response });
   });
+
+  nativePort.onDisconnect.addListener(() => {
+    console.log("[mairu-ext] Native host disconnected. Retrying in 5s...");
+    nativePort = null;
+    setTimeout(connectNativeHost, 5000);
+  });
+}
+
+// Start the connection
+connectNativeHost();
+
+// Context Menus
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: "send-to-mairu",
+    title: "Send to Mairu Agent",
+    contexts: ["selection", "link", "image", "page"]
+  });
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "send-to-mairu") {
+    let content = "";
+    if (info.selectionText) {
+      content = `Selected text on ${tab.url}:\n\n${info.selectionText}`;
+    } else if (info.linkUrl) {
+      content = `Link on ${tab.url}:\n\n${info.linkUrl}`;
+    } else if (info.srcUrl) {
+      content = `Image on ${tab.url}:\n\n${info.srcUrl}`;
+    } else {
+      content = `Page: ${tab.url}`;
+    }
+    
+    // We send this as a special manual memory/context block
+    const body = {
+      uri: `contextfs://browser/manual/${Date.now()}`,
+      project: "browser",
+      name: `User Selection from ${tab.title || 'Browser'}`,
+      abstract: content.slice(0, 100),
+      overview: "User explicitly sent this context to the agent.",
+      content: content,
+    };
+
+    try {
+      const resp = await fetch(`${MAIRU_API_URL}/api/context`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (resp.ok) {
+        console.log("[mairu-ext] Sent manual context successfully.");
+      }
+    } catch (e) {
+      console.error("[mairu-ext] Failed to send manual context:", e);
+    }
+  }
 });
 
 // Background sync to mairu API

@@ -6,7 +6,9 @@
   "permissions": [
     "activeTab",
     "storage",
-    "nativeMessaging"
+    "nativeMessaging",
+    "contextMenus",
+    "tabs"
   ],
   "background": {
     "service_worker": "service-worker.js",
