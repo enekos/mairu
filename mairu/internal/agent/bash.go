@@ -71,11 +71,14 @@ func (a *Agent) RunBash(ctx context.Context, command string, timeoutMs int, outC
 }
 
 func (a *Agent) runBashOnce(ctx context.Context, command string, timeoutMs int, outChan chan<- AgentEvent) (string, error, error) {
+	// Wrap the command to echo the final PWD at the end, but preserve the exit code
+	wrappedCommand := fmt.Sprintf("%s\n__mairu_ret=$?\n__mairu_pwd=$(pwd)\necho \"__MAIRU_PWD_MARKER__${__mairu_pwd}\"\nexit $__mairu_ret", command)
+
 	cmdCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutMs)*time.Millisecond)
 	defer cancel()
 
-	cmd := exec.CommandContext(cmdCtx, "bash", "-c", command)
-	cmd.Dir = a.root // Run in the project root
+	cmd := exec.CommandContext(cmdCtx, "bash", "-c", wrappedCommand)
+	cmd.Dir = a.currentDir // Run in the project root
 	// Make it more resilient by faking CI
 	cmd.Env = append(cmd.Environ(), "CI=true", "DEBIAN_FRONTEND=noninteractive", "NONINTERACTIVE=true", "FORCE_COLOR=0")
 	if runtime.GOOS != "windows" {
@@ -157,6 +160,22 @@ func (a *Agent) runBashOnce(ctx context.Context, command string, timeoutMs int, 
 		errStr := StripANSI(stderrBuf.String())
 		mu.Unlock()
 
+		// Parse the PWD marker from outStr specifically
+		pwdMarker := "__MAIRU_PWD_MARKER__"
+		if idx := strings.LastIndex(outStr, pwdMarker); idx != -1 {
+			lines := strings.Split(outStr[idx+len(pwdMarker):], "\n")
+			if len(lines) > 0 {
+				newDir := strings.TrimSpace(lines[0])
+				if newDir != "" {
+					a.mu.Lock()
+					a.currentDir = newDir
+					a.mu.Unlock()
+				}
+			}
+			// Strip the marker from the stdout
+			outStr = strings.TrimSpace(outStr[:idx])
+		}
+
 		result := ""
 		if outStr != "" {
 			result += "STDOUT:\n" + outStr
@@ -171,10 +190,10 @@ func (a *Agent) runBashOnce(ctx context.Context, command string, timeoutMs int, 
 
 		// Truncate if output is too long (max 10000 chars, tail truncation)
 		if len(result) > 10000 {
-			result = result[:10000] + "\n...[Output truncated, run command redirecting to file to see full output]"
+			result = "[Output truncated, showing last 10000 chars]...\n" + result[len(result)-10000:]
 		}
 
-		return result, err, nil
+		return strings.TrimSpace(result), err, nil
 	}
 }
 

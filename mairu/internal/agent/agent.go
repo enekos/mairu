@@ -19,10 +19,11 @@ import (
 )
 
 type Agent struct {
-	llm     *llm.GeminiProvider
-	indexer *contextsrv.MeiliIndexer
-	root    string
-	apiKey  string
+	llm        *llm.GeminiProvider
+	indexer    *contextsrv.MeiliIndexer
+	root       string
+	currentDir string
+	apiKey     string
 
 	stuckDetector *StuckDetector
 
@@ -70,6 +71,7 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 		llm:           llmProvider,
 		indexer:       indexer,
 		root:          projectRoot,
+		currentDir:    projectRoot,
 		apiKey:        apiKey,
 		stuckDetector: NewStuckDetector(),
 		Unattended:    unattended,
@@ -222,6 +224,7 @@ func (a *Agent) processLoopStream(input string, outChan chan<- AgentEvent) {
 }
 
 func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentResponseIterator, outChan chan<- AgentEvent) error {
+	var functionCalls []genai.FunctionCall
 	for {
 		resp, err := iter.Next()
 		if err == iterator.Done {
@@ -239,7 +242,6 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 			a.emitLog(outChan, "Token Usage: prompt=%d, candidates=%d, total=%d", resp.UsageMetadata.PromptTokenCount, resp.UsageMetadata.CandidatesTokenCount, resp.UsageMetadata.TotalTokenCount)
 		}
 
-		var functionCalls []genai.FunctionCall
 		for _, part := range resp.Candidates[0].Content.Parts {
 			if funcCall, ok := part.(genai.FunctionCall); ok {
 				functionCalls = append(functionCalls, funcCall)
@@ -268,54 +270,55 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 				}
 			}
 		}
-
-		if len(functionCalls) > 0 {
-			var wg sync.WaitGroup
-			results := make([]llm.FunctionResponsePayload, len(functionCalls))
-
-			for i, funcCall := range functionCalls {
-				wg.Add(1)
-				go func(idx int, fc genai.FunctionCall) {
-					defer wg.Done()
-					a.emitLog(outChan, "Executing tool call: %s", fc.Name)
-					res := a.executeToolCall(ctx, fc, outChan)
-					results[idx] = llm.FunctionResponsePayload{
-						Name:     fc.Name,
-						Response: res,
-					}
-					a.emitLog(outChan, "Tool call %s completed", fc.Name)
-				}(i, funcCall)
-			}
-			wg.Wait()
-
-			// --- Stuck detection ---
-			for _, fc := range functionCalls {
-				a.stuckDetector.Record(NewToolSignature(fc.Name, fc.Args))
-			}
-
-			switch verdict := a.stuckDetector.Check(); verdict {
-			case VerdictStop:
-				a.emitLog(outChan, "StuckDetector: stop verdict — terminating loop")
-				outChan <- AgentEvent{Type: "error", Content: StopMessage()}
-				outChan <- AgentEvent{Type: "done"}
-				return nil
-			case VerdictNudge:
-				a.emitLog(outChan, "StuckDetector: nudge verdict — injecting warning")
-				outChan <- AgentEvent{Type: "status", Content: "⚠️ Loop detected — nudging agent to try a different approach"}
-				// Inject warning into the last tool result so the LLM sees it
-				// alongside the function responses.
-				lastIdx := len(results) - 1
-				if results[lastIdx].Response == nil {
-					results[lastIdx].Response = make(map[string]any)
-				}
-				results[lastIdx].Response["_loop_warning"] = NudgeMessage()
-			}
-			// --- End stuck detection ---
-
-			nextIter := a.llm.SendFunctionResponsesStream(ctx, results)
-			return a.handleIterator(ctx, nextIter, outChan)
-		}
 	}
+
+	if len(functionCalls) > 0 {
+		var wg sync.WaitGroup
+		results := make([]llm.FunctionResponsePayload, len(functionCalls))
+
+		for i, funcCall := range functionCalls {
+			wg.Add(1)
+			go func(idx int, fc genai.FunctionCall) {
+				defer wg.Done()
+				a.emitLog(outChan, "Executing tool call: %s", fc.Name)
+				res := a.executeToolCall(ctx, fc, outChan)
+				results[idx] = llm.FunctionResponsePayload{
+					Name:     fc.Name,
+					Response: res,
+				}
+				a.emitLog(outChan, "Tool call %s completed", fc.Name)
+			}(i, funcCall)
+		}
+		wg.Wait()
+
+		// --- Stuck detection ---
+		for _, fc := range functionCalls {
+			a.stuckDetector.Record(NewToolSignature(fc.Name, fc.Args))
+		}
+
+		switch verdict := a.stuckDetector.Check(); verdict {
+		case VerdictStop:
+			a.emitLog(outChan, "StuckDetector: stop verdict — terminating loop")
+			outChan <- AgentEvent{Type: "error", Content: StopMessage()}
+			outChan <- AgentEvent{Type: "done"}
+			return nil
+		case VerdictNudge:
+			a.emitLog(outChan, "StuckDetector: nudge verdict — injecting warning")
+			outChan <- AgentEvent{Type: "status", Content: "⚠️ Loop detected — nudging agent to try a different approach"}
+			// Inject warning into the last tool result so the LLM sees it
+			// alongside the function responses.
+			lastIdx := len(results) - 1
+			if results[lastIdx].Response == nil {
+				results[lastIdx].Response = make(map[string]any)
+			}
+			results[lastIdx].Response["_loop_warning"] = NudgeMessage()
+		}
+		// --- End stuck detection ---
+
+		nextIter := a.llm.SendFunctionResponsesStream(ctx, results)
+		return a.handleIterator(ctx, nextIter, outChan)
+	}
+
 	outChan <- AgentEvent{Type: "done"}
 	return nil
 }
@@ -465,9 +468,20 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 
 	case "read_file":
 		filePath, _ := funcCall.Args["file_path"].(string)
+		offsetFloat, _ := funcCall.Args["offset"].(float64)
+		limitFloat, _ := funcCall.Args["limit"].(float64)
 
-		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("📄 Reading file: %s", filePath)}
-		content, err := a.ReadFile(filePath)
+		offset := int(offsetFloat)
+		if offset <= 0 {
+			offset = 1
+		}
+		limit := int(limitFloat)
+		if limit <= 0 {
+			limit = 2000
+		}
+
+		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("📄 Reading file: %s (offset: %d, limit: %d)", filePath, offset, limit)}
+		content, err := a.ReadFile(filePath, offset, limit)
 		if err != nil {
 			result = map[string]any{"error": err.Error()}
 		} else {

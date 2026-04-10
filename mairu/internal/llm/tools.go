@@ -74,13 +74,21 @@ func (g *GeminiProvider) SetupTools() {
 		},
 		{
 			Name:        "read_file",
-			Description: "Read the entire contents of a file.",
+			Description: "Read the contents of a file. Supports reading specific sections using offset and limit. Output is truncated to 2000 lines by default. Use offset/limit for large files.",
 			Parameters: &genai.Schema{
 				Type: genai.TypeObject,
 				Properties: map[string]*genai.Schema{
 					"file_path": {
 						Type:        genai.TypeString,
 						Description: "The relative path to the file.",
+					},
+					"offset": {
+						Type:        genai.TypeInteger,
+						Description: "The line number to start reading from (1-indexed). Defaults to 1.",
+					},
+					"limit": {
+						Type:        genai.TypeInteger,
+						Description: "Maximum number of lines to read. Defaults to 2000.",
 					},
 				},
 				Required: []string{"file_path"},

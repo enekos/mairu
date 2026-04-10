@@ -10,8 +10,8 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-// ReadFile reads the full content of a file, adding line numbers.
-func (a *Agent) ReadFile(filePath string) (string, error) {
+// ReadFile reads the content of a file, adding line numbers and supporting offset/limit.
+func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 	fullPath := filepath.Join(a.root, filePath)
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
@@ -19,12 +19,43 @@ func (a *Agent) ReadFile(filePath string) (string, error) {
 	}
 
 	lines := strings.Split(string(content), "\n")
-	var result string
-	for i, line := range lines {
-		result += fmt.Sprintf("%d: %s\n", i+1, line)
+	totalLines := len(lines)
+
+	if offset < 1 {
+		offset = 1
+	}
+	if limit <= 0 {
+		limit = 2000
 	}
 
-	return result, nil
+	startIdx := offset - 1
+	if startIdx >= totalLines {
+		return fmt.Sprintf("File only has %d lines. Offset %d is out of bounds.", totalLines, offset), nil
+	}
+
+	endIdx := startIdx + limit
+	if endIdx > totalLines {
+		endIdx = totalLines
+	}
+
+	var sb strings.Builder
+	for i := startIdx; i < endIdx; i++ {
+		sb.WriteString(fmt.Sprintf("%d: %s\n", i+1, lines[i]))
+	}
+
+	res := sb.String()
+
+	// Byte truncation just in case the lines are absurdly long (e.g. minified JS)
+	maxBytes := 50 * 1024 // 50KB
+	if len(res) > maxBytes {
+		res = res[:maxBytes] + "\n...[Output truncated, exceeded 50KB limit. Use offset/limit or grep to find what you need]"
+	}
+
+	if endIdx < totalLines {
+		res += fmt.Sprintf("\n...[File truncated. Showing lines %d to %d of %d. Use offset=%d to read more]", startIdx+1, endIdx, totalLines, endIdx+1)
+	}
+
+	return res, nil
 }
 
 // WriteFile overwrites a file completely.
