@@ -89,17 +89,22 @@ func NewProjector(repo *SQLiteRepository, indexer *MeiliIndexer, embedder Embedd
 }
 
 func (p *Projector) RunOnce(ctx context.Context, batchSize int) (int, error) {
+	fmt.Printf("RunOnce called with batchSize %d\n", batchSize)
 	jobs, err := p.repo.PullOutboxBatch(ctx, batchSize)
 	if err != nil {
+		fmt.Printf("PullOutboxBatch err: %v\n", err)
 		return 0, err
 	}
+	fmt.Printf("Got %d jobs\n", len(jobs))
 	done := 0
 	for _, job := range jobs {
 		if err := p.processJob(ctx, job); err != nil {
+			fmt.Printf("processJob failed: %v\n", err)
 			_ = p.repo.MarkOutboxFailed(ctx, job.ID, job.RetryCount+1, err.Error())
 			continue
 		}
 		if err := p.repo.MarkOutboxDone(ctx, job.ID); err != nil {
+			fmt.Printf("MarkOutboxDone failed: %v\n", err)
 			return done, err
 		}
 		done++
@@ -133,6 +138,10 @@ func (p *Projector) processJob(ctx context.Context, job OutboxJob) error {
 			abstract, _ := payload["abstract"].(string)
 			content, _ := payload["content"].(string)
 			textToEmbed = name + "\n" + abstract + "\n" + content
+		case "bash_history":
+			cmd, _ := payload["command"].(string)
+			out, _ := payload["output"].(string)
+			textToEmbed = cmd + "\n" + truncate(out, 4000)
 		}
 
 		if textToEmbed != "" && p.embedder != nil {

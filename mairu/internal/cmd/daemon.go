@@ -36,12 +36,12 @@ func (remoteManager) UpsertFileContextNode(ctx context.Context, uri, name, abstr
 	if parentURI != "" {
 		payload["parent_uri"] = parentURI
 	}
-	_, err := contextPost("/api/context", payload)
+	_, err := ContextPost("/api/context", payload)
 	return err
 }
 
 func (remoteManager) DeleteContextNode(ctx context.Context, uri string) error {
-	_, err := contextDelete("/api/context", map[string]string{"uri": uri})
+	_, err := ContextDelete("/api/context", map[string]string{"uri": uri})
 	return err
 }
 

@@ -30,7 +30,7 @@ func newAnalyzeGraphCmd() *cobra.Command {
 					flowURI := fmt.Sprintf("contextfs://%s/flows/%s", project, flow.StartSymbol)
 					abstract := fmt.Sprintf("Execution flow starting at %s", flow.StartSymbol)
 					overview := strings.Join(flow.Trace, " -> ")
-					_, err := storeNodeRaw(project, flowURI, "Flow: "+flow.StartSymbol, abstract, "", overview, overview)
+					_, err := StoreNodeRaw(project, flowURI, "Flow: "+flow.StartSymbol, abstract, "", overview, overview)
 					if err != nil {
 						fmt.Fprintf(cmd.ErrOrStderr(), "Failed to save flow %s: %v\n", flow.StartSymbol, err)
 					} else {
@@ -48,7 +48,7 @@ func newAnalyzeGraphCmd() *cobra.Command {
 					skillURI := fmt.Sprintf("contextfs://%s/skills/cluster_%d", project, i+1)
 					abstract := fmt.Sprintf("Functional Cluster %d containing %d symbols", i+1, len(cluster.Symbols))
 					overview := strings.Join(cluster.Symbols, ", ")
-					_, err := storeNodeRaw(project, skillURI, fmt.Sprintf("Cluster %d", i+1), abstract, "", overview, overview)
+					_, err := StoreNodeRaw(project, skillURI, fmt.Sprintf("Cluster %d", i+1), abstract, "", overview, overview)
 					if err != nil {
 						fmt.Fprintf(cmd.ErrOrStderr(), "Failed to save cluster %d: %v\n", i+1, err)
 					} else {

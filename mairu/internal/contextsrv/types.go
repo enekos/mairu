@@ -15,15 +15,27 @@ const (
 	StoreAll          = "all"
 	StoreNode         = "node"
 
-	IndexMemories = "contextfs_memories"
-	IndexSkills   = "contextfs_skills"
-	IndexNodes    = "contextfs_context_nodes"
-	IndexSymbols  = "contextfs_symbols"
+	IndexMemories    = "contextfs_memories"
+	IndexSkills      = "contextfs_skills"
+	IndexNodes       = "contextfs_context_nodes"
+	IndexSymbols     = "contextfs_symbols"
+	IndexBashHistory = "contextfs_bash_history"
 
 	ModerationStatusClean       = "clean"
 	ModerationStatusFlaggedSoft = "flagged_soft"
 	ModerationStatusRejectHard  = "reject_hard"
 )
+
+// BashHistory represents a recorded bash command execution.
+type BashHistory struct {
+	ID         string    `json:"id"`
+	Project    string    `json:"project"`
+	Command    string    `json:"command"`
+	ExitCode   int       `json:"exit_code"`
+	DurationMs int       `json:"duration_ms"`
+	Output     string    `json:"output"`
+	CreatedAt  time.Time `json:"created_at"`
+}
 
 // Memory represents an atomic piece of knowledge stored by an agent or user.
 type Memory struct {

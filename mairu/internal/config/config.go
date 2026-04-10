@@ -18,6 +18,12 @@ type Config struct {
 	Embedding EmbeddingConfig `mapstructure:"embedding"`
 	Output    OutputConfig    `mapstructure:"output"`
 	Enricher  EnricherConfig  `mapstructure:"enricher"`
+	Security  SecurityConfig  `mapstructure:"security"`
+}
+
+type SecurityConfig struct {
+	BlockedCommands []string `mapstructure:"blocked_commands"`
+	BlockedPaths    []string `mapstructure:"blocked_paths"`
 }
 
 type EnricherConfig struct {
@@ -208,6 +214,14 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("enricher.git_intent.max_commits", 20)
 	v.SetDefault("enricher.change_velocity.enabled", true)
 	v.SetDefault("enricher.change_velocity.lookback_days", 180)
+
+	// Security
+	v.SetDefault("security.blocked_commands", []string{
+		"rm -rf /", "mkfs", "dd",
+	})
+	v.SetDefault("security.blocked_paths", []string{
+		".git/", ".mairu/", ".env",
+	})
 }
 
 func bindLegacyEnv(v *viper.Viper) {

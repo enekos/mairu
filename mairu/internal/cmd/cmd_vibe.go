@@ -9,7 +9,7 @@ import (
 )
 
 func runVibeMutation(project, prompt string, k int) error {
-	planOut, err := contextPost("/api/vibe/mutation/plan", map[string]any{
+	planOut, err := ContextPost("/api/vibe/mutation/plan", map[string]any{
 		"prompt":  prompt,
 		"project": project,
 		"topK":    k,
@@ -23,14 +23,14 @@ func runVibeMutation(project, prompt string, k int) error {
 	if err := json.Unmarshal(planOut, &plan); err != nil {
 		return err
 	}
-	execOut, err := contextPost("/api/vibe/mutation/execute", map[string]any{
+	execOut, err := ContextPost("/api/vibe/mutation/execute", map[string]any{
 		"project":    project,
 		"operations": plan.Operations,
 	})
 	if err != nil {
 		return err
 	}
-	printJSON(execOut)
+	PrintJSON(execOut)
 	return nil
 }
 func newVibeCmd() *cobra.Command {
@@ -47,7 +47,7 @@ func newVibeCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k, _ := cmd.Flags().GetInt("k")
-			out, err := contextPost("/api/vibe/query", map[string]any{
+			out, err := ContextPost("/api/vibe/query", map[string]any{
 				"prompt":  args[0],
 				"project": project,
 				"topK":    k,
@@ -55,7 +55,7 @@ func newVibeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}
@@ -88,7 +88,7 @@ func newVibeQueryAliasCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k, _ := cmd.Flags().GetInt("k")
-			out, err := contextPost("/api/vibe/query", map[string]any{
+			out, err := ContextPost("/api/vibe/query", map[string]any{
 				"prompt":  args[0],
 				"project": project,
 				"topK":    k,
@@ -96,7 +96,7 @@ func newVibeQueryAliasCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}

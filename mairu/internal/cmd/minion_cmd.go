@@ -1,19 +1,16 @@
 package cmd
 
 import (
-	_ "embed"
 	"fmt"
 	"log/slog"
 	"mairu/internal/agent"
+	"mairu/internal/prompts"
 	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
-
-//go:embed minion_prompt.md
-var minionPromptTemplate string
 
 var (
 	minionMaxRetries int
@@ -106,10 +103,9 @@ func runMinion(userPrompt string) {
 	}
 
 	cwd, _ := os.Getwd()
-	a, err := agent.New(cwd, apiKey, agent.Config{
-		SymbolLocator: GetLocalApp().SymbolLocator(),
-		Unattended:    true,
-	})
+	cfg := GetAgentConfig()
+	cfg.Unattended = true
+	a, err := agent.New(cwd, apiKey, cfg)
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)
 		os.Exit(1)
@@ -117,7 +113,13 @@ func runMinion(userPrompt string) {
 	defer a.Close()
 
 	// Minion specific instructions wrapping the user prompt
-	minionPrompt := fmt.Sprintf(minionPromptTemplate, userPrompt, minionMaxRetries)
+	minionPrompt := prompts.Render("minion_prompt", struct {
+		Task       string
+		MaxRetries int
+	}{
+		Task:       userPrompt,
+		MaxRetries: minionMaxRetries,
+	})
 
 	outChan := make(chan agent.AgentEvent)
 	go a.RunStream(minionPrompt, outChan)

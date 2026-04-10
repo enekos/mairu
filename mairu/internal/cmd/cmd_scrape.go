@@ -44,7 +44,7 @@ func newScrapeWebCmd() *cobra.Command {
 				if input.ParentURI != nil {
 					parent = *input.ParentURI
 				}
-				return runNodeStore(input.Project, input.URI, input.Name, input.Abstract, parent, input.Overview, input.Content)
+				return RunNodeStore(input.Project, input.URI, input.Name, input.Abstract, parent, input.Overview, input.Content)
 			}
 
 			apiKey := GetAPIKey()
@@ -118,7 +118,7 @@ func newSmartScrapeCmd() *cobra.Command {
 			content := string(jsonBytes)
 			fmt.Printf("Storing extracted data at %s in project '%s'...\n", uri, project)
 
-			return runNodeStore(project, uri, "Extracted Data", "Data extracted via smart-scrape: "+prompt, "", "", content)
+			return RunNodeStore(project, uri, "Extracted Data", "Data extracted via smart-scrape: "+prompt, "", "", content)
 		},
 	}
 	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project namespace")
@@ -174,7 +174,7 @@ func newSearchScrapeCmd() *cobra.Command {
 			content := string(jsonBytes)
 			fmt.Printf("Storing extracted data at %s in project '%s'...\n", uri, project)
 
-			return runNodeStore(project, uri, "Search Data: "+query, "Data extracted via search-scrape for query: "+query, "", "", content)
+			return RunNodeStore(project, uri, "Search Data: "+query, "Data extracted via search-scrape for query: "+query, "", "", content)
 		},
 	}
 	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project namespace")
@@ -226,7 +226,7 @@ func newMultiScrapeCmd() *cobra.Command {
 			for urlStr, result := range data {
 				uri := fmt.Sprintf("contextfs://scrape/%s", strings.ReplaceAll(strings.ReplaceAll(urlStr, "https://", ""), "http://", ""))
 				resBytes, _ := json.Marshal(result)
-				runNodeStore(project, uri, "Extracted Data", "Data extracted via multi-scrape: "+prompt, "", "", string(resBytes))
+				RunNodeStore(project, uri, "Extracted Data", "Data extracted via multi-scrape: "+prompt, "", "", string(resBytes))
 			}
 
 			return nil
@@ -337,7 +337,7 @@ func newDepthScrapeCmd() *cobra.Command {
 			for urlStr, result := range data {
 				uri := fmt.Sprintf("contextfs://scrape/%s", strings.ReplaceAll(strings.ReplaceAll(urlStr, "https://", ""), "http://", ""))
 				resBytes, _ := json.Marshal(result)
-				runNodeStore(project, uri, "Extracted Data", "Data extracted via depth-scrape: "+prompt, "", "", string(resBytes))
+				RunNodeStore(project, uri, "Extracted Data", "Data extracted via depth-scrape: "+prompt, "", "", string(resBytes))
 			}
 
 			return nil
@@ -398,7 +398,7 @@ func newOmniScrapeCmd() *cobra.Command {
 			content := string(jsonBytes)
 			fmt.Printf("Storing merged data at %s in project '%s'...\n", uri, project)
 
-			return runNodeStore(project, uri, "Merged Omni Data", "Data merged via omni-scrape: "+prompt, "", "", content)
+			return RunNodeStore(project, uri, "Merged Omni Data", "Data merged via omni-scrape: "+prompt, "", "", content)
 		},
 	}
 	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project namespace")

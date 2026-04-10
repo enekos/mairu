@@ -222,7 +222,7 @@ func syncLinearIssues(project, teamKey string, limit int, state string) error {
 			content = content[:5000] + "\n...(truncated)"
 		}
 
-		_, err := storeNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/linear", project), overview, content)
+		_, err := StoreNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/linear", project), overview, content)
 		if err != nil {
 			fmt.Printf("Failed to store node for issue %s: %v\n", issue.Identifier, err)
 			continue
@@ -231,7 +231,7 @@ func syncLinearIssues(project, teamKey string, limit int, state string) error {
 	}
 
 	memContent := fmt.Sprintf("Synced %d Linear issues from team %s into project '%s'.", len(allIssues), teamKey, project)
-	_ = runMemoryStore(project, memContent, "linear_sync", "linear", 7)
+	_ = RunMemoryStore(project, memContent, "linear_sync", "linear", 7)
 
 	return nil
 }

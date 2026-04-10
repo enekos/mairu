@@ -17,7 +17,7 @@ func newSummarizeCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			k, _ := cmd.Flags().GetInt("k")
-			out, err := contextPost("/api/vibe/query", map[string]any{
+			out, err := ContextPost("/api/vibe/query", map[string]any{
 				"prompt":  args[0],
 				"project": project,
 				"topK":    k,
@@ -25,7 +25,7 @@ func newSummarizeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}
@@ -92,7 +92,7 @@ func newIngestCmd() *cobra.Command {
 			}
 
 			fmt.Println("\nParsing into context nodes via LLM...")
-			out, err := contextPost("/api/vibe/ingest", map[string]any{
+			out, err := ContextPost("/api/vibe/ingest", map[string]any{
 				"text":     content,
 				"base_uri": baseURI,
 			})
@@ -131,7 +131,7 @@ func newIngestCmd() *cobra.Command {
 				overview, _ := n["Overview"].(string)
 				parent, _ := n["ParentURI"].(string)
 
-				if err := runNodeStore(project, uri, name, abstract, parent, overview, contentStr); err != nil {
+				if err := RunNodeStore(project, uri, name, abstract, parent, overview, contentStr); err != nil {
 					fmt.Printf("Failed to store %s: %v\n", uri, err)
 				} else {
 					fmt.Printf("Stored %s\n", uri)

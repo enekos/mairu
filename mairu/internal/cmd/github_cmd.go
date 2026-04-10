@@ -168,7 +168,7 @@ func syncGithubIssues(project, repo string, limit int, state string) error {
 		}
 
 		// Store node
-		_, err := storeNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/github", project), overview, content)
+		_, err := StoreNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/github", project), overview, content)
 		if err != nil {
 			fmt.Printf("Failed to store node for issue #%d: %v\n", issue.Number, err)
 			continue
@@ -178,7 +178,7 @@ func syncGithubIssues(project, repo string, limit int, state string) error {
 
 	// Store a single summary memory instead of spamming memories per issue
 	memContent := fmt.Sprintf("Synced %d GitHub issues and PRs from repository %s into project '%s'.", len(allIssues), repo, project)
-	_ = runMemoryStore(project, memContent, "github_sync", "github", 7)
+	_ = RunMemoryStore(project, memContent, "github_sync", "github", 7)
 
 	return nil
 }

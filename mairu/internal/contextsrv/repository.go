@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 
@@ -134,11 +135,21 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
+		`CREATE TABLE IF NOT EXISTS bash_history (
+			id TEXT PRIMARY KEY,
+			project TEXT NOT NULL DEFAULT '',
+			command TEXT NOT NULL,
+			exit_code INT NOT NULL,
+			duration_ms INT NOT NULL,
+			output TEXT NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		)`,
 		`CREATE INDEX IF NOT EXISTS idx_memories_project_created ON memories(project, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_skills_project_created ON skills(project, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_nodes_project_parent ON context_nodes(project, parent_uri)`,
 		`CREATE INDEX IF NOT EXISTS idx_moderation_pending ON moderation_events(review_status, created_at DESC)`,
 		`CREATE INDEX IF NOT EXISTS idx_outbox_pending ON search_outbox(status, next_attempt_at, id)`,
+		`CREATE INDEX IF NOT EXISTS idx_bash_history_project_created ON bash_history(project, created_at DESC)`,
 	}
 	for _, stmt := range stmts {
 		if _, err := r.db.ExecContext(ctx, stmt); err != nil {
@@ -160,4 +171,73 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *SQLiteRepository) InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error {
+	id := fmt.Sprintf("bash_%d", time.Now().UnixNano())
+	h := BashHistory{
+		ID:         id,
+		Project:    project,
+		Command:    command,
+		ExitCode:   exitCode,
+		DurationMs: durationMs,
+		Output:     output,
+		CreatedAt:  time.Now().UTC(),
+	}
+
+	query := `INSERT INTO bash_history (id, project, command, exit_code, duration_ms, output, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err := r.db.ExecContext(ctx, query,
+		h.ID,
+		h.Project,
+		h.Command,
+		h.ExitCode,
+		h.DurationMs,
+		h.Output,
+		h.CreatedAt.Format(time.RFC3339),
+	)
+	if err != nil {
+		return err
+	}
+
+	// Also enqueue to search_outbox for indexing
+	return r.EnqueueOutbox(ctx, "bash_history", h.ID, "upsert", h)
+}
+
+type BashStat struct {
+	Command      string  `json:"command"`
+	Count        int     `json:"count"`
+	AvgDuration  int     `json:"avg_duration"`
+	SuccessRatio float64 `json:"success_ratio"`
+}
+
+func (r *SQLiteRepository) GetBashStats(ctx context.Context, project string, limit int) ([]BashStat, error) {
+	// Group by the full command
+	query := `
+		SELECT 
+			command as cmd,
+			COUNT(*) as cnt,
+			CAST(AVG(duration_ms) AS INTEGER) as avg_dur,
+			CAST(SUM(CASE WHEN exit_code = 0 THEN 1 ELSE 0 END) AS FLOAT) / COUNT(*) as success_ratio
+		FROM bash_history
+		WHERE project = ?
+		GROUP BY cmd
+		ORDER BY cnt DESC
+		LIMIT ?`
+
+	rows, err := r.db.QueryContext(ctx, query, project, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var stats []BashStat
+	for rows.Next() {
+		var s BashStat
+		if err := rows.Scan(&s.Command, &s.Count, &s.AvgDuration, &s.SuccessRatio); err != nil {
+			return nil, err
+		}
+		stats = append(stats, s)
+	}
+	return stats, rows.Err()
 }

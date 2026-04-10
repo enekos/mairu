@@ -28,7 +28,7 @@ func NewFormatter(format string) *Formatter {
 func (f *Formatter) PrintTable(headers []string, rows []map[string]string) {
 	switch f.format {
 	case "json":
-		f.printJSON(rows)
+		f.PrintJSON(rows)
 	case "plain":
 		f.printPlain(headers, rows)
 	default:
@@ -41,7 +41,7 @@ func (f *Formatter) PrintTable(headers []string, rows []map[string]string) {
 func (f *Formatter) PrintItems(headers []string, items []map[string]any, extractFn func(map[string]any) map[string]string) {
 	switch f.format {
 	case "json":
-		f.printJSON(items)
+		f.PrintJSON(items)
 	default:
 		rows := make([]map[string]string, len(items))
 		for i, item := range items {
@@ -59,13 +59,13 @@ func (f *Formatter) PrintItems(headers []string, items []map[string]any, extract
 func (f *Formatter) PrintRaw(v any) {
 	switch f.format {
 	case "json":
-		f.printJSON(v)
+		f.PrintJSON(v)
 	default:
 		fmt.Fprintln(f.w, v)
 	}
 }
 
-func (f *Formatter) printJSON(v any) {
+func (f *Formatter) PrintJSON(v any) {
 	enc := json.NewEncoder(f.w)
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(v)

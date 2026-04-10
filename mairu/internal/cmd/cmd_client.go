@@ -22,7 +22,7 @@ func contextToken() string {
 	return strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_TOKEN"))
 }
 
-func contextGet(path string, params map[string]string) ([]byte, error) {
+func ContextGet(path string, params map[string]string) ([]byte, error) {
 	baseURL := contextServerURL()
 	if baseURL == "" {
 		baseURL = "http://localhost" // placeholder for local routing
@@ -49,7 +49,7 @@ func contextGet(path string, params map[string]string) ([]byte, error) {
 	return doContextRequest(req)
 }
 
-func contextPost(path string, payload any) ([]byte, error) {
+func ContextPost(path string, payload any) ([]byte, error) {
 	baseURL := contextServerURL()
 	if baseURL == "" {
 		baseURL = "http://localhost"
@@ -69,7 +69,7 @@ func contextPost(path string, payload any) ([]byte, error) {
 	return doContextRequest(req)
 }
 
-func contextPut(path string, payload any) ([]byte, error) {
+func ContextPut(path string, payload any) ([]byte, error) {
 	baseURL := contextServerURL()
 	if baseURL == "" {
 		baseURL = "http://localhost"
@@ -89,7 +89,7 @@ func contextPut(path string, payload any) ([]byte, error) {
 	return doContextRequest(req)
 }
 
-func contextDelete(path string, params map[string]string) ([]byte, error) {
+func ContextDelete(path string, params map[string]string) ([]byte, error) {
 	baseURL := contextServerURL()
 	if baseURL == "" {
 		baseURL = "http://localhost"
@@ -154,7 +154,7 @@ func doContextRequest(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func printJSON(raw []byte) {
+func PrintJSON(raw []byte) {
 	var v any
 	if err := json.Unmarshal(raw, &v); err != nil {
 		fmt.Println(string(raw))
@@ -168,7 +168,7 @@ func printJSON(raw []byte) {
 	fmt.Println(string(formatted))
 }
 
-func addCommonSearchFlags(cmd *cobra.Command) {
+func AddCommonSearchFlags(cmd *cobra.Command) {
 	cmd.Flags().IntP("topK", "k", 5, "Number of results to return")
 	cmd.Flags().Float64("minScore", 0, "Minimum relevance score threshold")
 	cmd.Flags().Bool("highlight", false, "Include text highlights in response")
@@ -180,7 +180,7 @@ func addCommonSearchFlags(cmd *cobra.Command) {
 	cmd.Flags().String("to", "", "Filter by creation date to (e.g. 2024-12-31)")
 }
 
-func searchParamsFromFlags(cmd *cobra.Command, query, store, project string) map[string]string {
+func SearchParamsFromFlags(cmd *cobra.Command, query, store, project string) map[string]string {
 	k, _ := cmd.Flags().GetInt("topK")
 	minScore, _ := cmd.Flags().GetFloat64("minScore")
 	highlight, _ := cmd.Flags().GetBool("highlight")
@@ -224,7 +224,7 @@ func searchParamsFromFlags(cmd *cobra.Command, query, store, project string) map
 	return params
 }
 
-func truncate(s string, maxLen int) string {
+func Truncate(s string, maxLen int) string {
 	if len(s) > maxLen {
 		return s[:maxLen] + "..."
 	}

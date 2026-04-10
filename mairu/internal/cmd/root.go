@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"mairu/internal/agent"
 	"mairu/internal/config"
+
 	"mairu/internal/logger"
 	"os"
 	"strings"
@@ -70,6 +71,30 @@ func GetFormatter() *Formatter {
 	return NewFormatter(outputFormat)
 }
 
+// GetAgentConfig returns a populated agent.Config using the global config and contextsrv.App
+func GetAgentConfig() agent.Config {
+	cfg := GetConfig()
+	var interceptors []agent.ToolInterceptor
+	if cfg != nil {
+		interceptors = append(interceptors, &agent.SecurityFilter{
+			BlockedCommands: cfg.Security.BlockedCommands,
+			BlockedPaths:    cfg.Security.BlockedPaths,
+		})
+	}
+
+	app := GetLocalApp()
+	var repo agent.HistoryLogger
+	if app != nil {
+		repo = app.Repo()
+	}
+
+	return agent.Config{
+		SymbolLocator: GetLocalApp().SymbolLocator(),
+		HistoryLogger: repo,
+		Interceptors:  interceptors,
+	}
+}
+
 func runHeadless(prompt string) {
 	apiKey := GetAPIKey()
 	if apiKey == "" {
@@ -78,9 +103,7 @@ func runHeadless(prompt string) {
 	}
 
 	cwd, _ := os.Getwd()
-	a, err := agent.New(cwd, apiKey, agent.Config{
-		SymbolLocator: GetLocalApp().SymbolLocator(),
-	})
+	a, err := agent.New(cwd, apiKey, GetAgentConfig())
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)
 		os.Exit(1)
@@ -127,10 +150,12 @@ func init() {
 
 	// Subsystems & Workflows
 	rootCmd.AddCommand(
-		newMemoryCmd(),
-		newSkillCmd(),
-		newNodeCmd(),
-		newCodeCmd(),
+		NewMemoryCmd(),
+		NewSkillCmd(),
+		NewNodeCmd(),
+		NewCodeCmd(),
+		newHistoryCmd(),
+		newSyncCmd(),
 		newVibeCmd(),
 		newVibeQueryAliasCmd(),
 		newVibeMutationAliasCmd(),

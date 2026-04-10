@@ -22,6 +22,10 @@ type SymbolLocator interface {
 	FindSymbol(name string) ([]contextsrv.SymbolLocation, error)
 }
 
+type HistoryLogger interface {
+	InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error
+}
+
 type Agent struct {
 	llm        *llm.GeminiProvider
 	locator    SymbolLocator
@@ -33,6 +37,9 @@ type Agent struct {
 
 	Unattended bool
 
+	historyLogger HistoryLogger
+	interceptors  []ToolInterceptor
+
 	mu           sync.Mutex
 	cancel       context.CancelFunc
 	approvalChan chan bool
@@ -41,15 +48,21 @@ type Agent struct {
 type Config struct {
 	SymbolLocator SymbolLocator
 	Unattended    bool
+	HistoryLogger HistoryLogger
+	Interceptors  []ToolInterceptor
 }
 
 func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 	var locator SymbolLocator
 	unattended := false
+	var historyLogger HistoryLogger
+	var interceptors []ToolInterceptor
 
 	if len(cfg) > 0 {
 		locator = cfg[0].SymbolLocator
 		unattended = cfg[0].Unattended
+		historyLogger = cfg[0].HistoryLogger
+		interceptors = cfg[0].Interceptors
 	}
 
 	llmProvider, err := llm.NewGeminiProvider(context.Background(), apiKey)
@@ -65,6 +78,8 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 		apiKey:        apiKey,
 		stuckDetector: NewStuckDetector(),
 		Unattended:    unattended,
+		historyLogger: historyLogger,
+		interceptors:  interceptors,
 		approvalChan:  make(chan bool),
 	}, nil
 }
@@ -345,6 +360,51 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 	}
 	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔧 Tool Call: %s", funcCall.Name)}
 
+	// Pre-execute hook evaluation
+	toolCtx := ToolContext{
+		Context: ctx,
+		Agent:   a,
+		OutChan: outChan,
+	}
+	for _, interceptor := range a.interceptors {
+		var err error
+		funcCall.Args, err = interceptor.PreExecute(toolCtx, funcCall.Name, funcCall.Args)
+		if err != nil {
+			var approvalErr *ErrRequiresApproval
+			if errors.As(err, &approvalErr) {
+				if a.Unattended {
+					outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("✅ Auto-approved (Minion Mode): %s", approvalErr.Reason)}
+				} else {
+					approvalCh := make(chan bool, 1)
+					a.mu.Lock()
+					a.approvalChan = approvalCh
+					a.mu.Unlock()
+
+					outChan <- AgentEvent{
+						Type:    "approval_request",
+						Content: fmt.Sprintf("⚠️ Action requires approval:\n\n%s\n\nApprove or deny this action by typing `/approve` or `/deny`.", approvalErr.Reason),
+					}
+
+					approved := false
+					select {
+					case <-ctx.Done():
+						return map[string]any{"error": "tool execution cancelled"}
+					case approved = <-approvalCh:
+					}
+
+					if !approved {
+						outChan <- AgentEvent{Type: "status", Content: "❌ Action denied by user."}
+						return map[string]any{"error": "User denied action execution."}
+					}
+					outChan <- AgentEvent{Type: "status", Content: "✅ Action approved."}
+				}
+			} else {
+				outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("❌ Blocked by %s", interceptor.Name())}
+				return map[string]any{"error": fmt.Sprintf("Tool execution blocked by %s: %v", interceptor.Name(), err)}
+			}
+		}
+	}
+
 	var result map[string]any
 
 	switch funcCall.Name {
@@ -414,50 +474,28 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			timeout = int(timeoutMsFloat)
 		}
 
-		if IsDangerousCommand(command) {
-			if a.Unattended {
-				outChan <- AgentEvent{Type: "status", Content: "✅ Command execution auto-approved (Minion Mode)."}
-			} else {
-				// Create the approval channel and capture a local reference before
-				// emitting the event.  ApproveAction may be called (and the struct
-				// field nil'd) before the select below is entered, so we select on
-				// the local copy to avoid a receive on a nil channel.
-				approvalCh := make(chan bool, 1)
-				a.mu.Lock()
-				a.approvalChan = approvalCh
-				a.mu.Unlock()
-
-				outChan <- AgentEvent{
-					Type:    "approval_request",
-					Content: fmt.Sprintf("⚠️ The agent wants to execute a potentially dangerous command:\n\n```bash\n%s\n```\n\nApprove or deny this action by typing `/approve` or `/deny`.", command),
-				}
-
-				// Block until approved or denied, or context cancelled
-				approved := false
-				select {
-				case <-ctx.Done():
-					return map[string]any{"error": "tool execution cancelled"}
-				case approved = <-approvalCh:
-				}
-
-				if !approved {
-					outChan <- AgentEvent{Type: "status", Content: "❌ Command execution denied by user."}
-					return map[string]any{"error": "User denied command execution."}
-				}
-				outChan <- AgentEvent{Type: "status", Content: "✅ Command execution approved."}
-			}
-		}
-
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🖥️ Running bash: %s", command)}
+
+		start := time.Now()
 		out, err := a.RunBash(ctx, command, timeout, outChan)
+		duration := int(time.Since(start).Milliseconds())
+
+		exitCode := 0
 		if err != nil {
 			result = map[string]any{"error": err.Error(), "output": out}
+			exitCode = 1 // Simplified for now
 		} else {
 			result = map[string]any{"output": out}
-			// If bash output looks like a diff, show it!
 			if strings.HasPrefix(out, "STDOUT:\ndiff ") || strings.Contains(out, "\n--- ") && strings.Contains(out, "\n+++ ") {
 				outChan <- AgentEvent{Type: "diff", Content: fmt.Sprintf("```diff\n%s\n```", out)}
 			}
+		}
+
+		if a.historyLogger != nil {
+			go func() {
+				// Don't block the agent loop
+				_ = a.historyLogger.InsertBashHistory(context.Background(), a.root, command, exitCode, duration, out)
+			}()
 		}
 
 	case "read_file":

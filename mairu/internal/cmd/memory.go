@@ -9,7 +9,7 @@ import (
 )
 
 func runMemoryStore(project, content, category, owner string, importance int) error {
-	out, err := contextPost("/api/memories", map[string]any{
+	out, err := ContextPost("/api/memories", map[string]any{
 		"project":    project,
 		"content":    content,
 		"category":   category,
@@ -19,33 +19,34 @@ func runMemoryStore(project, content, category, owner string, importance int) er
 	if err != nil {
 		return err
 	}
-	printJSON(out)
+	PrintJSON(out)
 	return nil
 }
-func newMemoryCmd() *cobra.Command {
+
+func NewMemoryCmd() *cobra.Command {
 	var project string
-	cmd := &cobra.Command{
+	c := &cobra.Command{
 		Use:   "memory",
 		Short: "ContextFS memory operations",
 	}
-	cmd.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	c.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
 
 	searchCmd := &cobra.Command{
 		Use:   "search <query>",
 		Short: "Search memories",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := contextGet("/api/search", searchParamsFromFlags(cmd, args[0], "memory", project))
+			out, err := ContextGet("/api/search", SearchParamsFromFlags(cmd, args[0], "memory", project))
 			if err != nil {
 				return err
 			}
 
 			if outputFormat == "json" || outputFormat == "" {
-				printJSON(out)
+				PrintJSON(out)
 			} else {
 				var results []map[string]any
 				if err := json.Unmarshal(out, &results); err != nil {
-					printJSON(out) // fallback
+					PrintJSON(out) // fallback
 					return nil
 				}
 				f := GetFormatter()
@@ -56,7 +57,7 @@ func newMemoryCmd() *cobra.Command {
 						return map[string]string{
 							"score":    fmt.Sprintf("%.2f", item["_rankingScore"]),
 							"category": fmt.Sprintf("%v", item["category"]),
-							"content":  truncate(fmt.Sprintf("%v", item["content"]), 80),
+							"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
 						}
 					},
 				)
@@ -64,7 +65,7 @@ func newMemoryCmd() *cobra.Command {
 			return nil
 		},
 	}
-	addCommonSearchFlags(searchCmd)
+	AddCommonSearchFlags(searchCmd)
 
 	storeCmd := &cobra.Command{
 		Use:   "store <content>",
@@ -102,7 +103,7 @@ func newMemoryCmd() *cobra.Command {
 		Short: "List memories",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			limit, _ := cmd.Flags().GetInt("limit")
-			out, err := contextGet("/api/memories", map[string]string{
+			out, err := ContextGet("/api/memories", map[string]string{
 				"project": project,
 				"limit":   fmt.Sprintf("%d", limit),
 			})
@@ -111,11 +112,11 @@ func newMemoryCmd() *cobra.Command {
 			}
 
 			if outputFormat == "json" || outputFormat == "" {
-				printJSON(out)
+				PrintJSON(out)
 			} else {
 				var results []map[string]any
 				if err := json.Unmarshal(out, &results); err != nil {
-					printJSON(out) // fallback
+					PrintJSON(out) // fallback
 					return nil
 				}
 				f := GetFormatter()
@@ -126,7 +127,7 @@ func newMemoryCmd() *cobra.Command {
 						return map[string]string{
 							"id":       fmt.Sprintf("%v", item["id"]),
 							"category": fmt.Sprintf("%v", item["category"]),
-							"content":  truncate(fmt.Sprintf("%v", item["content"]), 80),
+							"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
 						}
 					},
 				)
@@ -145,7 +146,7 @@ func newMemoryCmd() *cobra.Command {
 			category, _ := cmd.Flags().GetString("category")
 			owner, _ := cmd.Flags().GetString("owner")
 			importance, _ := cmd.Flags().GetInt("importance")
-			out, err := contextPut("/api/memories", map[string]any{
+			out, err := ContextPut("/api/memories", map[string]any{
 				"id":         args[0],
 				"content":    content,
 				"category":   category,
@@ -155,7 +156,7 @@ func newMemoryCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}
@@ -169,11 +170,11 @@ func newMemoryCmd() *cobra.Command {
 		Short: "Delete memory",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			out, err := contextDelete("/api/memories", map[string]string{"id": args[0]})
+			out, err := ContextDelete("/api/memories", map[string]string{"id": args[0]})
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}
@@ -187,18 +188,18 @@ func newMemoryCmd() *cobra.Command {
 			if err != nil {
 				return fmt.Errorf("reward must be an integer between 1 and 10")
 			}
-			out, err := contextPost("/api/memories/feedback", map[string]any{
+			out, err := ContextPost("/api/memories/feedback", map[string]any{
 				"id":     args[0],
 				"reward": reward,
 			})
 			if err != nil {
 				return err
 			}
-			printJSON(out)
+			PrintJSON(out)
 			return nil
 		},
 	}
 
-	cmd.AddCommand(searchCmd, storeCmd, addCmd, listCmd, updateCmd, deleteCmd, feedbackCmd)
-	return cmd
+	c.AddCommand(searchCmd, storeCmd, addCmd, listCmd, updateCmd, deleteCmd, feedbackCmd)
+	return c
 }

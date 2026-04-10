@@ -42,7 +42,7 @@ func newMCPCmd() *cobra.Command {
 					"topK":    fmt.Sprintf("%d", k),
 				}
 
-				out, err := contextGet("/api/search", params)
+				out, err := ContextGet("/api/search", params)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
@@ -82,7 +82,7 @@ func newMCPCmd() *cobra.Command {
 				}
 				importance := request.GetInt("importance", 5)
 
-				out, err := contextPost("/api/memories", map[string]any{
+				out, err := ContextPost("/api/memories", map[string]any{
 					"project":    project,
 					"content":    content,
 					"category":   category,
@@ -123,7 +123,7 @@ func newMCPCmd() *cobra.Command {
 					"topK":    fmt.Sprintf("%d", k),
 				}
 
-				out, err := contextGet("/api/search", params)
+				out, err := ContextGet("/api/search", params)
 				if err != nil {
 					return mcp.NewToolResultError(err.Error()), nil
 				}
@@ -151,7 +151,7 @@ func newMCPCmd() *cobra.Command {
 				project := request.GetString("project", "")
 				k := request.GetInt("k", 5)
 
-				out, err := contextPost("/api/vibe/query", map[string]any{
+				out, err := ContextPost("/api/vibe/query", map[string]any{
 					"prompt":  prompt,
 					"project": project,
 					"topK":    k,
@@ -183,7 +183,7 @@ func newMCPCmd() *cobra.Command {
 				project := request.GetString("project", "")
 				k := request.GetInt("k", 5)
 
-				planOut, err := contextPost("/api/vibe/mutation/plan", map[string]any{
+				planOut, err := ContextPost("/api/vibe/mutation/plan", map[string]any{
 					"prompt":  prompt,
 					"project": project,
 					"topK":    k,
@@ -197,7 +197,7 @@ func newMCPCmd() *cobra.Command {
 				if err := json.Unmarshal(planOut, &plan); err != nil {
 					return mcp.NewToolResultError(fmt.Sprintf("Failed to parse plan: %v", err)), nil
 				}
-				execOut, err := contextPost("/api/vibe/mutation/execute", map[string]any{
+				execOut, err := ContextPost("/api/vibe/mutation/execute", map[string]any{
 					"project":    project,
 					"operations": plan.Operations,
 				})

@@ -3,7 +3,7 @@ package cmd
 import "mairu/internal/analyzer"
 
 func loadLogicGraph(project string) (*analyzer.LogicGraph, error) {
-	nodes, err := fetchAllNodes(project)
+	nodes, err := FetchAllNodes(project)
 	if err != nil {
 		return nil, err
 	}

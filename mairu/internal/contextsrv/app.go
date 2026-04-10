@@ -42,6 +42,11 @@ func (a *App) Service() Service {
 	return a.svc
 }
 
+// Repo returns the underlying SQLiteRepository.
+func (a *App) Repo() *SQLiteRepository {
+	return a.repo
+}
+
 // NewApp initializes and returns a new App instance using the provided Config.
 // It sets up the repository, LLM provider, indexing service, handler, and an HTTP server.
 func NewApp(cfg Config) (*App, error) {

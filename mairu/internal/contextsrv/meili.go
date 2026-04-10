@@ -38,7 +38,7 @@ func NewMeiliIndexer(host, apiKey string, embedder Embedder) *MeiliIndexer {
 }
 
 func (m *MeiliIndexer) EnsureIndexes() error {
-	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols}
+	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols, IndexBashHistory}
 	for _, idx := range indexes {
 		task, err := m.client.CreateIndex(&meilisearch.IndexConfig{
 			Uid:        idx,
@@ -118,6 +118,8 @@ func indexFromEntity(entityType string) (string, error) {
 		return IndexNodes, nil
 	case "symbol":
 		return IndexSymbols, nil
+	case "bash_history":
+		return IndexBashHistory, nil
 	default:
 		return "", fmt.Errorf("unsupported entity type %q", entityType)
 	}
@@ -133,6 +135,7 @@ func (m *MeiliIndexer) Search(opts SearchOptions) (map[string]any, error) {
 		"memories":     []map[string]any{},
 		"skills":       []map[string]any{},
 		"contextNodes": []map[string]any{},
+		"bashHistory":  []map[string]any{},
 	}
 
 	var queryEmbedding []float32
@@ -167,6 +170,13 @@ func (m *MeiliIndexer) Search(opts SearchOptions) (map[string]any, error) {
 			return nil, err
 		}
 		out["contextNodes"] = res
+	}
+	if store == "all" || store == "bash_history" {
+		res, err := m.searchIndex(IndexBashHistory, opts, []string{"command", "output"}, topK, queryEmbedding)
+		if err != nil {
+			return nil, err
+		}
+		out["bashHistory"] = res
 	}
 	return out, nil
 }
@@ -252,6 +262,8 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 func defaultsForIndex(index string) hybridWeights {
 	switch index {
 	case IndexMemories:
+		return defaultMemoryWeights(nil)
+	case IndexBashHistory:
 		return defaultMemoryWeights(nil)
 	case IndexSkills:
 		return defaultSkillWeights(nil)
