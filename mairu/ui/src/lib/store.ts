@@ -180,6 +180,17 @@ export async function createSession(name: string) {
     throw new Error("session name cannot be empty");
   }
 
+  if (isWails) {
+    try {
+      await (window as any).go.desktop.App.CreateSession(trimmed);
+      await loadSessions();
+      await switchSession(trimmed);
+      return;
+    } catch(e) {
+      throw new Error(typeof e === "string" ? e : "failed to create session");
+    }
+  }
+
   const response = await fetch("/api/sessions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
