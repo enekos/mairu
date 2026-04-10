@@ -4,17 +4,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
-	"unicode"
 
-	"mairu/internal/ast"
+	"mairu/internal/codetools"
 
 	"github.com/spf13/cobra"
 )
 
 var outlineExports bool
 var outlineTree bool
+var outlineFull bool
 
 func init() {
 	outlineCmd.Flags().BoolVar(&outlineExports, "exports", false, "Only show exported/public symbols")
@@ -22,138 +21,25 @@ func init() {
 	outlineCmd.Flags().BoolVar(&outlineFull, "full", false, "Include variables, fields, and properties in output")
 }
 
-var outlineFull bool
-
-type outlineSymbol struct {
-	Kind        string          `json:"kind"`
-	Name        string          `json:"name"`
-	Line        int             `json:"l"`
-	Exported    bool            `json:"exported,omitempty"`
-	Signature   string          `json:"sig,omitempty"`
-	Description string          `json:"desc,omitempty"`
-	Children    []outlineSymbol `json:"children,omitempty"`
-}
-
-type outlineResult struct {
-	F       string          `json:"f"`
-	Imports []string        `json:"imports"`
-	Symbols []outlineSymbol `json:"symbols"`
-}
-
-func getDescriber(filePath string) ast.LanguageDescriber {
-	ext := strings.ToLower(filepath.Ext(filePath))
-	describers := []ast.LanguageDescriber{
-		ast.TypeScriptDescriber{},
-		ast.TSXDescriber{},
-		ast.VueDescriber{},
-		ast.GoDescriber{},
-		ast.PythonDescriber{},
-		ast.PHPDescriber{},
-		ast.MarkdownDescriber{},
-	}
-	for _, desc := range describers {
-		for _, e := range desc.Extensions() {
-			if e == ext {
-				return desc
-			}
-		}
-	}
-	return nil
-}
-
-func isExportedSymbol(sym ast.LogicSymbol, langID string) bool {
-	if sym.Exported {
-		return true
-	}
-	switch langID {
-	case "go":
-		if len(sym.Name) > 0 && unicode.IsUpper(rune(sym.Name[0])) {
-			return true
-		}
-	case "python":
-		if !strings.HasPrefix(sym.Name, "_") {
-			return true
-		}
-	}
-	return false
-}
-
 var outlineCmd = &cobra.Command{
 	Use:   "outline <file>",
 	Short: "AI-optimized file skeleton (JSON)",
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		file := args[0]
-		content, err := os.ReadFile(file)
+
+		opts := codetools.OutlineOptions{
+			ExportsOnly: outlineExports,
+			TreeMode:    outlineTree,
+			FullMode:    outlineFull,
+		}
+
+		res, err := codetools.OutlineFile(file, opts)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
-
-		describer := getDescriber(file)
-		if describer == nil {
-			fmt.Fprintf(os.Stderr, "error: unsupported file type\n")
-			os.Exit(1)
-		}
-
-		graph := describer.ExtractFileGraph(file, string(content))
-
-		// Build outline symbols
-		var symbols []outlineSymbol
-		classChildren := make(map[string][]outlineSymbol) // className -> methods
-
-		for _, s := range graph.Symbols {
-			// In non-full mode, skip variables, fields, and imports in symbols array
-			if !outlineFull && (s.Kind == "var" || s.Kind == "const" || s.Kind == "field" || s.Kind == "prop") {
-				continue
+			if err == os.ErrInvalid {
+				return fmt.Errorf("error: unsupported file type")
 			}
-
-			exported := isExportedSymbol(s, describer.LanguageID())
-
-			if outlineExports && !exported {
-				continue
-			}
-
-			os := outlineSymbol{
-				Kind:        s.Kind,
-				Name:        s.Name,
-				Line:        s.Line,
-				Exported:    exported,
-				Description: s.ControlFlow,
-			}
-
-			// Add signature if the language describer captured it
-			if s.Signature != "" {
-				os.Signature = s.Signature
-			}
-
-			if outlineTree && (s.Kind == "mtd" || s.Kind == "prop" || s.Kind == "field") {
-				// Extract class name from ID like "mtd:ClassName.methodName" or "prop:ClassName.propName"
-				parts := strings.SplitN(strings.TrimPrefix(strings.TrimPrefix(strings.TrimPrefix(s.ID, "mtd:"), "prop:"), "field:"), ".", 2)
-				if len(parts) == 2 {
-					classChildren[parts[0]] = append(classChildren[parts[0]], os)
-					continue
-				}
-			}
-
-			symbols = append(symbols, os)
-		}
-
-		// Attach children in tree mode
-		if outlineTree {
-			for i, s := range symbols {
-				if s.Kind == "cls" {
-					if children, ok := classChildren[s.Name]; ok {
-						symbols[i].Children = children
-					}
-				}
-			}
-		}
-
-		res := outlineResult{
-			F:       file,
-			Imports: graph.Imports,
-			Symbols: symbols,
+			return fmt.Errorf("error: %w", err)
 		}
 
 		if outputFormat == "json" {
@@ -161,15 +47,15 @@ var outlineCmd = &cobra.Command{
 			fmt.Println(string(out))
 		} else {
 			f := GetFormatter()
-			fmt.Printf("File: %s\n", res.F)
+			fmt.Printf("File: %s\n", res.File)
 			if len(res.Imports) > 0 {
 				fmt.Printf("Imports: %d\n", len(res.Imports))
 			}
 
 			if len(res.Symbols) > 0 {
 				fmt.Println("\nSymbols:")
-				var processSymbols func([]outlineSymbol, string) []map[string]any
-				processSymbols = func(syms []outlineSymbol, prefix string) []map[string]any {
+				var processSymbols func([]codetools.OutlineSymbol, string) []map[string]any
+				processSymbols = func(syms []codetools.OutlineSymbol, prefix string) []map[string]any {
 					var flat []map[string]any
 					for _, s := range syms {
 						flat = append(flat, map[string]any{
@@ -210,5 +96,6 @@ var outlineCmd = &cobra.Command{
 				)
 			}
 		}
+		return nil
 	},
 }

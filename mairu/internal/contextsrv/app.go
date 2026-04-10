@@ -130,3 +130,23 @@ func (a *App) Shutdown(ctx context.Context) error {
 	}
 	return a.server.Shutdown(ctx)
 }
+
+// Flush runs the projector synchronously once, processing any pending outbox items.
+// Useful for CLI commands that need to ensure writes reach the search index before exiting.
+func (a *App) Flush(ctx context.Context) error {
+	if a.projector != nil {
+		_, err := a.projector.RunOnce(ctx, 1000)
+		return err
+	}
+	return nil
+}
+
+// Handler returns the underlying HTTP handler for the context server API.
+func (a *App) Handler() http.Handler {
+	return a.server.Handler
+}
+
+// SymbolLocator returns the Meilisearch indexer for resolving codebase symbols.
+func (a *App) SymbolLocator() *MeiliIndexer {
+	return a.svc.(*AppService).searchBackend.(*MeiliIndexer)
+}

@@ -107,7 +107,8 @@ func runMinion(userPrompt string) {
 
 	cwd, _ := os.Getwd()
 	a, err := agent.New(cwd, apiKey, agent.Config{
-		Unattended: true,
+		SymbolLocator: GetLocalApp().SymbolLocator(),
+		Unattended:    true,
 	})
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)

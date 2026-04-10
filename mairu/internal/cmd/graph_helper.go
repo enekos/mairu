@@ -1,26 +1,16 @@
 package cmd
 
-type LogicEdge struct {
-	From      string
-	To        string
-	Kind      string
-	SourceURI string
-}
+import "mairu/internal/analyzer"
 
-type LogicGraph struct {
-	Symbols map[string]string // ID -> URI
-	Edges   []LogicEdge
-}
-
-func loadLogicGraph(project string) (*LogicGraph, error) {
+func loadLogicGraph(project string) (*analyzer.LogicGraph, error) {
 	nodes, err := fetchAllNodes(project)
 	if err != nil {
 		return nil, err
 	}
 
-	graph := &LogicGraph{
+	graph := &analyzer.LogicGraph{
 		Symbols: make(map[string]string),
-		Edges:   []LogicEdge{},
+		Edges:   []analyzer.LogicEdge{},
 	}
 
 	for _, n := range nodes {
@@ -67,7 +57,7 @@ func loadLogicGraph(project string) (*LogicGraph, error) {
 					}
 
 					if from != "" && to != "" {
-						graph.Edges = append(graph.Edges, LogicEdge{
+						graph.Edges = append(graph.Edges, analyzer.LogicEdge{
 							From:      from,
 							To:        to,
 							Kind:      kind,
@@ -80,12 +70,4 @@ func loadLogicGraph(project string) (*LogicGraph, error) {
 	}
 
 	return graph, nil
-}
-
-func (g *LogicGraph) GetReverseDependencies() map[string][]string {
-	reverseDeps := map[string][]string{}
-	for _, e := range g.Edges {
-		reverseDeps[e.To] = append(reverseDeps[e.To], e.SourceURI)
-	}
-	return reverseDeps
 }

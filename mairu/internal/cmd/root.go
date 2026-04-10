@@ -45,6 +45,9 @@ var rootCmd = &cobra.Command{
 			verbose = appConfig.Output.Verbose
 		}
 	},
+	PersistentPostRun: func(cmd *cobra.Command, args []string) {
+		closeLocalService()
+	},
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 0 {
 			prompt := strings.Join(args, " ")
@@ -75,7 +78,9 @@ func runHeadless(prompt string) {
 	}
 
 	cwd, _ := os.Getwd()
-	a, err := agent.New(cwd, apiKey)
+	a, err := agent.New(cwd, apiKey, agent.Config{
+		SymbolLocator: GetLocalApp().SymbolLocator(),
+	})
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)
 		os.Exit(1)
@@ -113,6 +118,8 @@ func init() {
 		outlineCmd,
 		peekCmd,
 		scanCmd,
+		distillCmd,
+		spliceCmd,
 		dockerCmd,
 		procCmd,
 		devCmd,

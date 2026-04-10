@@ -20,14 +20,14 @@ func (r *SQLiteRepository) PullOutboxBatch(ctx context.Context, limit int) ([]Ou
 	if limit <= 0 {
 		limit = 50
 	}
-	nowStr := time.Now().UTC().Format("2006-01-02 15:04:05")
+	now := time.Now().UTC()
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, entity_type, entity_id, op_type, payload, retry_count
 		FROM search_outbox
 		WHERE status = 'pending' AND next_attempt_at <= $1
 		ORDER BY id ASC
 		LIMIT $2
-	`, nowStr, limit)
+	`, now, limit)
 	if err != nil {
 		return nil, err
 	}

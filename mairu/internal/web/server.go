@@ -1,11 +1,9 @@
 package web
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"mairu/internal/agent"
 	"net/http"
@@ -17,31 +15,27 @@ import (
 
 // Server holds the configuration and dependencies for the web server
 type Server struct {
-	mux                *http.ServeMux
-	projectRoot        string
-	apiKey             string
-	meiliURL           string
-	meiliAPIKey        string
-	contextServerURL   string
-	contextServerToken string
-	upgrader           websocket.Upgrader
+	mux            *http.ServeMux
+	projectRoot    string
+	apiKey         string
+	contextHandler http.Handler
+	locator        agent.SymbolLocator
+	upgrader       websocket.Upgrader
 }
 
 // NewServer creates a new instance of the Server
-func NewServer(apiKey, meiliURL, meiliAPIKey string) (*Server, error) {
+func NewServer(apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) (*Server, error) {
 	projectRoot, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
 	}
 
 	s := &Server{
-		mux:                http.NewServeMux(),
-		projectRoot:        projectRoot,
-		apiKey:             apiKey,
-		meiliURL:           meiliURL,
-		meiliAPIKey:        meiliAPIKey,
-		contextServerURL:   strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_URL")),
-		contextServerToken: strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_TOKEN")),
+		mux:            http.NewServeMux(),
+		projectRoot:    projectRoot,
+		apiKey:         apiKey,
+		contextHandler: contextHandler,
+		locator:        locator,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for the dashboard
@@ -49,7 +43,7 @@ func NewServer(apiKey, meiliURL, meiliAPIKey string) (*Server, error) {
 		},
 	}
 
-	s.routes()
+	s.routes(contextHandler)
 	return s, nil
 }
 
@@ -80,15 +74,15 @@ func writeError(w http.ResponseWriter, status int, message string) {
 }
 
 // routes registers all the HTTP handlers
-func (s *Server) routes() {
+func (s *Server) routes(contextHandler http.Handler) {
 	s.mux.HandleFunc("GET /api/ping", s.handlePing())
 	s.mux.HandleFunc("GET /api/chat", s.handleChat())
 	s.mux.HandleFunc("GET /api/sessions", s.handleGetSessions())
 	s.mux.HandleFunc("POST /api/sessions", s.handleCreateSession())
 	s.mux.HandleFunc("GET /api/sessions/:name/messages", s.handleGetSessionMessages())
 
-	if s.contextServerURL != "" {
-		s.registerForwardingRoutes()
+	if contextHandler != nil {
+		s.mux.Handle("/api/", contextHandler)
 	}
 
 	s.mux.HandleFunc("/", s.handleStaticFiles())
@@ -173,10 +167,7 @@ func (s *Server) handleChat() http.HandlerFunc {
 			return
 		}
 
-		ag, err := agent.New(s.projectRoot, s.apiKey, agent.Config{
-			MeiliURL:    s.meiliURL,
-			MeiliAPIKey: s.meiliAPIKey,
-		})
+		ag, err := agent.New(s.projectRoot, s.apiKey)
 		if err != nil {
 			slog.Error("failed to init agent", "error", err)
 			ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "failed to initialize agent: " + err.Error()})
@@ -244,73 +235,6 @@ func (s *Server) processWebSocketChat(ws *websocket.Conn, ag *agent.Agent, sessi
 	}
 }
 
-func (s *Server) registerForwardingRoutes() {
-	routes := []string{
-		"GET /api/search",
-		"GET /api/dashboard",
-		"GET /api/cluster",
-		"GET /api/memories",
-		"POST /api/memories",
-		"PUT /api/memories",
-		"DELETE /api/memories",
-		"GET /api/skills",
-		"POST /api/skills",
-		"PUT /api/skills",
-		"DELETE /api/skills",
-		"GET /api/context",
-		"POST /api/context",
-		"PUT /api/context",
-		"DELETE /api/context",
-		"POST /api/context/restore",
-		"POST /api/vibe/query",
-		"POST /api/vibe/mutation/plan",
-		"POST /api/vibe/mutation/execute",
-		"POST /api/autocomplete",
-		"GET /api/moderation/queue",
-		"POST /api/moderation/review",
-	}
-
-	for _, route := range routes {
-		s.mux.HandleFunc(route, s.handleForward())
-	}
-}
-
-func (s *Server) handleForward() http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		target := strings.TrimSuffix(s.contextServerURL, "/") + req.URL.Path
-		if q := req.URL.RawQuery; q != "" {
-			target += "?" + q
-		}
-
-		var body io.Reader
-		if req.Body != nil {
-			raw, _ := io.ReadAll(req.Body)
-			body = bytes.NewReader(raw)
-		}
-
-		proxyReq, err := http.NewRequestWithContext(req.Context(), req.Method, target, body)
-		if err != nil {
-			writeError(w, http.StatusBadGateway, "failed to build context upstream request")
-			return
-		}
-		proxyReq.Header.Set("Content-Type", "application/json")
-		if s.contextServerToken != "" {
-			proxyReq.Header.Set("X-Context-Token", s.contextServerToken)
-		}
-
-		resp, err := http.DefaultClient.Do(proxyReq)
-		if err != nil {
-			writeError(w, http.StatusBadGateway, "failed to reach centralized context server")
-			return
-		}
-		defer resp.Body.Close()
-
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
-	}
-}
-
 func (s *Server) handleStaticFiles() http.HandlerFunc {
 	distFS := os.DirFS("ui/dist")
 	fileServer := http.FileServer(http.FS(distFS))
@@ -332,8 +256,8 @@ func (s *Server) handleStaticFiles() http.HandlerFunc {
 }
 
 // SetupRouter is kept for backwards compatibility and easy setup
-func SetupRouter(apiKey, meiliURL, meiliAPIKey string) (*http.ServeMux, error) {
-	s, err := NewServer(apiKey, meiliURL, meiliAPIKey)
+func SetupRouter(apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) (*http.ServeMux, error) {
+	s, err := NewServer(apiKey, contextHandler, locator)
 	if err != nil {
 		return nil, err
 	}
@@ -341,8 +265,8 @@ func SetupRouter(apiKey, meiliURL, meiliAPIKey string) (*http.ServeMux, error) {
 }
 
 // StartServer starts the HTTP server on the given port
-func StartServer(port int, apiKey, meiliURL, meiliAPIKey string) error {
-	s, err := NewServer(apiKey, meiliURL, meiliAPIKey)
+func StartServer(port int, apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) error {
+	s, err := NewServer(apiKey, contextHandler, locator)
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,9 @@ var tuiCmd = &cobra.Command{
 		}
 
 		cwd, _ := os.Getwd()
-		a, err := agent.New(cwd, apiKey)
+		a, err := agent.New(cwd, apiKey, agent.Config{
+			SymbolLocator: GetLocalApp().SymbolLocator(),
+		})
 		if err != nil {
 			slog.Error("Failed to initialize agent", "error", err)
 			os.Exit(1)

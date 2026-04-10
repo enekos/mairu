@@ -25,16 +25,6 @@ var webCmd = &cobra.Command{
 			port, _ = cmd.Flags().GetInt("port")
 		}
 
-		meiliURL := appCfg.API.MeiliURL
-		if cmd.Flags().Changed("meili-url") {
-			meiliURL, _ = cmd.Flags().GetString("meili-url")
-		}
-
-		meiliAPIKey := appCfg.API.MeiliAPIKey
-		if cmd.Flags().Changed("meili-api-key") {
-			meiliAPIKey, _ = cmd.Flags().GetString("meili-api-key")
-		}
-
 		apiKey := GetAPIKey()
 		if apiKey == "" {
 			fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api.gemini_api_key in config", "Gemini API key not found"))
@@ -42,7 +32,7 @@ var webCmd = &cobra.Command{
 		}
 
 		slog.Info("Starting Mairu web interface", "port", port)
-		if err := web.StartServer(port, apiKey, meiliURL, meiliAPIKey); err != nil {
+		if err := web.StartServer(port, apiKey, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
 			slog.Error("Error starting web server", "error", err)
 		}
 	},
@@ -50,6 +40,4 @@ var webCmd = &cobra.Command{
 
 func init() {
 	webCmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
-	webCmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
-	webCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
 }
