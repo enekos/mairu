@@ -1,10 +1,10 @@
 // Unified API layer — routes to Wails bindings in desktop mode, fetch() in web mode.
 // Wails auto-generates types in ../wailsjs/ at build time.
 
-const isWails = typeof window !== 'undefined' && !!(window as any).go?.desktop?.App;
+const isWails = typeof window !== 'undefined' && !!window.go?.desktop?.App;
 
 function getWailsApp(): any {
-  return (window as any).go.desktop.App;
+  return window.go?.desktop?.App;
 }
 
 async function fetchJSON(url: string, init?: RequestInit): Promise<any> {

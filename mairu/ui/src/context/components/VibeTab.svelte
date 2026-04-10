@@ -2,8 +2,6 @@
   import { fmtDate, categoryColors, scoreColor, impColor } from "../lib/utils";
   import { vibeQuery, vibeMutationPlan, vibeMutationExecute } from "../../lib/api";
 
-  export let API_BASE: string;
-
   type Mode = "query" | "mutation";
   let mode: Mode = "query";
   let prompt = "";

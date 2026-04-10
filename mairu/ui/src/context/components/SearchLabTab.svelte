@@ -2,8 +2,6 @@
   import { fmtDate, impColor, categoryColors, scoreColor } from "../lib/utils";
   import { search } from "../../lib/api";
 
-  export let API_BASE: string;
-
   let labQuery = "";
   let labType: "all" | "skills" | "memories" | "context" = "all";
   let labTopK = 10;

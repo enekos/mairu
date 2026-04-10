@@ -25,10 +25,10 @@ input_file: crates/core/tests/testdata/html/figure_figcaption.input.html
       "selector": "img"
     },
     {
-      "kind": "paragraph",
-      "text": "Figure 1: Quarterly sales by region",
+      "kind": "heading",
+      "text": "[figcaption: Figure 1: Quarterly sales by region]",
       "depth": null,
-      "selector": "text"
+      "selector": "figcaption"
     },
     {
       "kind": "paragraph",
@@ -37,10 +37,10 @@ input_file: crates/core/tests/testdata/html/figure_figcaption.input.html
       "selector": "img"
     },
     {
-      "kind": "paragraph",
-      "text": "Figure 2: Year-over-year growth",
+      "kind": "heading",
+      "text": "[figcaption: Figure 2: Year-over-year growth]",
       "depth": null,
-      "selector": "text"
+      "selector": "figcaption"
     },
     {
       "kind": "paragraph",

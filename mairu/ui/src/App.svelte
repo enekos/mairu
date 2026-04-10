@@ -9,7 +9,7 @@
   import Settings from "./lib/Settings.svelte";
   import "./app.css";
 
-  const isWails = typeof window !== 'undefined' && !!(window as any).go?.desktop?.App;
+  const isWails = typeof window !== 'undefined' && !!window.go?.desktop?.App;
 
   let appReady = $state(!isWails); // web mode is always ready
   let statusMessage = $state('Starting...');
@@ -24,21 +24,23 @@
     if (hash) {
       if (hash.includes('view=')) {
         const view = hash.split('view=')[1].split('&')[0];
-        if (['chat', 'workspace', 'dashboard', 'logs', 'settings'].includes(view)) {
-          activeView.set(view as any);
+        if (view === 'chat' || view === 'workspace' || view === 'dashboard' || view === 'logs' || view === 'settings') {
+          activeView.set(view);
         }
       }
     }
 
     // Listen for native menu navigation events
-    if ((window as any).runtime) {
-      const rt = (window as any).runtime;
+    if (window.runtime) {
+      const rt = window.runtime;
       rt.EventsOn('app:status', (msg: string) => { statusMessage = msg; });
       rt.EventsOn('app:download-progress', (pct: number) => { downloadProgress = pct; });
       rt.EventsOn('app:error', (err: string) => { startupError = err; });
       rt.EventsOn('app:ready', () => { appReady = true; });
       rt.EventsOn('nav:view', (view: string) => {
-        activeView.set(view as any);
+        if (view === 'chat' || view === 'workspace' || view === 'dashboard' || view === 'logs' || view === 'settings') {
+          activeView.set(view);
+        }
       });
     }
   });

@@ -37,10 +37,10 @@ input_file: crates/core/tests/testdata/html/news_article.input.html
       "selector": "img"
     },
     {
-      "kind": "paragraph",
-      "text": "Tech stocks led the charge in early morning trading. (Photo: Getty Images)",
+      "kind": "heading",
+      "text": "[figcaption: Tech stocks led the charge in early morning trading. (Photo: Getty Images)]",
       "depth": null,
-      "selector": "text"
+      "selector": "figcaption"
     },
     {
       "kind": "paragraph",

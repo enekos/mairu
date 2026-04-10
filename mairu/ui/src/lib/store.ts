@@ -1,10 +1,10 @@
 import { writable } from 'svelte/store';
 
-const isWails = typeof window !== 'undefined' && !!(window as any).go?.desktop?.App;
+const isWails = typeof window !== 'undefined' && !!window.go?.desktop?.App;
 let EventsOn: any = () => {};
 let EventsOff: any = () => {};
 if (isWails) {
-  const runtime = (window as any).runtime;
+  const runtime = window.runtime;
   EventsOn = runtime?.EventsOn ?? (() => {});
   EventsOff = runtime?.EventsOff ?? (() => {});
 }
@@ -381,7 +381,7 @@ export function sendMessage(content: string) {
   if (isWails) {
     let session = "default";
     currentSession.subscribe(v => session = v)();
-    (window as any).go.desktop.App.SendMessage(session, content);
+    window.go?.desktop?.App?.SendMessage(session, content);
   } else if (ws && ws.readyState === WebSocket.OPEN) {
     ws.send(content);
   } else {

@@ -6,7 +6,6 @@
   export let displayContext: any[];
   export let hasSearchResults: boolean;
   export let searchQuery: string;
-  export let API_BASE: string;
   export let load: () => Promise<void>;
   export let setLoading: (loading: boolean) => void;
   export let setError: (error: string) => void;

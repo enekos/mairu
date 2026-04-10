@@ -13,10 +13,22 @@ input_file: crates/core/tests/testdata/html/details_summary.input.html
       "selector": "h1"
     },
     {
+      "kind": "heading",
+      "text": "[summary: What is Mairu?]",
+      "depth": null,
+      "selector": "summary"
+    },
+    {
       "kind": "paragraph",
       "text": "Mairu is a context and memory storage system for coding agents.",
       "depth": null,
       "selector": "p"
+    },
+    {
+      "kind": "heading",
+      "text": "[summary: How does it work?]",
+      "depth": null,
+      "selector": "summary"
     },
     {
       "kind": "paragraph",

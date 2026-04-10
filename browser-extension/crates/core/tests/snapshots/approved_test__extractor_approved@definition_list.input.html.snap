@@ -13,16 +13,10 @@ input_file: crates/core/tests/testdata/html/definition_list.input.html
       "selector": "h2"
     },
     {
-      "kind": "paragraph",
-      "text": "HyperText Markup Language",
+      "kind": "list",
+      "text": "- **HTML**\n  HyperText Markup Language\n- **CSS**\n  Cascading Style Sheets\n- **JS**\n  JavaScript",
       "depth": null,
-      "selector": "text"
-    },
-    {
-      "kind": "paragraph",
-      "text": "Cascading Style Sheets",
-      "depth": null,
-      "selector": "text"
+      "selector": "dl"
     }
   ],
   "metadata": {

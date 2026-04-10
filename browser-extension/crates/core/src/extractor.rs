@@ -80,13 +80,33 @@ fn find_main_content(doc: &Html) -> Option<ElementRef<'_>> {
 
 // Nodes we completely ignore
 const SKIP_TAGS: &[&str] = &[
-    "script", "style", "noscript", "iframe", "svg", "canvas", "video", "audio", "map",
+    "script", "style", "noscript", "canvas", "map", "template", "object", "embed", "math",
 ];
 
 fn is_hidden(node: ElementRef) -> bool {
     let style = node.value().attr("style").unwrap_or("");
     let s = style.replace(" ", "");
-    s.contains("display:none") || s.contains("visibility:hidden")
+    if s.contains("display:none")
+        || s.contains("visibility:hidden")
+        || s.contains("opacity:0;")
+        || s.ends_with("opacity:0")
+    {
+        return true;
+    }
+
+    if node.value().attr("aria-hidden") == Some("true") {
+        return true;
+    }
+
+    if node.value().attr("hidden").is_some() {
+        return true;
+    }
+
+    if node.value().name() == "dialog" && node.value().attr("open").is_none() {
+        return true;
+    }
+
+    false
 }
 
 fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
@@ -103,6 +123,35 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
     }
 
     // 3. Process structural nodes
+    let role = node.value().attr("role").unwrap_or("");
+
+    // Special handling for accessible roles that mimic structural elements
+    if role == "button" && tag != "button" {
+        let text = collect_text(node).trim().to_string();
+        if !text.is_empty() {
+            sections.push(ContentSection {
+                kind: SectionKind::Paragraph,
+                text: format!("[Button: {}]", text),
+                depth: None,
+                selector: format!("{}[role=button]", tag),
+            });
+        }
+        return;
+    }
+
+    if role == "link" && tag != "a" {
+        let text = collect_text(node).trim().to_string();
+        if !text.is_empty() {
+            sections.push(ContentSection {
+                kind: SectionKind::Link,
+                text: format!("{} (link role)", text),
+                depth: None,
+                selector: format!("{}[role=link]", tag),
+            });
+        }
+        return;
+    }
+
     match tag {
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
             let text = collect_text(node).trim().to_string();
@@ -116,6 +165,27 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
                 });
             }
             // Headings don't typically contain structured blocks we care about traversing deeply
+            return;
+        }
+        "summary" | "legend" | "figcaption" => {
+            let text = collect_text(node).trim().to_string();
+            if !text.is_empty() {
+                sections.push(ContentSection {
+                    kind: SectionKind::Heading,
+                    text: format!("[{}: {}]", tag, text),
+                    depth: None,
+                    selector: tag.to_string(),
+                });
+            }
+            return;
+        }
+        "hr" => {
+            sections.push(ContentSection {
+                kind: SectionKind::Paragraph,
+                text: "---".to_string(),
+                depth: None,
+                selector: "hr".to_string(),
+            });
             return;
         }
         "p" | "blockquote" => {
@@ -154,6 +224,18 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
                 });
             }
             return; // don't recurse into children as we already extracted them
+        }
+        "dl" => {
+            let items = extract_definition_list(node);
+            if !items.is_empty() {
+                sections.push(ContentSection {
+                    kind: SectionKind::List,
+                    text: items.join("\n"),
+                    depth: None,
+                    selector: "dl".to_string(),
+                });
+            }
+            return;
         }
         "table" => {
             let markdown_table = extract_table(node);
@@ -217,6 +299,10 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             return;
         }
         "input" | "textarea" | "select" => {
+            if tag == "input" && node.value().attr("type") == Some("hidden") {
+                return;
+            }
+
             let name = node.value().attr("name").unwrap_or("");
             let id = node.value().attr("id").unwrap_or("");
             let placeholder = node.value().attr("placeholder").unwrap_or("");
@@ -250,8 +336,80 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             });
             return;
         }
+        "iframe" => {
+            let src = node.value().attr("src").unwrap_or("");
+            let title = node.value().attr("title").unwrap_or("");
+            if !src.is_empty() {
+                let text = if !title.is_empty() {
+                    format!("[Iframe: {}]({})", title, src)
+                } else {
+                    format!("[Iframe]({})", src)
+                };
+                sections.push(ContentSection {
+                    kind: SectionKind::Paragraph,
+                    text,
+                    depth: None,
+                    selector: "iframe".to_string(),
+                });
+            }
+            return;
+        }
+        "video" | "audio" => {
+            let src = node.value().attr("src").unwrap_or("");
+            let aria_label = node.value().attr("aria-label").unwrap_or("");
+            let title = node.value().attr("title").unwrap_or("");
+
+            let mut desc = vec![];
+            if !aria_label.is_empty() {
+                desc.push(aria_label);
+            } else if !title.is_empty() {
+                desc.push(title);
+            }
+
+            let label = if desc.is_empty() { tag } else { desc[0] };
+
+            let text = if !src.is_empty() {
+                format!("[{}: {}]({})", tag, label, src)
+            } else {
+                format!("[{}: {}]", tag, label)
+            };
+
+            sections.push(ContentSection {
+                kind: SectionKind::Paragraph,
+                text,
+                depth: None,
+                selector: tag.to_string(),
+            });
+            return;
+        }
+        "svg" => {
+            let aria_label = node.value().attr("aria-label").unwrap_or("");
+            let mut title_text = String::new();
+            if let Ok(sel) = Selector::parse("title") {
+                if let Some(t) = node.select(&sel).next() {
+                    title_text = collect_text(t).trim().to_string();
+                }
+            }
+
+            let label = if !aria_label.is_empty() {
+                aria_label
+            } else if !title_text.is_empty() {
+                &title_text
+            } else {
+                ""
+            };
+
+            if !label.is_empty() {
+                sections.push(ContentSection {
+                    kind: SectionKind::Paragraph,
+                    text: format!("[Icon: {}]", label),
+                    depth: None,
+                    selector: "svg".to_string(),
+                });
+            }
+            return;
+        }
         "form" => {
-            // We want to process children of form, but optionally add a marker
             sections.push(ContentSection {
                 kind: SectionKind::Paragraph,
                 text: "[Form Start]".to_string(),
@@ -308,6 +466,31 @@ fn collect_text(node: ElementRef) -> String {
                 }
             } else if tag == "br" {
                 result.push('\n');
+            } else if tag == "hr" {
+                result.push_str("\n---\n");
+            } else if tag == "del" || tag == "s" || tag == "strike" {
+                let text = collect_text(child_el).trim().to_string();
+                if !text.is_empty() {
+                    result.push_str(&format!(" ~{}~ ", text));
+                }
+            } else if tag == "svg" {
+                let aria_label = child_el.value().attr("aria-label").unwrap_or("");
+                let mut title_text = String::new();
+                if let Ok(sel) = Selector::parse("title") {
+                    if let Some(t) = child_el.select(&sel).next() {
+                        title_text = collect_text(t).trim().to_string();
+                    }
+                }
+                let label = if !aria_label.is_empty() {
+                    aria_label
+                } else if !title_text.is_empty() {
+                    &title_text
+                } else {
+                    ""
+                };
+                if !label.is_empty() {
+                    result.push_str(&format!(" [Icon: {}] ", label));
+                }
             } else {
                 result.push_str(&collect_text(child_el));
             }
@@ -372,6 +555,30 @@ fn extract_list(node: ElementRef) -> Vec<String> {
     }
 
     extract_list_recursive(node, 0)
+}
+
+fn extract_definition_list(node: ElementRef) -> Vec<String> {
+    let mut items = Vec::new();
+    for child in node.children() {
+        if let Some(child_el) = ElementRef::wrap(child) {
+            let tag = child_el.value().name();
+            if tag == "dt" {
+                let text = collect_text(child_el).trim().to_string();
+                if !text.is_empty() {
+                    items.push(format!("- **{}**", text));
+                }
+            } else if tag == "dd" {
+                let text = collect_text(child_el).trim().to_string();
+                if !text.is_empty() {
+                    items.push(format!("  {}", text));
+                }
+            } else if tag == "div" {
+                // Some modern DLs use div wrappers for styling
+                items.extend(extract_definition_list(child_el));
+            }
+        }
+    }
+    items
 }
 
 fn extract_table(node: ElementRef) -> String {
