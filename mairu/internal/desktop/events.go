@@ -1,10 +1,13 @@
 package desktop
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
 	"mairu/internal/agent"
+	"mairu/internal/contextsrv"
+	"mairu/internal/llm"
 
 	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -57,9 +60,15 @@ func (a *App) getOrCreateAgent(session string) (*agent.Agent, error) {
 		return nil, err
 	}
 
+	llmProvider, err := llm.NewGeminiProvider(context.Background(), a.cfg.API.GeminiAPIKey)
+	if err != nil {
+		return nil, err
+	}
+
+	indexer := contextsrv.NewMeiliIndexer(a.meili.URL(), a.meili.APIKey(), llmProvider)
+
 	ag, err := agent.New(root, a.cfg.API.GeminiAPIKey, agent.Config{
-		MeiliURL:    a.meili.URL(),
-		MeiliAPIKey: a.meili.APIKey(),
+		SymbolLocator: indexer,
 	})
 	if err != nil {
 		return nil, err

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strings"
@@ -14,9 +15,6 @@ import (
 
 func contextServerURL() string {
 	base := strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_URL"))
-	if base == "" {
-		base = "http://localhost:8788"
-	}
 	return strings.TrimRight(base, "/")
 }
 
@@ -25,7 +23,11 @@ func contextToken() string {
 }
 
 func contextGet(path string, params map[string]string) ([]byte, error) {
-	u, err := url.Parse(contextServerURL() + path)
+	baseURL := contextServerURL()
+	if baseURL == "" {
+		baseURL = "http://localhost" // placeholder for local routing
+	}
+	u, err := url.Parse(baseURL + path)
 	if err != nil {
 		return nil, err
 	}
@@ -48,11 +50,15 @@ func contextGet(path string, params map[string]string) ([]byte, error) {
 }
 
 func contextPost(path string, payload any) ([]byte, error) {
+	baseURL := contextServerURL()
+	if baseURL == "" {
+		baseURL = "http://localhost"
+	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(http.MethodPost, contextServerURL()+path, bytes.NewReader(raw))
+	req, err := http.NewRequest(http.MethodPost, baseURL+path, bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
 	}
@@ -64,11 +70,15 @@ func contextPost(path string, payload any) ([]byte, error) {
 }
 
 func contextPut(path string, payload any) ([]byte, error) {
+	baseURL := contextServerURL()
+	if baseURL == "" {
+		baseURL = "http://localhost"
+	}
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest(http.MethodPut, contextServerURL()+path, bytes.NewReader(raw))
+	req, err := http.NewRequest(http.MethodPut, baseURL+path, bytes.NewReader(raw))
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +90,11 @@ func contextPut(path string, payload any) ([]byte, error) {
 }
 
 func contextDelete(path string, params map[string]string) ([]byte, error) {
-	u, err := url.Parse(contextServerURL() + path)
+	baseURL := contextServerURL()
+	if baseURL == "" {
+		baseURL = "http://localhost"
+	}
+	u, err := url.Parse(baseURL + path)
 	if err != nil {
 		return nil, err
 	}
@@ -103,13 +117,32 @@ func contextDelete(path string, params map[string]string) ([]byte, error) {
 }
 
 func doContextRequest(req *http.Request) ([]byte, error) {
+	if contextServerURL() == "" {
+		// Use local in-memory handler
+		localHandler := getLocalHandler()
+		if localHandler == nil {
+			return nil, fmt.Errorf("local context service could not be initialized")
+		}
+
+		rec := httptest.NewRecorder()
+		localHandler.ServeHTTP(rec, req)
+
+		resp := rec.Result()
+		body := rec.Body.Bytes()
+
+		if resp.StatusCode >= 400 {
+			return nil, fmt.Errorf("context server HTTP %d: %s", resp.StatusCode, string(body))
+		}
+		return body, nil
+	}
+
+	// Remote request
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("context server error: %v", err)
 	}
 	defer resp.Body.Close()
 
-	// Read response using bytes.Buffer since we might need the body for both JSON decoding and raw string
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 	body := buf.Bytes()

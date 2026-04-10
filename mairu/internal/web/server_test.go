@@ -9,7 +9,7 @@ import (
 )
 
 func TestPingRoute(t *testing.T) {
-	r, err := SetupRouter("", "", "")
+	r, err := SetupRouter("", nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -33,7 +33,7 @@ func TestPingRoute(t *testing.T) {
 }
 
 func TestSessionNameFromQuery(t *testing.T) {
-	r, err := SetupRouter("", "", "")
+	r, err := SetupRouter("", nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}

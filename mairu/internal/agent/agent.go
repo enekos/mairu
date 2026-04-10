@@ -18,9 +18,13 @@ import (
 	"mairu/internal/prompts"
 )
 
+type SymbolLocator interface {
+	FindSymbol(name string) ([]contextsrv.SymbolLocation, error)
+}
+
 type Agent struct {
 	llm        *llm.GeminiProvider
-	indexer    *contextsrv.MeiliIndexer
+	locator    SymbolLocator
 	root       string
 	currentDir string
 	apiKey     string
@@ -35,24 +39,17 @@ type Agent struct {
 }
 
 type Config struct {
-	MeiliURL    string
-	MeiliAPIKey string
-	Unattended  bool
+	SymbolLocator SymbolLocator
+	Unattended    bool
 }
 
 func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
-	meiliURL := os.Getenv("MEILI_URL")
-	meiliAPIKey := os.Getenv("MEILI_API_KEY")
+	var locator SymbolLocator
+	unattended := false
+
 	if len(cfg) > 0 {
-		if cfg[0].MeiliURL != "" {
-			meiliURL = cfg[0].MeiliURL
-		}
-		if cfg[0].MeiliAPIKey != "" {
-			meiliAPIKey = cfg[0].MeiliAPIKey
-		}
-	}
-	if meiliURL == "" {
-		meiliURL = "http://localhost:7700"
+		locator = cfg[0].SymbolLocator
+		unattended = cfg[0].Unattended
 	}
 
 	llmProvider, err := llm.NewGeminiProvider(context.Background(), apiKey)
@@ -60,21 +57,15 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 		return nil, err
 	}
 
-	indexer := contextsrv.NewMeiliIndexer(meiliURL, meiliAPIKey, llmProvider)
-
-	unattended := false
-	if len(cfg) > 0 {
-		unattended = cfg[0].Unattended
-	}
-
 	return &Agent{
 		llm:           llmProvider,
-		indexer:       indexer,
+		locator:       locator,
 		root:          projectRoot,
 		currentDir:    projectRoot,
 		apiKey:        apiKey,
 		stuckDetector: NewStuckDetector(),
 		Unattended:    unattended,
+		approvalChan:  make(chan bool),
 	}, nil
 }
 
@@ -324,7 +315,10 @@ func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentR
 }
 
 func (a *Agent) searchBySymbolName(symName string, outChan chan<- AgentEvent) map[string]any {
-	locations, err := a.indexer.FindSymbol(symName)
+	if a.locator == nil {
+		return map[string]any{"error": "SymbolLocator is not configured for this agent"}
+	}
+	locations, err := a.locator.FindSymbol(symName)
 	if err != nil || len(locations) == 0 {
 		return map[string]any{"error": fmt.Sprintf("symbol '%s' not found", symName)}
 	}

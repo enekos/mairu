@@ -118,9 +118,6 @@ var telegramCmd = &cobra.Command{
 			}
 		}
 
-		meiliURL, _ := cmd.Flags().GetString("meili-url")
-		meiliAPIKey, _ := cmd.Flags().GetString("meili-api-key")
-
 		pref := tele.Settings{
 			Token:  token,
 			Poller: &tele.LongPoller{Timeout: 10 * time.Second},
@@ -168,8 +165,7 @@ var telegramCmd = &cobra.Command{
 			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
 			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				MeiliURL:    meiliURL,
-				MeiliAPIKey: meiliAPIKey,
+				SymbolLocator: GetLocalApp().SymbolLocator(),
 			})
 			if err != nil {
 				return c.Send("Error initializing agent.")
@@ -191,8 +187,7 @@ var telegramCmd = &cobra.Command{
 			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
 			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				MeiliURL:    meiliURL,
-				MeiliAPIKey: meiliAPIKey,
+				SymbolLocator: GetLocalApp().SymbolLocator(),
 			})
 			if err != nil {
 				return c.Send("Error initializing agent.")
@@ -213,8 +208,7 @@ var telegramCmd = &cobra.Command{
 			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
 			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				MeiliURL:    meiliURL,
-				MeiliAPIKey: meiliAPIKey,
+				SymbolLocator: GetLocalApp().SymbolLocator(),
 			})
 			if err != nil {
 				return c.Send("Error initializing agent.")
@@ -243,8 +237,7 @@ var telegramCmd = &cobra.Command{
 			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
 			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				MeiliURL:    meiliURL,
-				MeiliAPIKey: meiliAPIKey,
+				SymbolLocator: GetLocalApp().SymbolLocator(),
 			})
 			if err != nil {
 				return c.Send("Error initializing agent.")
