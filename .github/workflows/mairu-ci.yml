@@ -35,6 +35,17 @@ jobs:
       - name: Install dependencies
         run: go mod download
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build UI
+        run: |
+          cd ui
+          bun install
+          bun run build
+
       - name: Build
         run: go build -v ./...
 
