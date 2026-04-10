@@ -256,7 +256,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case tea.KeyCtrlC, tea.KeyCtrlD:
 			if m.sessionName != "" {
-				m.agent.SaveSession(m.sessionName)
+				_ = m.agent.SaveSession(m.sessionName)
 			}
 			return m, tea.Quit
 		case tea.KeyPgUp:
@@ -945,9 +945,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if len(cmdParts) > 1 {
 						sessionName := cmdParts[1]
 						if m.sessionName != "" {
-							m.agent.SaveSession(m.sessionName)
+							_ = m.agent.SaveSession(m.sessionName)
 						} else {
-							m.agent.SaveSession("current")
+							_ = m.agent.SaveSession("current")
 						}
 						err := m.agent.LoadSession(sessionName)
 						if err != nil {
@@ -1029,7 +1029,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.autoScroll()
 
 			if m.sessionName != "" {
-				m.agent.SaveSession(m.sessionName)
+				_ = m.agent.SaveSession(m.sessionName)
 			}
 
 			if len(m.queuedMessages) > 0 {
