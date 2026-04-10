@@ -24,6 +24,18 @@ var _ interface {
 	CreateContextNode(input contextsrv.ContextCreateInput) (contextsrv.ContextNode, error)
 	UpdateContextNode(input contextsrv.ContextUpdateInput) (contextsrv.ContextNode, error)
 	DeleteContextNode(uri string) error
+
+	Search(opts contextsrv.SearchOptions) (map[string]any, error)
+	Dashboard(limit int, project string) (map[string]any, error)
+	Health() map[string]any
+	ClusterStats() map[string]any
+
+	VibeQuery(prompt, project string, topK int) (contextsrv.VibeQueryResult, error)
+	VibeMutationPlan(prompt, project string, topK int) (contextsrv.VibeMutationPlan, error)
+	VibeMutationExecute(ops []contextsrv.VibeMutationOp, project string) ([]map[string]any, error)
+
+	ListModerationQueue(limit int) ([]contextsrv.ModerationEvent, error)
+	ReviewModeration(input contextsrv.ModerationReviewInput) error
 } = (*App)(nil)
 
 func TestBindingsCompile(t *testing.T) {

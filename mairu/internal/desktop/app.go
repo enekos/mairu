@@ -166,3 +166,45 @@ func (a *App) UpdateContextNode(input contextsrv.ContextUpdateInput) (contextsrv
 func (a *App) DeleteContextNode(uri string) error {
 	return a.svc.DeleteContextNode(uri)
 }
+
+// ── Search & Dashboard ──────────────────────────────────────────
+
+func (a *App) Search(opts contextsrv.SearchOptions) (map[string]any, error) {
+	return a.svc.Search(opts)
+}
+
+func (a *App) Dashboard(limit int, project string) (map[string]any, error) {
+	return a.svc.Dashboard(limit, project)
+}
+
+func (a *App) Health() map[string]any {
+	return a.svc.Health()
+}
+
+func (a *App) ClusterStats() map[string]any {
+	return a.svc.ClusterStats()
+}
+
+// ── Vibe ────────────────────────────────────────────────────────
+
+func (a *App) VibeQuery(prompt, project string, topK int) (contextsrv.VibeQueryResult, error) {
+	return a.svc.VibeQuery(prompt, project, topK)
+}
+
+func (a *App) VibeMutationPlan(prompt, project string, topK int) (contextsrv.VibeMutationPlan, error) {
+	return a.svc.PlanVibeMutation(prompt, project, topK)
+}
+
+func (a *App) VibeMutationExecute(ops []contextsrv.VibeMutationOp, project string) ([]map[string]any, error) {
+	return a.svc.ExecuteVibeMutation(ops, project)
+}
+
+// ── Moderation ──────────────────────────────────────────────────
+
+func (a *App) ListModerationQueue(limit int) ([]contextsrv.ModerationEvent, error) {
+	return a.svc.ListModerationQueue(limit)
+}
+
+func (a *App) ReviewModeration(input contextsrv.ModerationReviewInput) error {
+	return a.svc.ReviewModeration(input)
+}
