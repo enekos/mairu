@@ -1,5 +1,6 @@
 <script lang="ts">
   import { fmtDate, impColor, categoryColors, scoreColor } from "../lib/utils";
+  import { search } from "../../lib/api";
 
   export let API_BASE: string;
 
@@ -28,23 +29,21 @@
     labSearched = false;
     const start = performance.now();
     try {
-      const params = new URLSearchParams({
+      const opts: any = {
         q: labQuery,
         type: labType,
-        topK: String(labTopK),
-        minScore: String(minScore),
-        weightVector: String(weightVector),
-        weightKeyword: String(weightKeyword),
-        weightRecency: String(weightRecency),
-        weightImportance: String(weightImportance),
+        topK: labTopK,
+        minScore: minScore,
+        weightVector: weightVector,
+        weightKeyword: weightKeyword,
+        weightRecency: weightRecency,
+        weightImportance: weightImportance,
         recencyScale,
-        recencyDecay: String(recencyDecay),
-      });
-      if (highlight) params.set("highlight", "true");
+        recencyDecay: recencyDecay,
+      };
+      if (highlight) opts.highlight = true;
 
-      const res = await fetch(`${API_BASE}/api/search?${params.toString()}`);
-      if (!res.ok) throw new Error(`Search API ${res.status}`);
-      const data = await res.json();
+      const data = await search(opts);
 
       const flat: Record<string, any>[] = [];
       (data.skills ?? []).forEach((r: any) => flat.push({ ...r, _type: "skill" }));

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { FolderGit2, Search, RefreshCw, Trash2, ChevronRight, ChevronDown, Database, BrainCircuit, Wrench } from 'lucide-svelte';
   import { onMount } from 'svelte';
+  import { dashboard, deleteContextNode, deleteMemory, deleteSkill } from './api';
 
   type Tab = 'context' | 'memories' | 'skills';
   let activeTab: Tab = 'context';
@@ -16,13 +17,10 @@
   async function loadData() {
     loading = true;
     try {
-      const res = await fetch(`/api/dashboard?limit=1000`);
-      if (res.ok) {
-        const d = await res.json();
-        contextNodes = d.contextNodes ?? [];
-        memories = d.memories ?? [];
-        skills = d.skills ?? [];
-      }
+      const d = await dashboard(1000);
+      contextNodes = d.contextNodes ?? [];
+      memories = d.memories ?? [];
+      skills = d.skills ?? [];
     } catch (e) {
       console.error("Failed to load workspace data", e);
     } finally {
@@ -34,17 +32,13 @@
     if (!confirm(`Are you sure you want to delete this ${type} item?`)) return;
     
     try {
-      let endpoint = '';
-      if (type === 'context') endpoint = `/api/context?uri=${encodeURIComponent(id)}`;
-      else if (type === 'memories') endpoint = `/api/memories?id=${encodeURIComponent(id)}`;
-      else if (type === 'skills') endpoint = `/api/skills?id=${encodeURIComponent(id)}`;
+      if (type === 'context') await deleteContextNode(id);
+      else if (type === 'memories') await deleteMemory(id);
+      else if (type === 'skills') await deleteSkill(id);
       
-      const res = await fetch(endpoint, { method: 'DELETE' });
-      if (res.ok) {
-        if (type === 'context') contextNodes = contextNodes.filter(n => n.uri !== id);
-        else if (type === 'memories') memories = memories.filter(m => m.id !== id);
-        else if (type === 'skills') skills = skills.filter(s => s.id !== id);
-      }
+      if (type === 'context') contextNodes = contextNodes.filter(n => n.uri !== id);
+      else if (type === 'memories') memories = memories.filter(m => m.id !== id);
+      else if (type === 'skills') skills = skills.filter(s => s.id !== id);
     } catch (e) {
       console.error(`Failed to delete ${type} item`, e);
     }

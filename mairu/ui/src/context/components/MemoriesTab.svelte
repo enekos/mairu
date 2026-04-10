@@ -1,6 +1,7 @@
 <script lang="ts">
   import { slide } from 'svelte/transition';
   import { fmtDate, scoreColor, copy, impColor, categoryColors } from "../lib/utils";
+  import { createMemory as apiCreateMemory, updateMemory, deleteMemory } from "../../lib/api";
 
   export let displayMemories: any[];
   export let hasSearchResults: boolean;
@@ -21,13 +22,7 @@
   async function createMemory() {
     addingMemory = true; setLastWriteResult(null);
     try {
-      const res = await fetch(`${API_BASE}/api/memories`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newMemory),
-      });
-      if (!res.ok) throw new Error("Failed to create memory");
-      const result = await res.json();
+      const result = await apiCreateMemory(newMemory);
       setLastWriteResult(result);
       newMemory = { content: "", category: "observation", owner: "agent", importance: 5, useRouter: true };
       await load();
@@ -48,13 +43,7 @@
   async function saveEdit() {
     setLoading(true); setError(""); setLastWriteResult(null);
     try {
-      const res = await fetch(`${API_BASE}/api/memories`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editForm),
-      });
-      if (!res.ok) throw new Error(`Failed to update memory`);
-      const result = await res.json();
+      const result = await updateMemory(editForm);
       setLastWriteResult(result);
       cancelEdit();
       await load();
@@ -66,8 +55,7 @@
     if (!confirm(`Delete this memory?`)) return;
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/memories?id=${encodeURIComponent(id)}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      await deleteMemory(id);
       await load();
     } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     finally { setLoading(false); }

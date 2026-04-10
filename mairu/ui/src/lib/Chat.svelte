@@ -5,6 +5,7 @@
   import DOMPurify from 'dompurify';
   import { onMount, onDestroy, tick } from 'svelte';
   import { fade, slide, fly } from 'svelte/transition';
+  import { search, createMemory, listContextNodes } from './api';
 
   let inputStr = "";
   let messagesContainer: HTMLDivElement;
@@ -134,18 +135,13 @@
         const subCmd = parts[1];
         const memArgs = parts.slice(2).join(" ");
         if (subCmd === "search" || subCmd === "read") {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(memArgs)}&type=memory&topK=15`);
-          const data = await res.json();
+          const data = await search({ q: memArgs, type: 'memory', topK: 15 });
           messages.update(msgs => [
             ...msgs, 
             { id: crypto.randomUUID(), role: "system", content: "Searched memories:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
           ]);
         } else if (subCmd === "store" || subCmd === "write") {
-          await fetch('/api/memories', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: memArgs, category: "user_provided" })
-          });
+          await createMemory({ content: memArgs, category: "user_provided", project: "" });
           messages.update(msgs => [
             ...msgs, 
             { id: crypto.randomUUID(), role: "system", content: "Stored memory.", bashOutput: "", statuses: [], logs: [], toolCalls: [] }
@@ -155,15 +151,13 @@
         const subCmd = parts[1];
         const nodeArgs = parts.slice(2).join(" ");
         if (subCmd === "search" || subCmd === "read") {
-          const res = await fetch(`/api/search?q=${encodeURIComponent(nodeArgs)}&type=context&topK=15`);
-          const data = await res.json();
+          const data = await search({ q: nodeArgs, type: 'context', topK: 15 });
           messages.update(msgs => [
             ...msgs, 
             { id: crypto.randomUUID(), role: "system", content: "Searched context nodes:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
           ]);
         } else if (subCmd === "ls") {
-          const res = await fetch(`/api/context?parentUri=${encodeURIComponent(nodeArgs)}`);
-          const data = await res.json();
+          const data = await listContextNodes("", nodeArgs);
           messages.update(msgs => [
             ...msgs, 
             { id: crypto.randomUUID(), role: "system", content: "Context node listing:\n" + JSON.stringify(data, null, 2), bashOutput: "", statuses: [], logs: [], toolCalls: [] }
