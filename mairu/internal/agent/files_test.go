@@ -39,7 +39,7 @@ func TestFilesTools(t *testing.T) {
 		}
 
 		// Verify using agent.ReadFile
-		readContent, err := agent.ReadFile(filePath)
+		readContent, err := agent.ReadFile(filePath, 1, 2000)
 		if err != nil {
 			t.Fatalf("failed to read file via agent: %v", err)
 		}

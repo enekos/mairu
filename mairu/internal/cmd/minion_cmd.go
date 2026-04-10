@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"mairu/internal/agent"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -24,15 +25,77 @@ var minionCmd = &cobra.Command{
 	Long: `Minion Mode executes tasks completely unattended. It will automatically approve shell commands, 
 run verification checks, attempt to fix issues (up to --max-retries), and open a Pull Request.
 Ideal for executing from background jobs or automation pipelines.`,
-	Args: cobra.MinimumNArgs(1),
+	Args: cobra.MaximumNArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		prompt := strings.Join(args, " ")
+		var prompt string
+		if len(args) > 0 {
+			prompt = strings.Join(args, " ")
+		}
+		
+		if minionGithubIssue != "" {
+			issueData, err := fetchGitHubContext("issue", minionGithubIssue)
+			if err != nil {
+				slog.Error("Failed to fetch github issue", "error", err)
+				os.Exit(1)
+			}
+			prompt = fmt.Sprintf("Resolve the following GitHub Issue:\n\n%s\n\nAdditional user prompt: %s", issueData, prompt)
+		} else if minionGithubPR != "" {
+			prData, err := fetchGitHubContext("pr", minionGithubPR)
+			if err != nil {
+				slog.Error("Failed to fetch github PR", "error", err)
+				os.Exit(1)
+			}
+			prompt = fmt.Sprintf("Address the following PR feedback:\n\n%s\n\nAdditional user prompt: %s", prData, prompt)
+		} else if prompt == "" {
+			slog.Error("Either a prompt, --github-issue, or --github-pr is required")
+			cmd.Usage()
+			os.Exit(1)
+		}
+
 		runMinion(prompt)
 	},
 }
 
+var (
+	minionGithubIssue string
+	minionGithubPR    string
+)
+
 func init() {
 	minionCmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
+	minionCmd.Flags().StringVar(&minionGithubIssue, "github-issue", "", "GitHub Issue number to resolve")
+	minionCmd.Flags().StringVar(&minionGithubPR, "github-pr", "", "GitHub PR number to review and fix")
+}
+
+func fetchGitHubContext(entityType, number string) (string, error) {
+	var cmd *exec.Cmd
+	var out []byte
+	var err error
+	
+	if entityType == "issue" {
+		cmd = exec.Command("gh", "issue", "view", number, "--comments")
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("gh issue view failed: %s, output: %s", err, string(out))
+		}
+		return string(out), nil
+	} else {
+		cmd = exec.Command("gh", "pr", "view", number, "--comments")
+		viewOut, err := cmd.CombinedOutput()
+		if err != nil {
+			return "", fmt.Errorf("gh pr view failed: %s, output: %s", err, string(viewOut))
+		}
+		
+		diffCmd := exec.Command("gh", "pr", "diff", number)
+		diffOut, diffErr := diffCmd.CombinedOutput()
+		if diffErr != nil {
+			// Don't fail the whole command if diff fails, just return what we have
+			slog.Warn("Failed to fetch PR diff", "error", diffErr)
+			return string(viewOut), nil
+		}
+		
+		return fmt.Sprintf("%s\n\n=== PR DIFF ===\n%s", string(viewOut), string(diffOut)), nil
+	}
 }
 
 func runMinion(userPrompt string) {

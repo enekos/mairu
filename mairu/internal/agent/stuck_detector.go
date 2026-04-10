@@ -26,11 +26,11 @@ func (v StuckVerdict) String() string {
 }
 
 const (
-	repeatNudgeThreshold      = 3
-	repeatStopThreshold       = 5
+	repeatNudgeThreshold      = 4
+	repeatStopThreshold       = 8
 	alternatingNudgeThreshold = 6
 	alternatingStopThreshold  = 8
-	maxWindowSize             = 10
+	maxWindowSize             = 20
 )
 
 type ToolSignature struct {
@@ -83,8 +83,9 @@ func (d *StuckDetector) Check() StuckVerdict {
 }
 
 func NudgeMessage() string {
-	return "WARNING: You appear to be stuck in a loop — you have repeated the same action multiple times. " +
-		"Stop and try a fundamentally different approach to solve this problem."
+	return "CRITICAL SYSTEM WARNING: You are stuck in a loop. You have repeated the exact same tool call multiple times without progress. " +
+		"DO NOT CALL THIS TOOL AGAIN with the same arguments. " +
+		"Take a step back. Explain why you are stuck and use a completely different approach (e.g. use 'mairu map' instead of 'ls', or 'mairu scan' instead of 'grep')."
 }
 
 func StopMessage() string {

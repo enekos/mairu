@@ -382,6 +382,17 @@ func (a *Agent) CompactContext() error {
 				if t, ok := p.(genai.Text); ok {
 					textContent += string(t)
 				}
+				if fc, ok := p.(genai.FunctionCall); ok {
+					argsStr, _ := json.Marshal(fc.Args)
+					textContent += fmt.Sprintf("\n[Tool Call]: %s(%s)\n", fc.Name, string(argsStr))
+				}
+				if fr, ok := p.(genai.FunctionResponse); ok {
+					respStr, _ := json.Marshal(fr.Response)
+					if len(respStr) > 2000 {
+						respStr = append(respStr[:2000], []byte("... [truncated for summary]")...)
+					}
+					textContent += fmt.Sprintf("\n[Tool Result]: %s = %s\n", fr.Name, string(respStr))
+				}
 				if execCode, ok := p.(genai.ExecutableCode); ok {
 					langStr := ""
 					if execCode.Language == genai.ExecutableCodePython {
@@ -394,10 +405,14 @@ func (a *Agent) CompactContext() error {
 					if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
 						outcomeStr = execResult.Outcome.String()
 					}
-					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output)
+					output := execResult.Output
+					if len(output) > 2000 {
+						output = output[:2000] + "... [truncated for summary]"
+					}
+					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, output)
 				}
 			}
-			conversation += fmt.Sprintf("[%s]: %s\n\n", c.Role, textContent)
+			conversation += fmt.Sprintf("[%s]: %s\n\n", c.Role, strings.TrimSpace(textContent))
 		}
 	}
 
