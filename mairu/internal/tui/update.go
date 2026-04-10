@@ -91,6 +91,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							m.sessionName = sessionName
 							m.messages = []ChatMessage{{Role: "System", Content: "Loaded session: " + sessionName}}
+							found := false
+							for _, s := range m.sessions {
+								if s == sessionName {
+									found = true
+									break
+								}
+							}
+							if !found {
+								m.sessions = append(m.sessions, sessionName)
+							}
 							for _, text := range m.agent.GetHistoryText() {
 								if strings.HasPrefix(text, "You: ") {
 									m.messages = append(m.messages, ChatMessage{Role: "You", Content: strings.TrimPrefix(text, "You: ")})
@@ -377,6 +387,40 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.renderMessages()
 			m.autoScroll()
 			return m, nil
+		case tea.KeyCtrlO:
+			if len(m.sessions) > 1 {
+				// find current
+				idx := -1
+				for i, s := range m.sessions {
+					if s == m.sessionName {
+						idx = i
+						break
+					}
+				}
+				idx = (idx + 1) % len(m.sessions)
+				newSession := m.sessions[idx]
+
+				if m.sessionName != "" {
+					_ = m.agent.SaveSession(m.sessionName)
+				}
+				err := m.agent.LoadSession(newSession)
+				if err != nil {
+					m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Failed to load session: " + err.Error()})
+				} else {
+					m.sessionName = newSession
+					m.messages = []ChatMessage{{Role: "System", Content: "Loaded session: " + newSession}}
+					for _, text := range m.agent.GetHistoryText() {
+						if strings.HasPrefix(text, "You: ") {
+							m.messages = append(m.messages, ChatMessage{Role: "You", Content: strings.TrimPrefix(text, "You: ")})
+						} else if strings.HasPrefix(text, "Mairu: ") {
+							m.messages = append(m.messages, ChatMessage{Role: "Mairu", Content: strings.TrimPrefix(text, "Mairu: ")})
+						}
+					}
+				}
+				m.renderMessages()
+				m.autoScroll()
+			}
+			return m, nil
 		case tea.KeyCtrlN:
 			return m, m.openWorkspacePane(paneNvim)
 		case tea.KeyCtrlG:
@@ -560,6 +604,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							m.sessionName = newName
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Forked session to: " + newName})
+							found := false
+							for _, s := range m.sessions {
+								if s == newName {
+									found = true
+									break
+								}
+							}
+							if !found {
+								m.sessions = append(m.sessions, newName)
+							}
 						}
 					} else {
 						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /fork <name>"})
@@ -576,6 +630,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							m.sessionName = sessionName
 							m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Session saved as: " + sessionName})
+							found := false
+							for _, s := range m.sessions {
+								if s == sessionName {
+									found = true
+									break
+								}
+							}
+							if !found {
+								m.sessions = append(m.sessions, sessionName)
+							}
 						}
 					} else {
 						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /save <name>"})
@@ -587,6 +651,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.agent.ResetSession()
 					m.sessionName = "default"
 					m.messages = []ChatMessage{{Role: "System", Content: "Session reset. Starting fresh context."}}
+					found := false
+					for _, s := range m.sessions {
+						if s == "default" {
+							found = true
+							break
+						}
+					}
+					if !found {
+						m.sessions = append(m.sessions, "default")
+					}
 					m.renderMessages()
 					m.viewport.GotoBottom()
 					return m, nil
@@ -955,6 +1029,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						} else {
 							m.sessionName = sessionName
 							m.messages = []ChatMessage{{Role: "System", Content: "Loaded session: " + sessionName}}
+							found := false
+							for _, s := range m.sessions {
+								if s == sessionName {
+									found = true
+									break
+								}
+							}
+							if !found {
+								m.sessions = append(m.sessions, sessionName)
+							}
 							for _, text := range m.agent.GetHistoryText() {
 								if strings.HasPrefix(text, "You: ") {
 									m.messages = append(m.messages, ChatMessage{Role: "You", Content: strings.TrimPrefix(text, "You: ")})

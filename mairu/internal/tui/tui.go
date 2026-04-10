@@ -64,6 +64,7 @@ type model struct {
 	activeStream      chan agent.AgentEvent
 
 	sessionName    string
+	sessions       []string
 	queuedMessages []string
 
 	showList  bool
@@ -145,6 +146,18 @@ func initialModel(a *agent.Agent, sessionName string) model {
 		sessionName = "default"
 	}
 
+	sessions, _ := a.ListSessions()
+	found := false
+	for _, s := range sessions {
+		if s == sessionName {
+			found = true
+			break
+		}
+	}
+	if !found {
+		sessions = append(sessions, sessionName)
+	}
+
 	m := model{
 		showAnim:        true,
 		animFrame:       0,
@@ -163,6 +176,7 @@ func initialModel(a *agent.Agent, sessionName string) model {
 		rng:             rand.New(rand.NewSource(time.Now().UnixNano())),
 		activePane:      paneAgent,
 		sessionName:     sessionName,
+		sessions:        sessions,
 	}
 	m.refreshThinkingIndicator(time.Now(), true)
 	m.renderMessages()
@@ -219,7 +233,11 @@ func (m *model) recomputeLayout() {
 	}
 
 	taHeight := m.textarea.Height()
-	panesHeight := m.height - taHeight - 3
+	sessionTabsHeight := 0
+	if len(m.sessions) > 0 {
+		sessionTabsHeight = 2
+	}
+	panesHeight := m.height - taHeight - 3 - sessionTabsHeight
 	if panesHeight < 7 {
 		panesHeight = 7
 	}

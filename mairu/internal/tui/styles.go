@@ -67,4 +67,13 @@ var (
 			Foreground(colorSystem).
 			Background(lipgloss.Color("#2b303b")).
 			Padding(0, 1)
+	sessionTabActiveStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#2e3440")).
+				Background(colorAgent).
+				Bold(true).
+				Padding(0, 1)
+	sessionTabStyle = lipgloss.NewStyle().
+			Foreground(colorSystem).
+			Background(lipgloss.Color("#2b303b")).
+			Padding(0, 1)
 )

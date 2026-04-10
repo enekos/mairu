@@ -85,6 +85,22 @@ func (m *model) renderMessages() {
 	m.viewport.SetContent(sb.String())
 }
 
+func (m model) renderSessionTabs() string {
+	if len(m.sessions) == 0 {
+		return ""
+	}
+	var parts []string
+	for _, s := range m.sessions {
+		if s == m.sessionName {
+			parts = append(parts, sessionTabActiveStyle.Render(" "+s+" "))
+		} else {
+			parts = append(parts, sessionTabStyle.Render(" "+s+" "))
+		}
+	}
+	// Add a little padding to the right of the tabs so it doesn't look cut off
+	return lipgloss.NewStyle().MarginBottom(1).Render(lipgloss.JoinHorizontal(lipgloss.Left, parts...)) + "\n"
+}
+
 func (m model) View() string {
 	if m.showAnim {
 		return m.renderAnimation()
@@ -130,7 +146,8 @@ func (m model) View() string {
 	}
 
 	viewStr := fmt.Sprintf(
-		"%s\n%s%s\n%s",
+		"%s\n%s\n%s%s\n%s",
+		appStyle.Render(m.renderSessionTabs()),
 		appStyle.Render(mainRow),
 		acView,
 		appStyle.Render(inputView),
@@ -140,7 +157,7 @@ func (m model) View() string {
 }
 
 func (m model) renderFooter() string {
-	footer := "PgUp/PgDn scroll  ·  Home/End top-bottom  ·  Ctrl+F follow  ·  Ctrl+E sidebars  ·  Ctrl+N nvim  ·  Ctrl+G lazygit  ·  /help"
+	footer := "PgUp/PgDn scroll  ·  Home/End top-bottom  ·  Ctrl+F follow  ·  Ctrl+E sidebars  ·  Ctrl+O next tab  ·  Ctrl+N nvim  ·  Ctrl+G lazygit  ·  /help"
 	return footerStyle.Render(footer)
 }
 
