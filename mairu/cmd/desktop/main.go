@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"mairu/internal/desktop"
@@ -9,6 +10,7 @@ import (
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+	wailsRuntime "github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 func main() {
@@ -26,6 +28,10 @@ func main() {
 		Menu:       app.BuildMenu(),
 		OnStartup:  app.Startup,
 		OnShutdown: app.Shutdown,
+		OnBeforeClose: func(ctx context.Context) bool {
+			wailsRuntime.WindowHide(ctx)
+			return true // prevent actual close — tray "Quit" calls Quit()
+		},
 		Bind: []interface{}{
 			app,
 		},

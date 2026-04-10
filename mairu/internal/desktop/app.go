@@ -93,6 +93,7 @@ func (a *App) Startup(ctx context.Context) {
 	close(a.meiliReady)
 
 	wailsRuntime.EventsEmit(ctx, "app:ready", true)
+	a.SetupTray()
 }
 
 // Shutdown is called by Wails when the window is closing.
