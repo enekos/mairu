@@ -400,6 +400,106 @@
           tag: el.tagName.toLowerCase(),
         }));
         sendResponse({ success: true, results });
+      } else if (message.command === "set_storage") {
+        try {
+          if (message.storage_type === "sessionStorage") {
+            window.sessionStorage.setItem(message.key, message.value);
+            sendResponse({ success: true, message: `Set sessionStorage[${message.key}]` });
+          } else {
+            window.localStorage.setItem(message.key, message.value);
+            sendResponse({ success: true, message: `Set localStorage[${message.key}]` });
+          }
+        } catch (e) {
+          sendResponse({ error: `Failed to set storage: ${e.message}` });
+        }
+      } else if (message.command === "show_thought") {
+        let overlay = document.getElementById('__mairu_agent_overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.id = '__mairu_agent_overlay';
+          overlay.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            max-width: 300px;
+            background: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 2147483647;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+            transform: translateY(10px);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+          `;
+          
+          const icon = document.createElement('div');
+          icon.innerHTML = '🤖';
+          icon.style.fontSize = '18px';
+          
+          const text = document.createElement('div');
+          text.id = '__mairu_agent_text';
+          
+          overlay.appendChild(icon);
+          overlay.appendChild(text);
+          document.body.appendChild(overlay);
+          
+          // Trigger reflow
+          void overlay.offsetWidth;
+        }
+        
+        const textEl = document.getElementById('__mairu_agent_text');
+        if (textEl) textEl.textContent = message.text;
+        
+        overlay.style.opacity = '1';
+        overlay.style.transform = 'translateY(0)';
+        sendResponse({ success: true });
+      } else if (message.command === "hide_thought") {
+        const overlay = document.getElementById('__mairu_agent_overlay');
+        if (overlay) {
+          overlay.style.opacity = '0';
+          overlay.style.transform = 'translateY(10px)';
+        }
+        
+        // Remove old highlights
+        document.querySelectorAll('.__mairu_agent_highlight').forEach(el => {
+          el.classList.remove('__mairu_agent_highlight');
+          el.style.outline = el.dataset.origOutline || '';
+          el.style.outlineOffset = el.dataset.origOutlineOffset || '';
+        });
+        
+        sendResponse({ success: true });
+      } else if (message.command === "highlight_thought") {
+        // Remove old highlights
+        document.querySelectorAll('.__mairu_agent_highlight').forEach(el => {
+          el.classList.remove('__mairu_agent_highlight');
+          el.style.outline = el.dataset.origOutline || '';
+          el.style.outlineOffset = el.dataset.origOutlineOffset || '';
+        });
+        
+        const el = document.querySelector(message.selector);
+        if (el) {
+          el.classList.add('__mairu_agent_highlight');
+          el.dataset.origOutline = el.style.outline;
+          el.dataset.origOutlineOffset = el.style.outlineOffset;
+          el.style.outline = '3px dashed #4facfe';
+          el.style.outlineOffset = '2px';
+          
+          if (message.scroll !== false) {
+             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          sendResponse({ success: true, message: `Highlighted ${message.selector} for thought` });
+        } else {
+          sendResponse({ error: `Element not found: ${message.selector}` });
+        }
       } else {
         sendResponse({ error: `Unknown execute command: ${message.command}` });
       }

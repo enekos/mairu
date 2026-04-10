@@ -8,7 +8,8 @@
     "storage",
     "nativeMessaging",
     "contextMenus",
-    "tabs"
+    "tabs",
+    "cookies"
   ],
   "background": {
     "service_worker": "service-worker.js",

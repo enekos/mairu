@@ -200,6 +200,28 @@ function connectNativeHost() {
           }
         });
         return; // Async response handled in callback
+      case "set_cookie":
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+           if (tabs[0] && tabs[0].url) {
+             const url = new URL(tabs[0].url);
+             chrome.cookies.set({
+               url: url.origin,
+               name: msg.name,
+               value: msg.value,
+               path: msg.path || "/",
+               domain: msg.domain || url.hostname
+             }, (cookie) => {
+               if (chrome.runtime.lastError) {
+                 nativePort.postMessage({ id: msg.id, error: chrome.runtime.lastError.message });
+               } else {
+                 nativePort.postMessage({ id: msg.id, success: true, message: `Set cookie ${msg.name}` });
+               }
+             });
+           } else {
+             nativePort.postMessage({ id: msg.id, error: "No active tab found to set cookie" });
+           }
+        });
+        return; // Async response handled in callback
       default:
         // If it's an execute command, forward it to the active tab's content script
         if (msg.type === "execute") {
