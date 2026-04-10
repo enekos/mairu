@@ -1,0 +1,22 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/dialog.input.html
+---
+{
+  "title": "Dialog Elements",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "This is an open dialog and should be extracted.",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

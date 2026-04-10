@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Aria Hidden</title>
+</head>
+<body>
+    <div aria-hidden="true">
+        <p>This text should be completely ignored by the parser.</p>
+    </div>
+    <div aria-hidden="false">
+        <p>This text should be extracted.</p>
+    </div>
+    <p aria-hidden="true">Another hidden paragraph</p>
+    <p>A normal paragraph</p>
+</body>
+</html>

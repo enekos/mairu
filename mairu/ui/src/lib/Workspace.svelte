@@ -114,7 +114,7 @@
     {#if activeTab === 'context'}
       {#each filteredContextNodes as node}
         <div class="bg-black border border-green-900 flex flex-col">
-          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" on:click={() => toggleExpand(node.uri)}>
+          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" role="button" tabindex="0" on:click={() => toggleExpand(node.uri)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(node.uri)}>
             <div class="flex items-center gap-2 overflow-hidden">
               {#if expandedItems[node.uri]}
                 <ChevronDown size={16} class="text-green-600 shrink-0" />
@@ -160,7 +160,7 @@
     {#if activeTab === 'memories'}
       {#each filteredMemories as memory}
         <div class="bg-black border border-green-900 flex flex-col">
-          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" on:click={() => toggleExpand(memory.id)}>
+          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" role="button" tabindex="0" on:click={() => toggleExpand(memory.id)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(memory.id)}>
             <div class="flex items-center gap-2 overflow-hidden">
               {#if expandedItems[memory.id]}
                 <ChevronDown size={16} class="text-green-600 shrink-0" />
@@ -196,7 +196,7 @@
     {#if activeTab === 'skills'}
       {#each filteredSkills as skill}
         <div class="bg-black border border-green-900 flex flex-col">
-          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" on:click={() => toggleExpand(skill.id)}>
+          <div class="flex items-center justify-between p-2 hover:bg-green-900/30 cursor-pointer" role="button" tabindex="0" on:click={() => toggleExpand(skill.id)} on:keydown={(e) => e.key === 'Enter' && toggleExpand(skill.id)}>
             <div class="flex items-center gap-2 overflow-hidden">
               {#if expandedItems[skill.id]}
                 <ChevronDown size={16} class="text-green-600 shrink-0" />

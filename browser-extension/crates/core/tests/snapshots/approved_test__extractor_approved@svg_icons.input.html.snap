@@ -1,0 +1,52 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/svg_icons.input.html
+---
+{
+  "title": "Icons and SVGs",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "Click the home icon:",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Icon: Home Icon]",
+      "depth": null,
+      "selector": "svg"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Or the settings icon:",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Icon: Settings Icon]",
+      "depth": null,
+      "selector": "svg"
+    },
+    {
+      "kind": "paragraph",
+      "text": "An empty SVG with no label should be ignored:",
+      "depth": null,
+      "selector": "p"
+    },
+    {
+      "kind": "paragraph",
+      "text": "Icons in text: Home / Menu",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

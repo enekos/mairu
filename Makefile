@@ -3,13 +3,13 @@ SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
 desktop-dev:
-	cd mairu && wails dev -config ui/wails.json
+	cd mairu/cmd/desktop && wails dev
 
 desktop-build:
-	cd mairu && wails build -config ui/wails.json -o mairu-desktop
+	cd mairu/cmd/desktop && wails build -o mairu-desktop
 
 desktop-clean:
-	rm -rf mairu/build/bin
+	rm -rf mairu/cmd/desktop/build/bin
 
 .PHONY: help install install-dashboard setup build lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web desktop-dev desktop-build desktop-clean
 .PHONY: fmt-go fmt-go-check lint-go test-go test-go-race test-go-cover check-go check-go-ci install-hooks

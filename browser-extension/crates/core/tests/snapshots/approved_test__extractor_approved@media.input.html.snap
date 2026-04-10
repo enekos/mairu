@@ -1,0 +1,34 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/media.input.html
+---
+{
+  "title": "Video and Audio",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "[video: A cool video](video.mp4)",
+      "depth": null,
+      "selector": "video"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[audio: A cool audio track](audio.mp3)",
+      "depth": null,
+      "selector": "audio"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[video: video]",
+      "depth": null,
+      "selector": "video"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

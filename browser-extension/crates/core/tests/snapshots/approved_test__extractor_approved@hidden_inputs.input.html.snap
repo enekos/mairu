@@ -1,0 +1,40 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/hidden_inputs.input.html
+---
+{
+  "title": "Form with Hidden Inputs",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "[Form Start]",
+      "depth": null,
+      "selector": "form"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: input name=\"username\" placeholder=\"Username\"]",
+      "depth": null,
+      "selector": "input"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Form Element: input name=\"password\" placeholder=\"Password\"]",
+      "depth": null,
+      "selector": "input"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Login]",
+      "depth": null,
+      "selector": "button"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

@@ -67,12 +67,22 @@ function mapSavedRole(role: "user" | "model"): "user" | "assistant" {
 }
 
 async function loadSessionMessages(sessionName: string) {
-  const response = await fetch(`/api/sessions/${encodeURIComponent(sessionName)}/messages`);
-  if (!response.ok) {
-    throw new Error(`failed to load session: ${response.statusText}`);
-  }
+  let payload: { messages?: SessionMessage[] } = { messages: [] };
 
-  const payload = await response.json() as { messages?: SessionMessage[] };
+  if (isWails) {
+    try {
+      const msgs = await (window as any).go.desktop.App.LoadSessionHistory(sessionName);
+      payload.messages = msgs;
+    } catch(e) {
+      console.error("Failed to load Wails session history", e);
+    }
+  } else {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionName)}/messages`);
+    if (!response.ok) {
+      throw new Error(`failed to load session: ${response.statusText}`);
+    }
+    payload = await response.json() as { messages?: SessionMessage[] };
+  }
   
   const loaded: Message[] = [];
   
@@ -143,6 +153,17 @@ async function loadSessionMessages(sessionName: string) {
 }
 
 export async function loadSessions() {
+  if (isWails) {
+    try {
+      const sessList = await (window as any).go.desktop.App.ListSessions();
+      const available = [...new Set([...(sessList ?? []), "default"])].sort();
+      sessions.set(available);
+    } catch (e) {
+      console.error("Failed to load Wails sessions", e);
+      sessions.set(["default"]);
+    }
+    return;
+  }
   const response = await fetch("/api/sessions");
   if (!response.ok) {
     throw new Error(`failed to list sessions: ${response.statusText}`);

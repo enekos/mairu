@@ -1,0 +1,22 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/template.input.html
+---
+{
+  "title": "Template Elements",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "Visible content",
+      "depth": null,
+      "selector": "p"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

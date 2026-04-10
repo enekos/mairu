@@ -1,0 +1,46 @@
+---
+source: crates/core/tests/approved_test.rs
+expression: extracted
+input_file: crates/core/tests/testdata/html/roles_advanced.input.html
+---
+{
+  "title": "ARIA Roles",
+  "sections": [
+    {
+      "kind": "paragraph",
+      "text": "[Button: Custom Button]",
+      "depth": null,
+      "selector": "div[role=button]"
+    },
+    {
+      "kind": "link",
+      "text": "Custom Link (link role)",
+      "depth": null,
+      "selector": "span[role=link]"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Labelled Button]",
+      "depth": null,
+      "selector": "div[role=button]"
+    },
+    {
+      "kind": "paragraph",
+      "text": "[Button: Real Button]",
+      "depth": null,
+      "selector": "button"
+    },
+    {
+      "kind": "link",
+      "text": "Real Link (/real)",
+      "depth": null,
+      "selector": "a"
+    }
+  ],
+  "metadata": {
+    "og_title": null,
+    "og_description": null,
+    "lang": null,
+    "canonical_url": null
+  }
+}

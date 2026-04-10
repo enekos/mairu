@@ -27,8 +27,8 @@
         <div class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-green-600">Primary Provider</label>
-              <select class="w-full bg-black border border-green-900  px-3 py-2 text-sm text-green-400 focus:outline-none focus:border-green-500 transition-colors">
+              <label class="text-sm font-medium text-green-600" for="provider">Primary Provider</label>
+              <select id="provider" class="w-full bg-black border border-green-900  px-3 py-2 text-sm text-green-400 focus:outline-none focus:border-green-500 transition-colors">
                 <option value="gemini">Google Gemini</option>
                 <option value="anthropic">Anthropic Claude</option>
                 <option value="openai">OpenAI</option>
@@ -36,8 +36,8 @@
               </select>
             </div>
             <div class="space-y-1.5">
-              <label class="text-sm font-medium text-green-600">Model Name</label>
-              <select class="w-full bg-black border border-green-900  px-3 py-2 text-sm text-green-400 focus:outline-none focus:border-green-500 transition-colors">
+              <label class="text-sm font-medium text-green-600" for="model">Model Name</label>
+              <select id="model" class="w-full bg-black border border-green-900  px-3 py-2 text-sm text-green-400 focus:outline-none focus:border-green-500 transition-colors">
                 <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
               </select>
@@ -64,8 +64,8 @@
         </h2>
         
         <div class="space-y-1.5">
-          <label class="text-sm font-medium text-green-600">Custom System Instructions</label>
-          <textarea 
+          <label class="text-sm font-medium text-green-600" for="system-instructions">Custom System Instructions</label>
+          <textarea id="system-instructions" 
             rows="4" 
             class="w-full bg-black border border-green-900  px-3 py-2 text-sm text-green-400 focus:outline-none focus:border-green-500 transition-colors resize-none font-mono text-xs"
             placeholder="Additional instructions for the agent..."
