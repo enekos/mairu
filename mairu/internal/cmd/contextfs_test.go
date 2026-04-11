@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -70,7 +68,7 @@ func TestMemorySearchCommandCallsSearchEndpoint(t *testing.T) {
 	}
 }
 
-func TestVibeMutationAliasPlansThenExecutes(t *testing.T) {
+func TestVibeMutationPlansThenExecutes(t *testing.T) {
 	var calls []string
 	var executePayload map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -93,12 +91,12 @@ func TestVibeMutationAliasPlansThenExecutes(t *testing.T) {
 	t.Setenv("MAIRU_CONTEXT_SERVER_URL", srv.URL)
 	t.Setenv("MAIRU_CONTEXT_SERVER_TOKEN", "")
 
-	cmd := NewVibeMutationAliasCmd()
+	cmd := NewVibeCmd()
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"-P", "demo", "remember architecture decision", "-k", "3"})
+	cmd.SetArgs([]string{"-P", "demo", "mutation", "remember architecture decision", "-k", "3"})
 	if err := cmd.Execute(); err != nil {
-		t.Fatalf("vibe-mutation failed: %v", err)
+		t.Fatalf("vibe mutation failed: %v", err)
 	}
 
 	if len(calls) != 2 {
@@ -109,79 +107,6 @@ func TestVibeMutationAliasPlansThenExecutes(t *testing.T) {
 	}
 	if executePayload["project"] != "demo" {
 		t.Fatalf("expected project demo in execute payload, got %#v", executePayload["project"])
-	}
-}
-
-func Skip_TestNodeReadCommandFindsTargetURI(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[
-			{"uri":"contextfs://proj/root","parent_uri":null,"name":"root"},
-			{"uri":"contextfs://proj/root/auth","parent_uri":"contextfs://proj/root","name":"auth"}
-		]`))
-	}))
-	defer srv.Close()
-
-	t.Setenv("MAIRU_CONTEXT_SERVER_URL", srv.URL)
-	t.Setenv("MAIRU_CONTEXT_SERVER_TOKEN", "")
-
-	// capture stdout from PrintJSON
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	cmd := NewNodeCmd()
-	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"-P", "proj", "read", "contextfs://proj/root/auth"})
-	err := cmd.Execute()
-
-	_ = w.Close()
-	os.Stdout = oldStdout
-	raw, _ := io.ReadAll(r)
-	_ = r.Close()
-
-	if err != nil {
-		t.Fatalf("node read failed: %v", err)
-	}
-	if !strings.Contains(string(raw), "contextfs://proj/root/auth") {
-		t.Fatalf("expected read output to include target uri, got: %s", string(raw))
-	}
-}
-
-func Skip_TestNodePathCommandBuildsChain(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`[
-			{"uri":"contextfs://proj/root","parent_uri":null,"name":"root"},
-			{"uri":"contextfs://proj/root/auth","parent_uri":"contextfs://proj/root","name":"auth"},
-			{"uri":"contextfs://proj/root/auth/token","parent_uri":"contextfs://proj/root/auth","name":"token"}
-		]`))
-	}))
-	defer srv.Close()
-
-	t.Setenv("MAIRU_CONTEXT_SERVER_URL", srv.URL)
-	t.Setenv("MAIRU_CONTEXT_SERVER_TOKEN", "")
-
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	cmd := NewNodeCmd()
-	cmd.SetErr(io.Discard)
-	cmd.SetArgs([]string{"-P", "proj", "path", "contextfs://proj/root/auth/token"})
-	err := cmd.Execute()
-
-	_ = w.Close()
-	os.Stdout = oldStdout
-	raw, _ := io.ReadAll(r)
-	_ = r.Close()
-
-	if err != nil {
-		t.Fatalf("node path failed: %v", err)
-	}
-	text := string(raw)
-	if !regexp.MustCompile(`contextfs://proj/root.*contextfs://proj/root/auth.*contextfs://proj/root/auth/token`).MatchString(strings.ReplaceAll(text, "\n", "")) {
-		t.Fatalf("expected chain order root->auth->token, got: %s", text)
 	}
 }
 

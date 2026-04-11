@@ -1,6 +1,8 @@
 package prompts
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -85,5 +87,25 @@ func TestRenderVibeMutationPlannerCompact(t *testing.T) {
 	}
 	if !strings.Contains(out, `{ "id": "mem_1" }`) {
 		t.Errorf("vibe_mutation_planner_compact missing entries summary")
+	}
+}
+
+func TestGetForProject_UsesProjectOverride(t *testing.T) {
+	projectRoot := t.TempDir()
+	overrideDir := filepath.Join(projectRoot, ".mairu", "prompts")
+	if err := os.MkdirAll(overrideDir, 0o755); err != nil {
+		t.Fatalf("failed to create override dir: %v", err)
+	}
+	overridePath := filepath.Join(overrideDir, "agent_system.md")
+	if err := os.WriteFile(overridePath, []byte("Project override {{.Name}}"), 0o644); err != nil {
+		t.Fatalf("failed to write override prompt: %v", err)
+	}
+
+	out, err := GetForProject("agent_system", map[string]any{"Name": "ok"}, projectRoot)
+	if err != nil {
+		t.Fatalf("expected override render to succeed: %v", err)
+	}
+	if out != "Project override ok" {
+		t.Fatalf("unexpected override output: %q", out)
 	}
 }

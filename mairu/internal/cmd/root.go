@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mairu/internal/agent"
+	"mairu/internal/cmd/admincmd"
 	"mairu/internal/config"
 
 	"mairu/internal/logger"
@@ -165,14 +166,9 @@ func init() {
 		NewHistoryCmd(),
 		NewSyncCmd(),
 		NewVibeCmd(),
-		NewVibeQueryAliasCmd(),
-		NewVibeMutationAliasCmd(),
 		NewScrapeCmd(),
 		NewAnalyzeCmd(),
 		NewIngestCmd(),
-		NewSummarizeCmd(),
-		NewFlushCmd(),
-		NewNudgeCmd(),
 		NewImpactCmd(),
 		NewGithubCmd(),
 		NewLinearCmd(),
@@ -192,9 +188,9 @@ func init() {
 
 	// Core / Admin / Misc
 	rootCmd.AddCommand(
-		NewInitCmd(),
+		admincmd.NewInitCmd(),
 		NewConfigCmd(),
-		NewCompletionCmd(),
+		admincmd.NewCompletionCmd(rootCmd),
 		NewDoctorCmd(),
 		NewSetupCmd(),
 		NewSeedCmd(),

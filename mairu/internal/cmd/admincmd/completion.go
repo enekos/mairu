@@ -1,4 +1,4 @@
-package cmd
+package admincmd
 
 import (
 	"os"
@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCompletionCmd() *cobra.Command {
+func NewCompletionCmd(root *cobra.Command) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "completion [bash|zsh|fish]",
 		Short: "Generate shell completion scripts",
@@ -22,18 +22,15 @@ To install completions:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			switch args[0] {
 			case "bash":
-				return rootCmd.GenBashCompletion(os.Stdout)
+				return root.GenBashCompletion(os.Stdout)
 			case "zsh":
-				return rootCmd.GenZshCompletion(os.Stdout)
+				return root.GenZshCompletion(os.Stdout)
 			case "fish":
-				return rootCmd.GenFishCompletion(os.Stdout, true)
+				return root.GenFishCompletion(os.Stdout, true)
 			default:
 				return cmd.Help()
 			}
 		},
 	}
 	return cmd
-}
-
-func init() {
 }

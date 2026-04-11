@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -43,27 +42,13 @@ func NewSkillCmd() *cobra.Command {
 				return err
 			}
 
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out) // fallback
-					return nil
+			printSearchOrListResults(out, []string{"score", "name", "description"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"score":       fmt.Sprintf("%.2f", item["_rankingScore"]),
+					"name":        fmt.Sprintf("%v", item["name"]),
+					"description": Truncate(fmt.Sprintf("%v", item["description"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"score", "name", "description"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"score":       fmt.Sprintf("%.2f", item["_rankingScore"]),
-							"name":        fmt.Sprintf("%v", item["name"]),
-							"description": Truncate(fmt.Sprintf("%v", item["description"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}
@@ -82,27 +67,13 @@ func NewSkillCmd() *cobra.Command {
 				return err
 			}
 
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out) // fallback
-					return nil
+			printSearchOrListResults(out, []string{"id", "name", "description"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"id":          fmt.Sprintf("%v", item["id"]),
+					"name":        fmt.Sprintf("%v", item["name"]),
+					"description": Truncate(fmt.Sprintf("%v", item["description"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"id", "name", "description"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"id":          fmt.Sprintf("%v", item["id"]),
-							"name":        fmt.Sprintf("%v", item["name"]),
-							"description": Truncate(fmt.Sprintf("%v", item["description"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}
