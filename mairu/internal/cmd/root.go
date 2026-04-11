@@ -146,6 +146,7 @@ func init() {
 		dockerCmd,
 		procCmd,
 		devCmd,
+		newGitCmd(),
 	)
 
 	// Subsystems & Workflows
