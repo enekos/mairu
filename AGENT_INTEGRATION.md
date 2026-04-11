@@ -117,6 +117,12 @@ Agents can extract documentation or read web sources using LLM-powered scrapers:
 - `mairu scrape omni <urls...>` -> Scrape and merge results into a single summary.
 - `mairu scrape script <url>` -> Auto-generates a Go `goquery` scraper script for a given URL.
 
+### 8) Bash Command History (`mairu history`)
+Agents can query the developer's bash history to understand previous commands, outputs, and workflows:
+- `mairu history search "test fail"` -> Semantically search past bash commands and their outputs.
+- `mairu history stats` -> Show the most frequently run bash commands.
+- `mairu history feedback <id> -r 10` -> Apply reinforcement learning feedback to a command execution.
+
 ### AI-Optimized GNU Tools
 Agents are encouraged to use the `mairu` binary for token-dense, strictly parsable exploration:
 - `mairu map [dir] -d 2` -> Fast, `.gitignore` aware, token-counted directory tree
