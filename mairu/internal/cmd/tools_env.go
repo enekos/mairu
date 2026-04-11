@@ -16,8 +16,6 @@ var envPattern string
 var envDiff string
 var envRequired string
 
-
-
 type envKey struct {
 	Key      string `json:"key"`
 	Value    string `json:"val,omitempty"`
@@ -104,149 +102,149 @@ func parseEnvFile(path string) (map[string]string, []string, error) {
 
 func NewEnvCmd() *cobra.Command {
 	cmd := &cobra.Command{
-	Use:   "env [file...]",
-	Short: "AI-optimized safe environment reader (JSON)",
-	Args:  cobra.ArbitraryArgs,
-	Run: func(cmd *cobra.Command, args []string) {
-		files := args
-		if len(files) == 0 {
-			files = []string{".env"}
-		}
-
-		// Diff mode
-		if envDiff != "" {
-			vars1, _, err1 := parseEnvFile(files[0])
-			vars2, _, err2 := parseEnvFile(envDiff)
-			if err1 != nil {
-				fmt.Fprintf(os.Stderr, "error reading %s: %v\n", files[0], err1)
-				os.Exit(1)
-			}
-			if err2 != nil {
-				fmt.Fprintf(os.Stderr, "error reading %s: %v\n", envDiff, err2)
-				os.Exit(1)
+		Use:   "env [file...]",
+		Short: "AI-optimized safe environment reader (JSON)",
+		Args:  cobra.ArbitraryArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			files := args
+			if len(files) == 0 {
+				files = []string{".env"}
 			}
 
-			diff := envDiffResult{
-				Added:   []string{},
-				Removed: []string{},
-				Changed: []envDiffChanged{},
-			}
-
-			for k := range vars2 {
-				if _, ok := vars1[k]; !ok {
-					diff.Added = append(diff.Added, k)
+			// Diff mode
+			if envDiff != "" {
+				vars1, _, err1 := parseEnvFile(files[0])
+				vars2, _, err2 := parseEnvFile(envDiff)
+				if err1 != nil {
+					fmt.Fprintf(os.Stderr, "error reading %s: %v\n", files[0], err1)
+					os.Exit(1)
 				}
-			}
-			for k := range vars1 {
-				if _, ok := vars2[k]; !ok {
-					diff.Removed = append(diff.Removed, k)
+				if err2 != nil {
+					fmt.Fprintf(os.Stderr, "error reading %s: %v\n", envDiff, err2)
+					os.Exit(1)
 				}
-			}
-			for k, v1 := range vars1 {
-				if v2, ok := vars2[k]; ok {
-					if v1 != v2 {
-						from, to := v1, v2
-						if isSecretKey(k) {
-							from = "***"
-							to = "***"
-						}
-						diff.Changed = append(diff.Changed, envDiffChanged{Key: k, From: from, To: to})
-					} else {
-						diff.Unchanged++
+
+				diff := envDiffResult{
+					Added:   []string{},
+					Removed: []string{},
+					Changed: []envDiffChanged{},
+				}
+
+				for k := range vars2 {
+					if _, ok := vars1[k]; !ok {
+						diff.Added = append(diff.Added, k)
 					}
 				}
-			}
-
-			out, _ := json.Marshal(diff)
-			fmt.Println(string(out))
-			return
-		}
-
-		// Normal mode: parse and merge all files
-		merged := make(map[string]string)
-		var order []string
-		for _, file := range files {
-			vars, fileOrder, err := parseEnvFile(file)
-			if err != nil {
-				if len(files) == 1 && files[0] == ".env" && os.IsNotExist(err) {
-					res := envResult{Vars: []envKey{}}
-					out, _ := json.Marshal(res)
-					fmt.Println(string(out))
-					return
+				for k := range vars1 {
+					if _, ok := vars2[k]; !ok {
+						diff.Removed = append(diff.Removed, k)
+					}
 				}
-				fmt.Fprintf(os.Stderr, "error reading env file %s: %v\n", file, err)
-				os.Exit(1)
-			}
-			for _, k := range fileOrder {
-				if _, exists := merged[k]; !exists {
-					order = append(order, k)
+				for k, v1 := range vars1 {
+					if v2, ok := vars2[k]; ok {
+						if v1 != v2 {
+							from, to := v1, v2
+							if isSecretKey(k) {
+								from = "***"
+								to = "***"
+							}
+							diff.Changed = append(diff.Changed, envDiffChanged{Key: k, From: from, To: to})
+						} else {
+							diff.Unchanged++
+						}
+					}
 				}
-				merged[k] = vars[k]
-			}
-		}
 
-		var re *regexp.Regexp
-		if envPattern != "" {
-			var err error
-			re, err = regexp.Compile("(?i)" + envPattern)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error compiling regex: %v\n", err)
-				os.Exit(1)
-			}
-		}
-
-		res := envResult{Vars: []envKey{}}
-
-		for _, key := range order {
-			if re != nil && !re.MatchString(key) {
-				continue
+				out, _ := json.Marshal(diff)
+				fmt.Println(string(out))
+				return
 			}
 
-			val := merged[key]
-			isSecret := isSecretKey(key)
-			entry := envKey{Key: key}
-			if isSecret {
-				entry.IsSecret = true
-			}
-
-			if envReveal {
-				if !isSecret && (isSafeValue(val) || len(val) < 8) {
-					entry.Value = val
-				} else {
-					entry.Value = "***HIDDEN***"
+			// Normal mode: parse and merge all files
+			merged := make(map[string]string)
+			var order []string
+			for _, file := range files {
+				vars, fileOrder, err := parseEnvFile(file)
+				if err != nil {
+					if len(files) == 1 && files[0] == ".env" && os.IsNotExist(err) {
+						res := envResult{Vars: []envKey{}}
+						out, _ := json.Marshal(res)
+						fmt.Println(string(out))
+						return
+					}
+					fmt.Fprintf(os.Stderr, "error reading env file %s: %v\n", file, err)
+					os.Exit(1)
+				}
+				for _, k := range fileOrder {
+					if _, exists := merged[k]; !exists {
+						order = append(order, k)
+					}
+					merged[k] = vars[k]
 				}
 			}
 
-			res.Vars = append(res.Vars, entry)
-		}
-
-		// Required keys check
-		if envRequired != "" {
-			var missing []string
-			for _, k := range strings.Split(envRequired, ",") {
-				k = strings.TrimSpace(k)
-				if _, ok := merged[k]; !ok {
-					missing = append(missing, k)
+			var re *regexp.Regexp
+			if envPattern != "" {
+				var err error
+				re, err = regexp.Compile("(?i)" + envPattern)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "error compiling regex: %v\n", err)
+					os.Exit(1)
 				}
 			}
-			ok := len(missing) == 0
-			res.OK = &ok
-			if len(missing) > 0 {
-				res.Missing = missing
+
+			res := envResult{Vars: []envKey{}}
+
+			for _, key := range order {
+				if re != nil && !re.MatchString(key) {
+					continue
+				}
+
+				val := merged[key]
+				isSecret := isSecretKey(key)
+				entry := envKey{Key: key}
+				if isSecret {
+					entry.IsSecret = true
+				}
+
+				if envReveal {
+					if !isSecret && (isSafeValue(val) || len(val) < 8) {
+						entry.Value = val
+					} else {
+						entry.Value = "***HIDDEN***"
+					}
+				}
+
+				res.Vars = append(res.Vars, entry)
+			}
+
+			// Required keys check
+			if envRequired != "" {
+				var missing []string
+				for _, k := range strings.Split(envRequired, ",") {
+					k = strings.TrimSpace(k)
+					if _, ok := merged[k]; !ok {
+						missing = append(missing, k)
+					}
+				}
+				ok := len(missing) == 0
+				res.OK = &ok
+				if len(missing) > 0 {
+					res.Missing = missing
+				}
+
+				out, _ := json.Marshal(res)
+				fmt.Println(string(out))
+				if !ok {
+					os.Exit(1)
+				}
+				return
 			}
 
 			out, _ := json.Marshal(res)
 			fmt.Println(string(out))
-			if !ok {
-				os.Exit(1)
-			}
-			return
-		}
-
-		out, _ := json.Marshal(res)
-		fmt.Println(string(out))
-	},
-}
+		},
+	}
 	cmd.Flags().BoolVarP(&envReveal, "reveal", "r", false, "Reveal non-sensitive values (like booleans, numbers, or non-credential strings)")
 	cmd.Flags().StringVarP(&envPattern, "match", "m", "", "Only return keys matching regex pattern")
 	cmd.Flags().StringVar(&envDiff, "diff", "", "Compare with another env file, showing added/removed/changed keys")

@@ -268,3 +268,14 @@ func (g *GeminiProvider) SetupTools() {
 		{FunctionDeclarations: tools},
 	}
 }
+
+func (g *GeminiProvider) RegisterDynamicTools(tools []*genai.FunctionDeclaration) {
+	if len(tools) == 0 {
+		return
+	}
+	if len(g.model.Tools) == 0 {
+		g.model.Tools = []*genai.Tool{{FunctionDeclarations: tools}}
+		return
+	}
+	g.model.Tools[0].FunctionDeclarations = append(g.model.Tools[0].FunctionDeclarations, tools...)
+}

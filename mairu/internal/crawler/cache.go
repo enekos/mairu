@@ -6,17 +6,21 @@ import (
 	"encoding/json"
 	"os"
 	"sync"
+
+	lru "github.com/hashicorp/golang-lru/v2"
 )
 
 type Cache struct {
 	mu       sync.RWMutex
-	data     map[string]CacheEntry
+	data     *lru.Cache[string, CacheEntry]
 	filePath string
 }
 
 func NewCache(filePath string) *Cache {
+	// Set an upper bound to prevent massive memory usage on huge crawls
+	lruCache, _ := lru.New[string, CacheEntry](5000)
 	c := &Cache{
-		data:     make(map[string]CacheEntry),
+		data:     lruCache,
 		filePath: filePath,
 	}
 	c.load()
@@ -31,7 +35,14 @@ func (c *Cache) load() {
 	if err != nil {
 		return
 	}
-	_ = json.Unmarshal(b, &c.data)
+
+	// Temporarily load all into a map, then push to LRU
+	var temp map[string]CacheEntry
+	if err := json.Unmarshal(b, &temp); err == nil {
+		for k, v := range temp {
+			c.data.Add(k, v)
+		}
+	}
 }
 
 func (c *Cache) Save() error {
@@ -40,7 +51,16 @@ func (c *Cache) Save() error {
 	if c.filePath == "" {
 		return nil
 	}
-	b, err := json.MarshalIndent(c.data, "", "  ")
+
+	// Dump LRU keys to map for persistence
+	temp := make(map[string]CacheEntry)
+	for _, key := range c.data.Keys() {
+		if val, ok := c.data.Get(key); ok {
+			temp[key] = val
+		}
+	}
+
+	b, err := json.MarshalIndent(temp, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -48,16 +68,11 @@ func (c *Cache) Save() error {
 }
 
 func (c *Cache) Get(url string) (CacheEntry, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	entry, ok := c.data[url]
-	return entry, ok
+	return c.data.Get(url)
 }
 
 func (c *Cache) Set(url string, entry CacheEntry) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	c.data[url] = entry
+	c.data.Add(url, entry)
 }
 
 func (c *Cache) ContentHash(content string) string {

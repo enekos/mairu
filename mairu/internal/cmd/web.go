@@ -12,34 +12,32 @@ import (
 
 func NewWebCmd() *cobra.Command {
 	cmd := &cobra.Command{
-	Use:   "web",
-	Short: "Start the Mairu web interface",
-	Run: func(cmd *cobra.Command, args []string) {
-		logger.Init(logger.Config{
-			Level:      "info",
-			Structured: true,
-		})
+		Use:   "web",
+		Short: "Start the Mairu web interface",
+		Run: func(cmd *cobra.Command, args []string) {
+			logger.Init(logger.Config{
+				Level:      "info",
+				Structured: true,
+			})
 
-		appCfg := GetConfig()
-		port := appCfg.Server.Port
-		if cmd.Flags().Changed("port") {
-			port, _ = cmd.Flags().GetInt("port")
-		}
+			appCfg := GetConfig()
+			port := appCfg.Server.Port
+			if cmd.Flags().Changed("port") {
+				port, _ = cmd.Flags().GetInt("port")
+			}
 
-		apiKey := GetAPIKey()
-		if apiKey == "" {
-			fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api.gemini_api_key in config", "Gemini API key not found"))
-			os.Exit(1)
-		}
+			apiKey := GetAPIKey()
+			if apiKey == "" {
+				fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api.gemini_api_key in config", "Gemini API key not found"))
+				os.Exit(1)
+			}
 
-		slog.Info("Starting Mairu web interface", "port", port)
-		if err := web.StartServer(port, apiKey, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
-			slog.Error("Error starting web server", "error", err)
-		}
-	},
-}
+			slog.Info("Starting Mairu web interface", "port", port)
+			if err := web.StartServer(port, apiKey, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
+				slog.Error("Error starting web server", "error", err)
+			}
+		},
+	}
 	cmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
 	return cmd
 }
-
-

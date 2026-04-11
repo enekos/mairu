@@ -19,6 +19,11 @@ type Config struct {
 	Output    OutputConfig    `mapstructure:"output"`
 	Enricher  EnricherConfig  `mapstructure:"enricher"`
 	Security  SecurityConfig  `mapstructure:"security"`
+	Tools     ToolsConfig     `mapstructure:"tools"`
+}
+
+type ToolsConfig struct {
+	UTCPProviders []string `mapstructure:"utcp_providers"`
 }
 
 type SecurityConfig struct {

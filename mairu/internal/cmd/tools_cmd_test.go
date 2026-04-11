@@ -15,7 +15,8 @@ func TestMapCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	cmd := NewMapCmd(); cmd.Run(cmd, []string{"."})
+	cmd := NewMapCmd()
+	cmd.Run(cmd, []string{"."})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -35,7 +36,8 @@ func TestSysCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	cmd := NewSysCmd(); cmd.Run(cmd, []string{})
+	cmd := NewSysCmd()
+	cmd.Run(cmd, []string{})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -55,7 +57,8 @@ func TestInfoCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	cmd := NewInfoCmd(); cmd.Run(cmd, []string{"."})
+	cmd := NewInfoCmd()
+	cmd.Run(cmd, []string{"."})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -440,7 +443,8 @@ func TestSysEnhanced(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	cmd := NewSysCmd(); cmd.Run(cmd, []string{})
+	cmd := NewSysCmd()
+	cmd.Run(cmd, []string{})
 
 	w.Close()
 	os.Stdout = oldStdout

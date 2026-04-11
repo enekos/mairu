@@ -92,6 +92,7 @@ func GetAgentConfig() agent.Config {
 		SymbolLocator: GetLocalApp().SymbolLocator(),
 		HistoryLogger: repo,
 		Interceptors:  interceptors,
+		UTCPProviders: cfg.Tools.UTCPProviders,
 	}
 }
 
@@ -180,6 +181,7 @@ func init() {
 		NewTuiCmd(),
 		NewTelegramCmd(),
 		NewMCPCmd(),
+		NewUTCPCmd(),
 	)
 
 	// Core / Admin / Misc

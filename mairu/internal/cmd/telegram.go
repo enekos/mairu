@@ -81,59 +81,59 @@ func sendLongMessage(c tele.Context, text string) error {
 
 func NewTelegramCmd() *cobra.Command {
 	cmd := &cobra.Command{
-	Use:   "telegram",
-	Short: "Start Telegram bot interface",
-	Run: func(cmd *cobra.Command, args []string) {
-		token := os.Getenv("TELEGRAM_BOT_TOKEN")
-		if token == "" {
-			slog.Error("TELEGRAM_BOT_TOKEN environment variable is required")
-			os.Exit(1)
-		}
-
-		apiKey := GetAPIKey()
-		if apiKey == "" {
-			slog.Error("GEMINI_API_KEY environment variable is required")
-			os.Exit(1)
-		}
-
-		projectRoot, _ := cmd.Flags().GetString("project")
-		if projectRoot == "" {
-			pwd, err := os.Getwd()
-			if err != nil {
-				slog.Error("failed to get current directory", "error", err)
+		Use:   "telegram",
+		Short: "Start Telegram bot interface",
+		Run: func(cmd *cobra.Command, args []string) {
+			token := os.Getenv("TELEGRAM_BOT_TOKEN")
+			if token == "" {
+				slog.Error("TELEGRAM_BOT_TOKEN environment variable is required")
 				os.Exit(1)
 			}
-			projectRoot = pwd
-		}
 
-		allowedUsersRaw, _ := cmd.Flags().GetString("allowed-users")
-		if allowedUsersRaw == "" {
-			allowedUsersRaw = os.Getenv("TELEGRAM_ALLOWED_USERS")
-		}
-
-		allowedUsers := make(map[string]bool)
-		for _, u := range strings.Split(allowedUsersRaw, ",") {
-			u = strings.TrimSpace(u)
-			if u != "" {
-				allowedUsers[u] = true
+			apiKey := GetAPIKey()
+			if apiKey == "" {
+				slog.Error("GEMINI_API_KEY environment variable is required")
+				os.Exit(1)
 			}
-		}
 
-		pref := tele.Settings{
-			Token:  token,
-			Poller: &tele.LongPoller{Timeout: 10 * time.Second},
-		}
+			projectRoot, _ := cmd.Flags().GetString("project")
+			if projectRoot == "" {
+				pwd, err := os.Getwd()
+				if err != nil {
+					slog.Error("failed to get current directory", "error", err)
+					os.Exit(1)
+				}
+				projectRoot = pwd
+			}
 
-		b, err := tele.NewBot(pref)
-		if err != nil {
-			slog.Error("failed to create telegram bot", "error", err)
-			os.Exit(1)
-		}
+			allowedUsersRaw, _ := cmd.Flags().GetString("allowed-users")
+			if allowedUsersRaw == "" {
+				allowedUsersRaw = os.Getenv("TELEGRAM_ALLOWED_USERS")
+			}
 
-		activeSessions := make(map[int64]string)
+			allowedUsers := make(map[string]bool)
+			for _, u := range strings.Split(allowedUsersRaw, ",") {
+				u = strings.TrimSpace(u)
+				if u != "" {
+					allowedUsers[u] = true
+				}
+			}
 
-		b.Handle("/help", func(c tele.Context) error {
-			helpText := `<b>Available Commands:</b>
+			pref := tele.Settings{
+				Token:  token,
+				Poller: &tele.LongPoller{Timeout: 10 * time.Second},
+			}
+
+			b, err := tele.NewBot(pref)
+			if err != nil {
+				slog.Error("failed to create telegram bot", "error", err)
+				os.Exit(1)
+			}
+
+			activeSessions := make(map[int64]string)
+
+			b.Handle("/help", func(c tele.Context) error {
+				helpText := `<b>Available Commands:</b>
 - /help: Show this help message
 - /clear: Clear the terminal context and session
 - /save: Save the current session
@@ -142,164 +142,162 @@ func NewTelegramCmd() *cobra.Command {
 - !cmd: Run a local bash command and append its output to your prompt
 - !!cmd: Run a local bash command immediately (output returned to you)
 - @file/path: Include file contents in your prompt`
-			return c.Send(helpText, &tele.SendOptions{ParseMode: tele.ModeHTML})
-		})
+				return c.Send(helpText, &tele.SendOptions{ParseMode: tele.ModeHTML})
+			})
 
-		b.Handle("/session", func(c tele.Context) error {
-			args := c.Args()
-			if len(args) == 0 {
-				current := activeSessions[c.Chat().ID]
-				if current == "" {
-					current = "default"
+			b.Handle("/session", func(c tele.Context) error {
+				args := c.Args()
+				if len(args) == 0 {
+					current := activeSessions[c.Chat().ID]
+					if current == "" {
+						current = "default"
+					}
+					return c.Send(fmt.Sprintf("Current session: <b>%s</b>\nUsage: /session [name]", current), &tele.SendOptions{ParseMode: tele.ModeHTML})
 				}
-				return c.Send(fmt.Sprintf("Current session: <b>%s</b>\nUsage: /session [name]", current), &tele.SendOptions{ParseMode: tele.ModeHTML})
-			}
-			activeSessions[c.Chat().ID] = args[0]
-			return c.Send(fmt.Sprintf("Switched to session: <b>%s</b>", args[0]), &tele.SendOptions{ParseMode: tele.ModeHTML})
-		})
-
-		b.Handle("/clear", func(c tele.Context) error {
-			sessionBase := activeSessions[c.Chat().ID]
-			if sessionBase == "" {
-				sessionBase = "default"
-			}
-			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
-
-			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				SymbolLocator: GetLocalApp().SymbolLocator(),
+				activeSessions[c.Chat().ID] = args[0]
+				return c.Send(fmt.Sprintf("Switched to session: <b>%s</b>", args[0]), &tele.SendOptions{ParseMode: tele.ModeHTML})
 			})
-			if err != nil {
-				return c.Send("Error initializing agent.")
-			}
-			defer ag.Close()
 
-			ag.ResetSession()
-			if err := ag.SaveSession(sessionName); err != nil {
-				return c.Send("Failed to clear session.")
-			}
-			return c.Send("Context cleared for session: " + sessionBase)
-		})
+			b.Handle("/clear", func(c tele.Context) error {
+				sessionBase := activeSessions[c.Chat().ID]
+				if sessionBase == "" {
+					sessionBase = "default"
+				}
+				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-		b.Handle("/save", func(c tele.Context) error {
-			sessionBase := activeSessions[c.Chat().ID]
-			if sessionBase == "" {
-				sessionBase = "default"
-			}
-			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
-
-			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				SymbolLocator: GetLocalApp().SymbolLocator(),
-			})
-			if err != nil {
-				return c.Send("Error initializing agent.")
-			}
-			defer ag.Close()
-
-			if err := ag.SaveSession(sessionName); err != nil {
-				return c.Send("Failed to save session: " + err.Error())
-			}
-			return c.Send("Session saved: " + sessionBase)
-		})
-
-		b.Handle("/compact", func(c tele.Context) error {
-			sessionBase := activeSessions[c.Chat().ID]
-			if sessionBase == "" {
-				sessionBase = "default"
-			}
-			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
-
-			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				SymbolLocator: GetLocalApp().SymbolLocator(),
-			})
-			if err != nil {
-				return c.Send("Error initializing agent.")
-			}
-			defer ag.Close()
-
-			if err := ag.LoadSession(sessionName); err != nil {
-				return c.Send("Failed to load session.")
-			}
-
-			if err := ag.CompactContext(); err != nil {
-				return c.Send("Failed to compact context: " + err.Error())
-			}
-
-			if err := ag.SaveSession(sessionName); err != nil {
-				return c.Send("Failed to save compacted session.")
-			}
-			return c.Send("Session context compacted successfully.")
-		})
-
-		b.Handle(tele.OnText, func(c tele.Context) error {
-			sessionBase := activeSessions[c.Chat().ID]
-			if sessionBase == "" {
-				sessionBase = "default"
-			}
-			sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
-
-			ag, err := agent.New(projectRoot, apiKey, agent.Config{
-				SymbolLocator: GetLocalApp().SymbolLocator(),
-			})
-			if err != nil {
-				return c.Send("Error initializing agent.")
-			}
-			defer ag.Close()
-
-			if err := ag.LoadSession(sessionName); err != nil {
-				return c.Send("Error loading session.")
-			}
-
-			_ = c.Notify(tele.Typing)
-			prompt := c.Text()
-
-			if strings.HasPrefix(prompt, "!!") {
-				cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!!"))
-				c.Send("<i>Running local command...</i>", &tele.SendOptions{ParseMode: tele.ModeHTML})
-				out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
+				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+					SymbolLocator: GetLocalApp().SymbolLocator(),
+				})
 				if err != nil {
-					return sendLongMessage(c, fmt.Sprintf("❌ Failed: %v\n%s", err, out))
+					return c.Send("Error initializing agent.")
 				}
-				return sendLongMessage(c, out)
-			}
+				defer ag.Close()
 
-			if strings.HasPrefix(prompt, "!") {
-				cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!"))
-				out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
+				ag.ResetSession()
+				if err := ag.SaveSession(sessionName); err != nil {
+					return c.Send("Failed to clear session.")
+				}
+				return c.Send("Context cleared for session: " + sessionBase)
+			})
+
+			b.Handle("/save", func(c tele.Context) error {
+				sessionBase := activeSessions[c.Chat().ID]
+				if sessionBase == "" {
+					sessionBase = "default"
+				}
+				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
+
+				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+					SymbolLocator: GetLocalApp().SymbolLocator(),
+				})
 				if err != nil {
-					prompt += fmt.Sprintf("\nCommand !%s failed: %v\n%s", cmdStr, err, out)
-				} else {
-					prompt += fmt.Sprintf("\nOutput of !%s:\n%s", cmdStr, out)
+					return c.Send("Error initializing agent.")
 				}
-			}
+				defer ag.Close()
 
-			outChan := make(chan agent.AgentEvent)
-			go ag.RunStream(prompt, outChan)
-
-			statusMsg, _ := c.Bot().Send(c.Chat(), "<i>Thinking...</i>", &tele.SendOptions{ParseMode: tele.ModeHTML})
-			var textChunk strings.Builder
-			for ev := range outChan {
-				if ev.Type == "text" {
-					textChunk.WriteString(ev.Content)
+				if err := ag.SaveSession(sessionName); err != nil {
+					return c.Send("Failed to save session: " + err.Error())
 				}
-			}
+				return c.Send("Session saved: " + sessionBase)
+			})
 
-			c.Bot().Delete(statusMsg)
-			if err := ag.SaveSession(sessionName); err != nil {
-				slog.Error("Failed to save session", "error", err)
-			}
+			b.Handle("/compact", func(c tele.Context) error {
+				sessionBase := activeSessions[c.Chat().ID]
+				if sessionBase == "" {
+					sessionBase = "default"
+				}
+				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-			return sendLongMessage(c, textChunk.String())
-		})
+				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+					SymbolLocator: GetLocalApp().SymbolLocator(),
+				})
+				if err != nil {
+					return c.Send("Error initializing agent.")
+				}
+				defer ag.Close()
 
-		slog.Info("Telegram bot is running...")
-		b.Start()
-	},
-}
+				if err := ag.LoadSession(sessionName); err != nil {
+					return c.Send("Failed to load session.")
+				}
+
+				if err := ag.CompactContext(); err != nil {
+					return c.Send("Failed to compact context: " + err.Error())
+				}
+
+				if err := ag.SaveSession(sessionName); err != nil {
+					return c.Send("Failed to save compacted session.")
+				}
+				return c.Send("Session context compacted successfully.")
+			})
+
+			b.Handle(tele.OnText, func(c tele.Context) error {
+				sessionBase := activeSessions[c.Chat().ID]
+				if sessionBase == "" {
+					sessionBase = "default"
+				}
+				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
+
+				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+					SymbolLocator: GetLocalApp().SymbolLocator(),
+				})
+				if err != nil {
+					return c.Send("Error initializing agent.")
+				}
+				defer ag.Close()
+
+				if err := ag.LoadSession(sessionName); err != nil {
+					return c.Send("Error loading session.")
+				}
+
+				_ = c.Notify(tele.Typing)
+				prompt := c.Text()
+
+				if strings.HasPrefix(prompt, "!!") {
+					cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!!"))
+					c.Send("<i>Running local command...</i>", &tele.SendOptions{ParseMode: tele.ModeHTML})
+					out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
+					if err != nil {
+						return sendLongMessage(c, fmt.Sprintf("❌ Failed: %v\n%s", err, out))
+					}
+					return sendLongMessage(c, out)
+				}
+
+				if strings.HasPrefix(prompt, "!") {
+					cmdStr := strings.TrimSpace(strings.TrimPrefix(prompt, "!"))
+					out, err := ag.RunBash(context.Background(), cmdStr, 60000, nil)
+					if err != nil {
+						prompt += fmt.Sprintf("\nCommand !%s failed: %v\n%s", cmdStr, err, out)
+					} else {
+						prompt += fmt.Sprintf("\nOutput of !%s:\n%s", cmdStr, out)
+					}
+				}
+
+				outChan := make(chan agent.AgentEvent)
+				go ag.RunStream(prompt, outChan)
+
+				statusMsg, _ := c.Bot().Send(c.Chat(), "<i>Thinking...</i>", &tele.SendOptions{ParseMode: tele.ModeHTML})
+				var textChunk strings.Builder
+				for ev := range outChan {
+					if ev.Type == "text" {
+						textChunk.WriteString(ev.Content)
+					}
+				}
+
+				c.Bot().Delete(statusMsg)
+				if err := ag.SaveSession(sessionName); err != nil {
+					slog.Error("Failed to save session", "error", err)
+				}
+
+				return sendLongMessage(c, textChunk.String())
+			})
+
+			slog.Info("Telegram bot is running...")
+			b.Start()
+		},
+	}
 	cmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
 	cmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
 	cmd.Flags().StringP("project", "P", "", "Project root path (default is current directory)")
 	cmd.Flags().String("allowed-users", "", "Comma separated list of allowed telegram user IDs or usernames")
 	return cmd
 }
-
-

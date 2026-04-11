@@ -18,41 +18,41 @@ var (
 
 func NewMinionCmd() *cobra.Command {
 	cmd := &cobra.Command{
-	Use:   "minion [prompt]",
-	Short: "Run Mairu in unattended, one-shot Minion Mode",
-	Long: `Minion Mode executes tasks completely unattended. It will automatically approve shell commands, 
+		Use:   "minion [prompt]",
+		Short: "Run Mairu in unattended, one-shot Minion Mode",
+		Long: `Minion Mode executes tasks completely unattended. It will automatically approve shell commands, 
 run verification checks, attempt to fix issues (up to --max-retries), and open a Pull Request.
 Ideal for executing from background jobs or automation pipelines.`,
-	Args: cobra.MaximumNArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		var prompt string
-		if len(args) > 0 {
-			prompt = strings.Join(args, " ")
-		}
+		Args: cobra.MaximumNArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			var prompt string
+			if len(args) > 0 {
+				prompt = strings.Join(args, " ")
+			}
 
-		if minionGithubIssue != "" {
-			issueData, err := fetchGitHubContext("issue", minionGithubIssue)
-			if err != nil {
-				slog.Error("Failed to fetch github issue", "error", err)
+			if minionGithubIssue != "" {
+				issueData, err := fetchGitHubContext("issue", minionGithubIssue)
+				if err != nil {
+					slog.Error("Failed to fetch github issue", "error", err)
+					os.Exit(1)
+				}
+				prompt = fmt.Sprintf("Resolve the following GitHub Issue:\n\n%s\n\nAdditional user prompt: %s", issueData, prompt)
+			} else if minionGithubPR != "" {
+				prData, err := fetchGitHubContext("pr", minionGithubPR)
+				if err != nil {
+					slog.Error("Failed to fetch github PR", "error", err)
+					os.Exit(1)
+				}
+				prompt = fmt.Sprintf("Address the following PR feedback:\n\n%s\n\nAdditional user prompt: %s", prData, prompt)
+			} else if prompt == "" {
+				slog.Error("Either a prompt, --github-issue, or --github-pr is required")
+				cmd.Usage()
 				os.Exit(1)
 			}
-			prompt = fmt.Sprintf("Resolve the following GitHub Issue:\n\n%s\n\nAdditional user prompt: %s", issueData, prompt)
-		} else if minionGithubPR != "" {
-			prData, err := fetchGitHubContext("pr", minionGithubPR)
-			if err != nil {
-				slog.Error("Failed to fetch github PR", "error", err)
-				os.Exit(1)
-			}
-			prompt = fmt.Sprintf("Address the following PR feedback:\n\n%s\n\nAdditional user prompt: %s", prData, prompt)
-		} else if prompt == "" {
-			slog.Error("Either a prompt, --github-issue, or --github-pr is required")
-			cmd.Usage()
-			os.Exit(1)
-		}
 
-		runMinion(prompt)
-	},
-}
+			runMinion(prompt)
+		},
+	}
 	cmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
 	cmd.Flags().StringVar(&minionGithubIssue, "github-issue", "", "GitHub Issue number to resolve")
 	cmd.Flags().StringVar(&minionGithubPR, "github-pr", "", "GitHub PR number to review and fix")
@@ -63,8 +63,6 @@ var (
 	minionGithubIssue string
 	minionGithubPR    string
 )
-
-
 
 func fetchGitHubContext(entityType, number string) (string, error) {
 	var cmd *exec.Cmd

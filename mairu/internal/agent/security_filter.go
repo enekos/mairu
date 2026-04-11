@@ -22,7 +22,7 @@ func (s *SecurityFilter) PreExecute(ctx ToolContext, toolName string, args map[s
 			if IsDangerousCommand(cmd) {
 				return args, &ErrRequiresApproval{Reason: fmt.Sprintf("Command matches built-in dangerous prefixes: %s", cmd)}
 			}
-			
+
 			// Then check custom blocklist
 			for _, blocked := range s.BlockedCommands {
 				if strings.Contains(cmd, blocked) {

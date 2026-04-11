@@ -14,8 +14,6 @@ var spliceTarget string
 var spliceReplaceWith string
 var spliceAddImport string
 
-
-
 func getSymbolBounds(lines []string, file string, symbol string) (int, int, error) {
 	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(symbol) + `\b`)
 	foundIdx := -1
@@ -42,61 +40,61 @@ func getSymbolBounds(lines []string, file string, symbol string) (int, int, erro
 
 func NewSpliceCmd() *cobra.Command {
 	cmd := &cobra.Command{
-	Use:   "splice <file>",
-	Short: "AI-optimized AST-aware symbol replacer",
-	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-		file := args[0]
+		Use:   "splice <file>",
+		Short: "AI-optimized AST-aware symbol replacer",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			file := args[0]
 
-		contentBytes, err := os.ReadFile(file)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error reading file: %v\n", err)
-			os.Exit(1)
-		}
+			contentBytes, err := os.ReadFile(file)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading file: %v\n", err)
+				os.Exit(1)
+			}
 
-		replaceBytes, err := os.ReadFile(spliceReplaceWith)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error reading replacement file: %v\n", err)
-			os.Exit(1)
-		}
+			replaceBytes, err := os.ReadFile(spliceReplaceWith)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error reading replacement file: %v\n", err)
+				os.Exit(1)
+			}
 
-		lines := strings.Split(string(contentBytes), "\n")
-		replaceLines := strings.Split(string(replaceBytes), "\n")
+			lines := strings.Split(string(contentBytes), "\n")
+			replaceLines := strings.Split(string(replaceBytes), "\n")
 
-		startIdx, endIdx, err := getSymbolBounds(lines, file, spliceTarget)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
-		}
+			startIdx, endIdx, err := getSymbolBounds(lines, file, spliceTarget)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
 
-		var newLines []string
+			var newLines []string
 
-		// Splice: everything before startIdx, then replacement, then everything after endIdx
-		newLines = append(newLines, lines[:startIdx]...)
-		newLines = append(newLines, replaceLines...)
-		if endIdx+1 < len(lines) {
-			newLines = append(newLines, lines[endIdx+1:]...)
-		}
+			// Splice: everything before startIdx, then replacement, then everything after endIdx
+			newLines = append(newLines, lines[:startIdx]...)
+			newLines = append(newLines, replaceLines...)
+			if endIdx+1 < len(lines) {
+				newLines = append(newLines, lines[endIdx+1:]...)
+			}
 
-		// Add import at the very top of the file
-		if spliceAddImport != "" {
-			newLines = append([]string{spliceAddImport}, newLines...)
-		}
+			// Add import at the very top of the file
+			if spliceAddImport != "" {
+				newLines = append([]string{spliceAddImport}, newLines...)
+			}
 
-		newContent := strings.Join(newLines, "\n")
+			newContent := strings.Join(newLines, "\n")
 
-		if err := os.WriteFile(file, []byte(newContent), 0644); err != nil {
-			fmt.Fprintf(os.Stderr, "error writing file: %v\n", err)
-			os.Exit(1)
-		}
+			if err := os.WriteFile(file, []byte(newContent), 0644); err != nil {
+				fmt.Fprintf(os.Stderr, "error writing file: %v\n", err)
+				os.Exit(1)
+			}
 
-		fmt.Printf("Successfully spliced '%s' in %s (lines %d-%d replaced)\n", spliceTarget, file, startIdx+1, endIdx+1)
-	},
-}
+			fmt.Printf("Successfully spliced '%s' in %s (lines %d-%d replaced)\n", spliceTarget, file, startIdx+1, endIdx+1)
+		},
+	}
 	cmd.Flags().StringVarP(&spliceTarget, "target", "t", "", "Symbol name to replace (e.g. calculateTotal)")
 	cmd.Flags().StringVarP(&spliceReplaceWith, "replace-with", "r", "", "File containing the new code")
 	cmd.Flags().StringVarP(&spliceAddImport, "add-import", "i", "", "Import statement to inject at the top of the file")
-		cmd.MarkFlagRequired("target")
+	cmd.MarkFlagRequired("target")
 	cmd.MarkFlagRequired("replace-with")
 	return cmd
 }

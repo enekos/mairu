@@ -157,9 +157,6 @@ func NewNodeCmd() *cobra.Command {
 	}
 	lsCmd.Flags().AddFlagSet(listCmd.Flags())
 
-
-
-
 	updateCmd := &cobra.Command{
 		Use:   "update <uri>",
 		Short: "Update a context node",
@@ -204,7 +201,6 @@ func NewNodeCmd() *cobra.Command {
 			return nil
 		},
 	}
-
 
 	c.AddCommand(searchCmd, storeCmd, addCmd, listCmd, lsCmd, updateCmd, deleteCmd)
 	return c
