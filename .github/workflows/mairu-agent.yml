@@ -47,6 +47,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'mairu/go.mod'
+          cache-dependency-path: 'mairu/go.sum'
 
       - name: Build Mairu
         run: |
@@ -97,6 +98,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: 'mairu/go.mod'
+          cache-dependency-path: 'mairu/go.sum'
 
       - name: Build Mairu
         run: |

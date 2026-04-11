@@ -10,6 +10,10 @@ import (
 )
 
 func (g *GeminiProvider) GetEmbedding(ctx context.Context, text string) ([]float32, error) {
+	if g == nil || g.client == nil {
+		return nil, fmt.Errorf("gemini provider is not initialized")
+	}
+
 	modelName := g.EmbeddingModel
 	if modelName == "" {
 		modelName = os.Getenv("EMBEDDING_MODEL")
@@ -29,6 +33,10 @@ func (g *GeminiProvider) GetEmbedding(ctx context.Context, text string) ([]float
 }
 
 func (g *GeminiProvider) GetEmbeddingsBatch(ctx context.Context, texts []string) ([][]float32, error) {
+	if g == nil || g.client == nil {
+		return nil, fmt.Errorf("gemini provider is not initialized")
+	}
+
 	modelName := g.EmbeddingModel
 	if modelName == "" {
 		modelName = os.Getenv("EMBEDDING_MODEL")
@@ -59,6 +67,10 @@ func (g *GeminiProvider) GetEmbeddingsBatch(ctx context.Context, texts []string)
 }
 
 func (g *GeminiProvider) GetEmbeddingDimension() int {
+	if g == nil {
+		return 3072
+	}
+
 	if g.EmbeddingDim > 0 {
 		return g.EmbeddingDim
 	}

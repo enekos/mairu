@@ -69,7 +69,12 @@ func NewApp(cfg Config) (*App, error) {
 		}
 	}
 
-	indexer := NewMeiliIndexer(cfg.MeiliURL, cfg.MeiliAPIKey, geminiClient)
+	var embedder Embedder
+	if geminiClient != nil {
+		embedder = geminiClient
+	}
+
+	indexer := NewMeiliIndexer(cfg.MeiliURL, cfg.MeiliAPIKey, embedder)
 	_ = indexer.EnsureIndexes()
 
 	var llmClient LLMClient
@@ -92,7 +97,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	var projector *Projector
 	if repo != nil {
-		projector = NewProjector(repo, indexer, geminiClient)
+		projector = NewProjector(repo, indexer, embedder)
 	}
 
 	return &App{
