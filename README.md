@@ -151,10 +151,11 @@ make mairu-build
 ./mairu/bin/mairu vibe query "how does auth work?" -P my-project
 ./mairu/bin/mairu vibe mutation "remember we use gRPC internally" -P my-project
 
-# Advanced Tools (Daemon, Ingest & Scraper)
+# Advanced Tools (Daemon, Ingest, Scraper & History)
 ./mairu/bin/mairu daemon ./src -P my-project                                        # Scan directory and extract AST to context nodes
 ./mairu/bin/mairu ingest design.md --base-uri "contextfs://design" -P my-project -y # Parse markdown via LLM and persist
 ./mairu/bin/mairu scrape https://example.com --max-depth 2 -P my-project            # Crawl and summarize web content into context
+./mairu/bin/mairu history search "test fail"                                        # Semantically search bash command history
 
 # Full TUI or Web Servers
 ./mairu/bin/mairu tui
