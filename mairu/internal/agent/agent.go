@@ -35,11 +35,14 @@ type Agent struct {
 
 	stuckDetector *StuckDetector
 	utcp          *UTCPManager
+	utcpProviders []string
 
 	Unattended bool
+	council    CouncilConfig
 
-	historyLogger HistoryLogger
-	interceptors  []ToolInterceptor
+	historyLogger   HistoryLogger
+	interceptors    []ToolInterceptor
+	AgentSystemData map[string]any
 
 	mu           sync.Mutex
 	cancel       context.CancelFunc
@@ -47,57 +50,80 @@ type Agent struct {
 }
 
 type Config struct {
-	SymbolLocator SymbolLocator
-	Unattended    bool
-	HistoryLogger HistoryLogger
-	Interceptors  []ToolInterceptor
-	UTCPProviders []string
+	SymbolLocator   SymbolLocator
+	Unattended      bool
+	Council         CouncilConfig
+	HistoryLogger   HistoryLogger
+	Interceptors    []ToolInterceptor
+	UTCPProviders   []string
+	AgentSystemData map[string]any
+}
+
+func normalizeConfig(cfg ...Config) Config {
+	if len(cfg) == 0 {
+		return Config{}
+	}
+	resolved := cfg[0]
+	resolved.Council.Roles = append([]CouncilRole(nil), resolved.Council.Roles...)
+	resolved.Interceptors = append([]ToolInterceptor(nil), resolved.Interceptors...)
+	resolved.UTCPProviders = append([]string(nil), resolved.UTCPProviders...)
+	if resolved.AgentSystemData != nil {
+		cloned := make(map[string]any, len(resolved.AgentSystemData))
+		for k, v := range resolved.AgentSystemData {
+			cloned[k] = v
+		}
+		resolved.AgentSystemData = cloned
+	}
+	return resolved
 }
 
 func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
-	var locator SymbolLocator
-	unattended := false
-	var historyLogger HistoryLogger
-	var interceptors []ToolInterceptor
-	var utcpProviders []string
-
-	if len(cfg) > 0 {
-		locator = cfg[0].SymbolLocator
-		unattended = cfg[0].Unattended
-		historyLogger = cfg[0].HistoryLogger
-		interceptors = cfg[0].Interceptors
-		utcpProviders = cfg[0].UTCPProviders
-	}
+	resolved := normalizeConfig(cfg...)
 
 	llmProvider, err := llm.NewGeminiProvider(context.Background(), apiKey)
 	if err != nil {
 		return nil, err
 	}
 
-	utcpManager, err := NewUTCPManager(utcpProviders)
+	utcpManager, err := NewUTCPManager(resolved.UTCPProviders)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init UTCP manager: %w", err)
 	}
 
 	// Fetch dynamic tools
-	if len(utcpProviders) > 0 {
+	if len(resolved.UTCPProviders) > 0 {
 		utcpTools := utcpManager.Initialize(context.Background())
 		llmProvider.RegisterDynamicTools(utcpTools)
 	}
 
 	return &Agent{
-		llm:           llmProvider,
-		locator:       locator,
-		root:          projectRoot,
-		currentDir:    projectRoot,
-		apiKey:        apiKey,
-		stuckDetector: NewStuckDetector(),
-		utcp:          utcpManager,
-		Unattended:    unattended,
-		historyLogger: historyLogger,
-		interceptors:  interceptors,
-		approvalChan:  make(chan bool),
+		llm:             llmProvider,
+		locator:         resolved.SymbolLocator,
+		root:            projectRoot,
+		currentDir:      projectRoot,
+		apiKey:          apiKey,
+		stuckDetector:   NewStuckDetector(),
+		utcp:            utcpManager,
+		utcpProviders:   resolved.UTCPProviders,
+		Unattended:      resolved.Unattended,
+		council:         resolved.Council.withDefaults(),
+		historyLogger:   resolved.HistoryLogger,
+		interceptors:    resolved.Interceptors,
+		AgentSystemData: resolved.AgentSystemData,
+		approvalChan:    make(chan bool),
 	}, nil
+}
+
+func (a *Agent) childConfig() Config {
+	return normalizeConfig(Config{
+		SymbolLocator:   a.locator,
+		Unattended:      a.Unattended,
+		Council:         a.council,
+		HistoryLogger:   a.historyLogger,
+		Interceptors:    a.interceptors,
+		UTCPProviders:   a.utcpProviders,
+		AgentSystemData: a.AgentSystemData,
+	})
 }
 
 func (a *Agent) GetModelName() string {
@@ -132,6 +158,18 @@ func (a *Agent) GetRoot() string {
 
 func (a *Agent) SetModel(modelName string) {
 	a.llm.SetModel(modelName)
+}
+
+func (a *Agent) SetCouncilEnabled(enabled bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.council.Enabled = enabled
+}
+
+func (a *Agent) IsCouncilEnabled() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.council.Enabled
 }
 
 type AgentEvent struct {
@@ -189,16 +227,27 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 	a.stuckDetector.Reset()
 
 	fullPrompt := prompt
+	if a.IsCouncilEnabled() {
+		synthesized, err := a.runCouncil(outChan, prompt)
+		if err != nil {
+			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Council fallback: %v", err)}
+		} else {
+			fullPrompt = synthesized
+		}
+	}
 	if a.llm.IsNewSession() {
-		systemPrompt := prompts.Render("agent_system", nil)
+		systemPrompt, err := prompts.GetForProject("agent_system", a.AgentSystemData, a.root)
+		if err != nil {
+			outChan <- AgentEvent{Type: "error", Content: fmt.Sprintf("failed to render agent_system prompt: %v", err)}
+			return
+		}
 
 		contextFiles := a.loadContextFiles()
 		if contextFiles != "" {
 			systemPrompt += contextFiles
 		}
 
-		cwd, _ := os.Getwd()
-		systemPrompt += fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+		systemPrompt += fmt.Sprintf("\n\nCurrent working directory: %s", a.currentDir)
 
 		a.llm.SetSystemInstruction(systemPrompt)
 		a.emitLog(outChan, "Initialized new session with context length: %d chars", len(systemPrompt))
@@ -611,20 +660,24 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			task, _ := funcCall.Args["task_description"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🤖 Delegating task: %s", task)}
 
-			subAgent, err := New(a.root, a.apiKey)
+			subAgent, err := New(a.root, a.apiKey, a.childConfig())
 			if err != nil {
 				result = map[string]any{"error": "failed to spawn sub-agent: " + err.Error()}
 			} else {
 				// Prepend main conversation context
 				contextStr := a.GetRecentContext()
 
-				fullTask := prompts.Render("delegate_task", struct {
+				fullTask, err := prompts.GetForProject("delegate_task", struct {
 					Context string
 					Task    string
 				}{
 					Context: contextStr,
 					Task:    task,
-				})
+				}, a.root)
+				if err != nil {
+					result = map[string]any{"error": "failed to render delegate prompt: " + err.Error()}
+					break
+				}
 
 				subOut := make(chan AgentEvent, 100)
 				go subAgent.RunStream(fullTask, subOut)

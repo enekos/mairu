@@ -114,6 +114,3 @@ func NewDoctorCmd() *cobra.Command {
 		},
 	}
 }
-
-func init() {
-}

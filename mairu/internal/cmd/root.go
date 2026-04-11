@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mairu/internal/agent"
+	"mairu/internal/cmd/admincmd"
 	"mairu/internal/config"
 
 	"mairu/internal/logger"
@@ -14,11 +15,12 @@ import (
 )
 
 var (
-	debugMode    bool
-	outputFormat string
-	verbose      bool
-	quiet        bool
-	appConfig    *config.Config
+	agentSystemData map[string]any
+	debugMode       bool
+	outputFormat    string
+	verbose         bool
+	quiet           bool
+	appConfig       *config.Config
 )
 
 var rootCmd = &cobra.Command{
@@ -37,6 +39,10 @@ var rootCmd = &cobra.Command{
 			cfg = &defaults
 		}
 		appConfig = cfg
+
+		agentSystemData = map[string]any{
+			"CliHelp": GenerateAgentCLIRef(cmd.Root()),
+		}
 
 		// CLI flag overrides for output
 		if !cmd.Flags().Changed("output") && appConfig.Output.Format != "" {
@@ -89,10 +95,11 @@ func GetAgentConfig() agent.Config {
 	}
 
 	return agent.Config{
-		SymbolLocator: GetLocalApp().SymbolLocator(),
-		HistoryLogger: repo,
-		Interceptors:  interceptors,
-		UTCPProviders: cfg.Tools.UTCPProviders,
+		SymbolLocator:   GetLocalApp().SymbolLocator(),
+		HistoryLogger:   repo,
+		Interceptors:    interceptors,
+		UTCPProviders:   cfg.Tools.UTCPProviders,
+		AgentSystemData: agentSystemData,
 	}
 }
 
@@ -159,14 +166,9 @@ func init() {
 		NewHistoryCmd(),
 		NewSyncCmd(),
 		NewVibeCmd(),
-		NewVibeQueryAliasCmd(),
-		NewVibeMutationAliasCmd(),
 		NewScrapeCmd(),
 		NewAnalyzeCmd(),
 		NewIngestCmd(),
-		NewSummarizeCmd(),
-		NewFlushCmd(),
-		NewNudgeCmd(),
 		NewImpactCmd(),
 		NewGithubCmd(),
 		NewLinearCmd(),
@@ -186,9 +188,9 @@ func init() {
 
 	// Core / Admin / Misc
 	rootCmd.AddCommand(
-		NewInitCmd(),
+		admincmd.NewInitCmd(),
 		NewConfigCmd(),
-		NewCompletionCmd(),
+		admincmd.NewCompletionCmd(rootCmd),
 		NewDoctorCmd(),
 		NewSetupCmd(),
 		NewSeedCmd(),

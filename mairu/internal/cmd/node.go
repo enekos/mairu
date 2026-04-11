@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -48,28 +47,14 @@ func NewNodeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out)
-					return nil
+			printSearchOrListResults(out, []string{"score", "uri", "name", "abstract"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"score":    fmt.Sprintf("%.2f", item["_rankingScore"]),
+					"uri":      fmt.Sprintf("%v", item["uri"]),
+					"name":     fmt.Sprintf("%v", item["name"]),
+					"abstract": Truncate(fmt.Sprintf("%v", item["abstract"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"score", "uri", "name", "abstract"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"score":    fmt.Sprintf("%.2f", item["_rankingScore"]),
-							"uri":      fmt.Sprintf("%v", item["uri"]),
-							"name":     fmt.Sprintf("%v", item["name"]),
-							"abstract": Truncate(fmt.Sprintf("%v", item["abstract"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}
@@ -87,7 +72,7 @@ func NewNodeCmd() *cobra.Command {
 		},
 	}
 	storeCmd.Flags().StringP("parent", "p", "", "Parent URI")
-	storeCmd.Flags().StringP("overview", "o", "", "Overview content")
+	storeCmd.Flags().String("overview", "", "Overview content")
 	storeCmd.Flags().StringP("content", "c", "", "Detailed content")
 
 	addCmd := &cobra.Command{
@@ -103,7 +88,7 @@ func NewNodeCmd() *cobra.Command {
 		},
 	}
 	addCmd.Flags().StringP("parent", "p", "", "Parent URI")
-	addCmd.Flags().StringP("overview", "o", "", "Overview content")
+	addCmd.Flags().String("overview", "", "Overview content")
 	addCmd.Flags().StringP("content", "c", "", "Detailed content")
 
 	listCmd := &cobra.Command{
@@ -123,27 +108,13 @@ func NewNodeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out)
-					return nil
+			printSearchOrListResults(out, []string{"uri", "name", "abstract"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"uri":      fmt.Sprintf("%v", item["uri"]),
+					"name":     fmt.Sprintf("%v", item["name"]),
+					"abstract": Truncate(fmt.Sprintf("%v", item["abstract"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"uri", "name", "abstract"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"uri":      fmt.Sprintf("%v", item["uri"]),
-							"name":     fmt.Sprintf("%v", item["name"]),
-							"abstract": Truncate(fmt.Sprintf("%v", item["abstract"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}

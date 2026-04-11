@@ -15,8 +15,9 @@ import (
 	"sync/atomic"
 
 	"github.com/charlievieth/fastwalk"
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
+
+	"mairu/internal/fsutil"
 )
 
 var scanBudget int
@@ -146,10 +147,7 @@ func NewScanCmd() *cobra.Command {
 				headingRe = regexp.MustCompile(`^(?:export\s+|public\s+|private\s+|protected\s+)?(?:func|class|type|interface|def|const|let|var)\b|^\s*[a-zA-Z_]\w*\s*\(|^\s*type\s+`)
 			}
 
-			var ignorer *ignore.GitIgnore
-			if gi, err := ignore.CompileIgnoreFile(filepath.Join(dir, ".gitignore")); err == nil {
-				ignorer = gi
-			}
+			ignorer := fsutil.NewProjectIgnorer(dir)
 
 			allowedExts := make(map[string]bool)
 			if scanExtensions != "" {
@@ -459,7 +457,7 @@ func NewScanCmd() *cobra.Command {
 				if rel == ".git" || rel == "node_modules" {
 					return filepath.SkipDir
 				}
-				if ignorer != nil && ignorer.MatchesPath(rel) {
+				if ignorer != nil && ignorer.IsIgnored(path) {
 					if d.IsDir() {
 						return filepath.SkipDir
 					}

@@ -10,9 +10,6 @@ import (
 	"log"
 )
 
-func init() {
-}
-
 func NewMCPCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mcp",

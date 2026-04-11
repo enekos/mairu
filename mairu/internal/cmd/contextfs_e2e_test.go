@@ -573,22 +573,6 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 	} {
 		return NewVibeCmd()
 	}, "-P", project, "mutation", "remember auth decision", "-k", "3")
-	execCommand(t, func() interface {
-		SetOut(io.Writer)
-		SetErr(io.Writer)
-		SetArgs([]string)
-		Execute() error
-	} {
-		return NewVibeQueryAliasCmd()
-	}, "-P", project, "summarize auth context", "-k", "2")
-	execCommand(t, func() interface {
-		SetOut(io.Writer)
-		SetErr(io.Writer)
-		SetArgs([]string)
-		Execute() error
-	} {
-		return NewVibeMutationAliasCmd()
-	}, "-P", project, "remember auth mutation", "-k", "2")
 
 	// ingest and scrape
 	execCommand(t, func() interface {

@@ -10,8 +10,8 @@ import (
 	"sort"
 	"strings"
 
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
+	"mairu/internal/fsutil"
 )
 
 var infoTop int
@@ -56,10 +56,7 @@ func NewInfoCmd() *cobra.Command {
 				dir = args[0]
 			}
 
-			var ignorer *ignore.GitIgnore
-			if gi, err := ignore.CompileIgnoreFile(filepath.Join(dir, ".gitignore")); err == nil {
-				ignorer = gi
-			}
+			ignorer := fsutil.NewProjectIgnorer(dir)
 
 			allowedExts := make(map[string]bool)
 			if infoExtensions != "" {
@@ -86,7 +83,7 @@ func NewInfoCmd() *cobra.Command {
 				if rel == ".git" || rel == "node_modules" {
 					return filepath.SkipDir
 				}
-				if ignorer != nil && ignorer.MatchesPath(rel) {
+				if ignorer != nil && ignorer.IsIgnored(path) {
 					if d.IsDir() {
 						return filepath.SkipDir
 					}

@@ -7,13 +7,16 @@ import (
 	"mairu/internal/prompts"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
+	"sync"
 
 	"github.com/spf13/cobra"
 )
 
 var (
 	minionMaxRetries int
+	minionCouncil    bool
 )
 
 func NewMinionCmd() *cobra.Command {
@@ -56,6 +59,7 @@ Ideal for executing from background jobs or automation pipelines.`,
 	cmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
 	cmd.Flags().StringVar(&minionGithubIssue, "github-issue", "", "GitHub Issue number to resolve")
 	cmd.Flags().StringVar(&minionGithubPR, "github-pr", "", "GitHub PR number to review and fix")
+	cmd.Flags().BoolVar(&minionCouncil, "council", false, "Enable council mode with expert reviewers before execution")
 	return cmd
 }
 
@@ -105,6 +109,7 @@ func runMinion(userPrompt string) {
 	cwd, _ := os.Getwd()
 	cfg := GetAgentConfig()
 	cfg.Unattended = true
+	cfg.Council.Enabled = minionCouncil
 	a, err := agent.New(cwd, apiKey, cfg)
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)
@@ -155,4 +160,200 @@ func runMinion(userPrompt string) {
 	if hasError {
 		os.Exit(1)
 	}
+
+	if !minionCouncil {
+		return
+	}
+
+	discoveredPR := discoverCurrentPRNumber()
+	reviewPR := resolvePRReviewTarget(minionGithubPR, discoveredPR)
+	if reviewPR == "" {
+		return
+	}
+
+	fmt.Printf("\n🔎 Launching PR reviewer council for PR #%s\n", reviewPR)
+	reviewOutput, err := runPRReviewerCouncil(cwd, apiKey, reviewPR)
+	if err != nil {
+		fmt.Printf("⚠️ PR reviewer council failed: %v\n", err)
+		return
+	}
+	fmt.Println("\n📌 PR reviewer council suggestions:")
+	fmt.Println(reviewOutput)
+}
+
+type prReviewerRole struct {
+	Name  string
+	Focus string
+}
+
+type prReviewerResult struct {
+	role    string
+	content string
+	err     error
+}
+
+func runPRReviewerCouncil(cwd, apiKey, prNumber string) (string, error) {
+	prData, err := fetchGitHubContext("pr", prNumber)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch PR context: %w", err)
+	}
+
+	roles := []prReviewerRole{
+		{
+			Name:  "App Developer",
+			Focus: "Validate feature behavior and practical product heuristics against surrounding code paths.",
+		},
+		{
+			Name:  "Developer Evangelist",
+			Focus: "Review style, architecture consistency, pitfalls, and performance concerns.",
+		},
+		{
+			Name:  "Tests Evangelist",
+			Focus: "Check that relevant tests are added or updated, and identify testing gaps.",
+		},
+	}
+
+	resultsCh := make(chan prReviewerResult, len(roles))
+	var wg sync.WaitGroup
+	for _, role := range roles {
+		wg.Add(1)
+		go func(r prReviewerRole) {
+			defer wg.Done()
+			out, reviewErr := runSinglePRReviewer(cwd, apiKey, prNumber, prData, r)
+			resultsCh <- prReviewerResult{
+				role:    r.Name,
+				content: out,
+				err:     reviewErr,
+			}
+		}(role)
+	}
+	go func() {
+		wg.Wait()
+		close(resultsCh)
+	}()
+
+	findings := map[string]string{}
+	for res := range resultsCh {
+		if res.err != nil {
+			findings[res.role] = fmt.Sprintf("Reviewer failed: %v", res.err)
+			continue
+		}
+		findings[res.role] = strings.TrimSpace(res.content)
+	}
+
+	return runProductLeadSynthesis(cwd, apiKey, prNumber, findings)
+}
+
+func runSinglePRReviewer(cwd, apiKey, prNumber, prContext string, role prReviewerRole) (string, error) {
+	cfg := GetAgentConfig()
+	cfg.Unattended = true
+	cfg.Council.Enabled = false
+
+	a, err := agent.New(cwd, apiKey, cfg)
+	if err != nil {
+		return "", err
+	}
+	defer a.Close()
+
+	prompt := prompts.Render("council_pr_reviewer_expert", struct {
+		PRNumber string
+		PRData   string
+		Role     string
+		Focus    string
+	}{
+		PRNumber: prNumber,
+		PRData:   prContext,
+		Role:     role.Name,
+		Focus:    role.Focus,
+	})
+
+	outChan := make(chan agent.AgentEvent, 100)
+	go a.RunStream(prompt, outChan)
+
+	var b strings.Builder
+	var eventErr error
+	for ev := range outChan {
+		if ev.Type == "text" {
+			b.WriteString(ev.Content)
+		}
+		if ev.Type == "error" {
+			eventErr = fmt.Errorf("%s", ev.Content)
+		}
+	}
+	if eventErr != nil {
+		return "", eventErr
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
+func runProductLeadSynthesis(cwd, apiKey, prNumber string, findings map[string]string) (string, error) {
+	cfg := GetAgentConfig()
+	cfg.Unattended = true
+	cfg.Council.Enabled = false
+
+	a, err := agent.New(cwd, apiKey, cfg)
+	if err != nil {
+		return "", err
+	}
+	defer a.Close()
+
+	prompt := prompts.Render("council_pr_reviewer_product_lead", struct {
+		PRNumber string
+		Findings string
+	}{
+		PRNumber: prNumber,
+		Findings: formatReviewerFindings(findings),
+	})
+
+	outChan := make(chan agent.AgentEvent, 100)
+	go a.RunStream(prompt, outChan)
+
+	var b strings.Builder
+	var eventErr error
+	for ev := range outChan {
+		if ev.Type == "text" {
+			b.WriteString(ev.Content)
+		}
+		if ev.Type == "error" {
+			eventErr = fmt.Errorf("%s", ev.Content)
+		}
+	}
+	if eventErr != nil {
+		return "", eventErr
+	}
+	return strings.TrimSpace(b.String()), nil
+}
+
+func discoverCurrentPRNumber() string {
+	cmd := exec.Command("gh", "pr", "view", "--json", "number", "--jq", ".number")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+func resolvePRReviewTarget(explicitPR, discoveredPR string) string {
+	if strings.TrimSpace(explicitPR) != "" {
+		return strings.TrimSpace(explicitPR)
+	}
+	return strings.TrimSpace(discoveredPR)
+}
+
+func formatReviewerFindings(findings map[string]string) string {
+	roles := make([]string, 0, len(findings))
+	for role := range findings {
+		roles = append(roles, role)
+	}
+	sort.Strings(roles)
+
+	var b strings.Builder
+	for _, role := range roles {
+		b.WriteString("## ")
+		b.WriteString(role)
+		b.WriteString("\n")
+		b.WriteString(strings.TrimSpace(findings[role]))
+		b.WriteString("\n\n")
+	}
+	return strings.TrimSpace(b.String())
 }

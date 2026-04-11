@@ -18,41 +18,44 @@ func init() {
 	tmpl = template.Must(template.ParseFS(promptFiles, "*.md"))
 }
 
-// Get renders a prompt template with the given data.
-func Get(name string, data any) (string, error) {
-	// 1. Try project-local override first
-	cwd, _ := os.Getwd()
-	localOverrides := []string{
-		filepath.Join(cwd, ".mairu", "prompts", name+".md"),
-		filepath.Join(cwd, "prompts", name+".md"),
+func renderTemplateSource(name string, data any, sourcePath string, source []byte) (string, error) {
+	t, err := template.New(name).Parse(string(source))
+	if err != nil {
+		return "", fmt.Errorf("failed to parse %s: %w", sourcePath, err)
 	}
-	for _, path := range localOverrides {
-		if content, err := os.ReadFile(path); err == nil {
-			t, err := template.New(name).Parse(string(content))
-			if err != nil {
-				return "", fmt.Errorf("failed to parse local override %s: %w", path, err)
-			}
-			var buf bytes.Buffer
-			if err := t.Execute(&buf, data); err != nil {
-				return "", fmt.Errorf("failed to execute local override %s: %w", path, err)
-			}
-			return buf.String(), nil
+	var buf bytes.Buffer
+	if err := t.Execute(&buf, data); err != nil {
+		return "", fmt.Errorf("failed to execute %s: %w", sourcePath, err)
+	}
+	return buf.String(), nil
+}
+
+func getLocalOverrides(projectRoot, name string) []string {
+	if projectRoot == "" {
+		return nil
+	}
+	return []string{
+		filepath.Join(projectRoot, ".mairu", "prompts", name+".md"),
+		filepath.Join(projectRoot, "prompts", name+".md"),
+	}
+}
+
+// GetForProject renders a prompt template with project-root anchored overrides.
+func GetForProject(name string, data any, projectRoot string) (string, error) {
+	// 1. Try project-local override first
+	for _, path := range getLocalOverrides(projectRoot, name) {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			return renderTemplateSource(name, data, path, content)
 		}
 	}
 
 	// 2. Try user-global override
 	if home, err := os.UserHomeDir(); err == nil {
 		globalPath := filepath.Join(home, ".config", "mairu", "prompts", name+".md")
-		if content, err := os.ReadFile(globalPath); err == nil {
-			t, err := template.New(name).Parse(string(content))
-			if err != nil {
-				return "", fmt.Errorf("failed to parse global override %s: %w", globalPath, err)
-			}
-			var buf bytes.Buffer
-			if err := t.Execute(&buf, data); err != nil {
-				return "", fmt.Errorf("failed to execute global override %s: %w", globalPath, err)
-			}
-			return buf.String(), nil
+		content, err := os.ReadFile(globalPath)
+		if err == nil {
+			return renderTemplateSource(name, data, globalPath, content)
 		}
 	}
 
@@ -63,6 +66,12 @@ func Get(name string, data any) (string, error) {
 		return "", fmt.Errorf("failed to execute prompt template %s: %w", name, err)
 	}
 	return buf.String(), nil
+}
+
+// Get renders a prompt template using the process working directory as project root.
+func Get(name string, data any) (string, error) {
+	cwd, _ := os.Getwd()
+	return GetForProject(name, data, cwd)
 }
 
 // Render is a convenience function that panics on error, useful for static prompts or when you know the template is valid.
