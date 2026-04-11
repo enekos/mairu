@@ -24,6 +24,9 @@ type stubStore struct {
 	}
 	deleted []string
 	added   []Memory
+
+	listBashPages     [][]BashHistory
+	searchBashResults [][]BashHistory
 }
 
 func (s *stubStore) ListMemories(project string, limit, offset int) ([]Memory, error) {
@@ -60,6 +63,24 @@ func (s *stubStore) DeleteMemory(id string) error {
 func (s *stubStore) AddMemory(memory Memory, embedding []float32) error {
 	s.added = append(s.added, memory)
 	return nil
+}
+
+func (s *stubStore) ListBashHistory(project string, limit, offset int) ([]BashHistory, error) {
+	if len(s.listBashPages) == 0 {
+		return nil, nil
+	}
+	page := s.listBashPages[0]
+	s.listBashPages = s.listBashPages[1:]
+	return page, nil
+}
+
+func (s *stubStore) SearchBashHistoryByVector(embedding []float32, topK int, project string) ([]BashHistory, error) {
+	if len(s.searchBashResults) == 0 {
+		return nil, nil
+	}
+	res := s.searchBashResults[0]
+	s.searchBashResults = s.searchBashResults[1:]
+	return res, nil
 }
 
 type stubEmbedder struct{}
@@ -253,5 +274,46 @@ func TestEnginePaginationFetchesAllMemories(t *testing.T) {
 	e := NewEngine(store, stubEmbedder{}, &stubLLM{})
 	if err := e.DeductionPass("proj"); err != nil {
 		t.Fatalf("deduction failed: %v", err)
+	}
+}
+
+func TestBashInductionPass(t *testing.T) {
+	history := []BashHistory{
+		{ID: "bh_1", Command: "npm run dev", Project: "proj", CreatedAt: time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)},
+		{ID: "bh_2", Command: "npm run start:dev", Project: "proj", CreatedAt: time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC)},
+		{ID: "bh_3", Command: "npm run dev", Project: "proj", CreatedAt: time.Date(2026, 3, 10, 0, 0, 0, 0, time.UTC)},
+	}
+	store := &stubStore{
+		listBashPages: [][]BashHistory{history},
+		searchBashResults: [][]BashHistory{
+			{
+				{ID: "bh_2", Command: history[1].Command, Score: 0.82, CreatedAt: history[1].CreatedAt},
+				{ID: "bh_3", Command: history[2].Command, Score: 0.80, CreatedAt: history[2].CreatedAt},
+			},
+			{},
+		},
+		searchResults: [][]Memory{
+			{}, // No existing derived patterns
+		},
+	}
+	llm := &stubLLM{outputs: []string{
+		`{"pattern":"User frequently starts the local development server using npm run dev or start:dev","confidence":"high","evidence":"Observed multiple executions"}`,
+	}}
+	e := NewEngine(store, stubEmbedder{}, llm)
+	e.GenerateID = func() string { return "mem_bash_generated" }
+	e.Now = func() time.Time { return time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC) }
+
+	if err := e.BashInductionPass("proj"); err != nil {
+		t.Fatalf("bash induction failed: %v", err)
+	}
+	if len(store.added) != 1 {
+		t.Fatalf("expected one derived pattern, got %d", len(store.added))
+	}
+	added := store.added[0]
+	if added.Category != "derived_pattern" || added.Owner != "system" || added.Project != "proj" {
+		t.Fatalf("unexpected added memory: %#v", added)
+	}
+	if added.ID != "mem_bash_generated" {
+		t.Fatalf("unexpected generated ID: %s", added.ID)
 	}
 }

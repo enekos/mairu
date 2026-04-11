@@ -43,12 +43,25 @@ type Memory struct {
 	Metadata   map[string]any
 }
 
+type BashHistory struct {
+	ID        string
+	Project   string
+	Command   string
+	Output    string
+	ExitCode  int
+	CreatedAt time.Time
+	Score     float64
+}
+
 type Store interface {
 	ListMemories(project string, limit, offset int) ([]Memory, error)
 	SearchMemoriesByVector(embedding []float32, topK int, project string) ([]Memory, error)
 	UpdateMemory(id string, patch map[string]any, embedding []float32) error
 	DeleteMemory(id string) error
 	AddMemory(memory Memory, embedding []float32) error
+
+	ListBashHistory(project string, limit, offset int) ([]BashHistory, error)
+	SearchBashHistoryByVector(embedding []float32, topK int, project string) ([]BashHistory, error)
 }
 
 type Embedder interface {
@@ -284,6 +297,134 @@ func (e *Engine) InductionPass(project string) error {
 			CreatedAt:  now,
 			Metadata: map[string]any{
 				"dream_source": "induction",
+				"cluster_size": len(cluster),
+				"confidence":   confidence,
+				"evidence":     evidence,
+			},
+		}
+		_ = e.Store.AddMemory(mem, patternEmbedding)
+	}
+	return nil
+}
+
+func (e *Engine) fetchAllBashHistory(project string) ([]BashHistory, error) {
+	var all []BashHistory
+	offset := 0
+	for {
+		page, err := e.Store.ListBashHistory(project, ListPageSize, offset)
+		if err != nil {
+			return nil, err
+		}
+		if len(page) == 0 {
+			break
+		}
+		all = append(all, page...)
+		offset += len(page)
+		if len(page) < ListPageSize {
+			break
+		}
+	}
+	return all, nil
+}
+
+func truncate(s string, l int) string {
+	if len(s) > l {
+		return s[:l] + "..."
+	}
+	return s
+}
+
+func (e *Engine) BashInductionPass(project string) error {
+	history, err := e.fetchAllBashHistory(project)
+	if err != nil {
+		return err
+	}
+
+	assigned := map[string]bool{}
+	var clusters [][]BashHistory
+	for _, h := range history {
+		if assigned[h.ID] {
+			continue
+		}
+		assigned[h.ID] = true
+
+		embedding, err := e.Embedder.GetEmbedding(h.Command)
+		if err != nil {
+			continue
+		}
+		similar, err := e.Store.SearchBashHistoryByVector(embedding, 20, project)
+		if err != nil {
+			continue
+		}
+
+		cluster := []BashHistory{h}
+		for _, c := range similar {
+			if c.ID == h.ID || assigned[c.ID] {
+				continue
+			}
+			if c.Score >= PatternSimilarityThreshold {
+				cluster = append(cluster, c)
+				assigned[c.ID] = true
+			}
+		}
+		if len(cluster) >= MinClusterSize {
+			clusters = append(clusters, cluster)
+		}
+	}
+
+	for _, cluster := range clusters {
+		memberLines := make([]string, 0, len(cluster))
+		for i, c := range cluster {
+			memberLines = append(memberLines, fmt.Sprintf("[%d] Command: %s (Exit: %d) OutputSnippet: %s", i, c.Command, c.ExitCode, truncate(c.Output, 100)))
+		}
+		prompt := prompts.Render("dreamer_bash_induction", struct {
+			Commands string
+		}{
+			Commands: strings.Join(memberLines, "\n"),
+		})
+		text, err := e.LLM.Generate(prompt)
+		if err != nil {
+			continue
+		}
+		pattern, confidence, evidence := parsePatternObject(text)
+		if strings.TrimSpace(pattern) == "" {
+			continue
+		}
+
+		patternEmbedding, err := e.Embedder.GetEmbedding(pattern)
+		if err != nil {
+			continue
+		}
+		existing, err := e.Store.SearchMemoriesByVector(patternEmbedding, 3, project)
+		if err != nil {
+			continue
+		}
+		isDup := false
+		for _, p := range existing {
+			if p.Category == "derived_pattern" && p.Score >= DedupSimilarityThreshold {
+				isDup = true
+				break
+			}
+		}
+		if isDup {
+			continue
+		}
+
+		importance := len(cluster) + 3
+		if importance > 10 {
+			importance = 10
+		}
+		now := e.Now()
+		mem := Memory{
+			ID:         e.GenerateID(),
+			Project:    project,
+			Content:    pattern,
+			Category:   "derived_pattern",
+			Owner:      "system",
+			Importance: importance,
+			CreatedAt:  now,
+			Metadata: map[string]any{
+				"dream_source": "bash_induction",
 				"cluster_size": len(cluster),
 				"confidence":   confidence,
 				"evidence":     evidence,

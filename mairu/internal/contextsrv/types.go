@@ -28,13 +28,15 @@ const (
 
 // BashHistory represents a recorded bash command execution.
 type BashHistory struct {
-	ID         string    `json:"id"`
-	Project    string    `json:"project"`
-	Command    string    `json:"command"`
-	ExitCode   int       `json:"exit_code"`
-	DurationMs int       `json:"duration_ms"`
-	Output     string    `json:"output"`
-	CreatedAt  time.Time `json:"created_at"`
+	ID            string    `json:"id"`
+	Project       string    `json:"project"`
+	Command       string    `json:"command"`
+	ExitCode      int       `json:"exit_code"`
+	DurationMs    int       `json:"duration_ms"`
+	Output        string    `json:"output"`
+	Importance    int       `json:"importance"`
+	FeedbackCount int       `json:"feedback_count"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // Memory represents an atomic piece of knowledge stored by an agent or user.

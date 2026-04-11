@@ -64,7 +64,8 @@ func getLocalHandler() http.Handler {
 
 func closeLocalService() {
 	if localApp != nil {
-		importCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// Increase timeout to 30s to allow more items to be embedded
+		importCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		if err := localApp.Flush(importCtx); err != nil {

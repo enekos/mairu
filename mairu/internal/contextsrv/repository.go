@@ -142,6 +142,8 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 			exit_code INT NOT NULL,
 			duration_ms INT NOT NULL,
 			output TEXT NOT NULL,
+			importance INT NOT NULL DEFAULT 5,
+			feedback_count INT NOT NULL DEFAULT 0,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 		)`,
 		`CREATE INDEX IF NOT EXISTS idx_memories_project_created ON memories(project, created_at DESC)`,
@@ -163,6 +165,8 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 		`ALTER TABLE memories ADD COLUMN retrieval_count INT NOT NULL DEFAULT 0`,
 		`ALTER TABLE memories ADD COLUMN feedback_count INT NOT NULL DEFAULT 0`,
 		`ALTER TABLE memories ADD COLUMN last_retrieved_at DATETIME NULL`,
+		`ALTER TABLE bash_history ADD COLUMN importance INT NOT NULL DEFAULT 5`,
+		`ALTER TABLE bash_history ADD COLUMN feedback_count INT NOT NULL DEFAULT 0`,
 	}
 	for _, stmt := range alterStmts {
 		if _, err := r.db.ExecContext(ctx, stmt); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
@@ -176,17 +180,19 @@ func (r *SQLiteRepository) Migrate(ctx context.Context) error {
 func (r *SQLiteRepository) InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error {
 	id := fmt.Sprintf("bash_%d", time.Now().UnixNano())
 	h := BashHistory{
-		ID:         id,
-		Project:    project,
-		Command:    command,
-		ExitCode:   exitCode,
-		DurationMs: durationMs,
-		Output:     output,
-		CreatedAt:  time.Now().UTC(),
+		ID:            id,
+		Project:       project,
+		Command:       command,
+		ExitCode:      exitCode,
+		DurationMs:    durationMs,
+		Output:        output,
+		Importance:    5,
+		FeedbackCount: 0,
+		CreatedAt:     time.Now().UTC(),
 	}
 
-	query := `INSERT INTO bash_history (id, project, command, exit_code, duration_ms, output, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`
+	query := `INSERT INTO bash_history (id, project, command, exit_code, duration_ms, output, importance, feedback_count, created_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	_, err := r.db.ExecContext(ctx, query,
 		h.ID,
 		h.Project,
@@ -194,6 +200,8 @@ func (r *SQLiteRepository) InsertBashHistory(ctx context.Context, project string
 		h.ExitCode,
 		h.DurationMs,
 		h.Output,
+		h.Importance,
+		h.FeedbackCount,
 		h.CreatedAt.Format(time.RFC3339),
 	)
 	if err != nil {
@@ -202,6 +210,36 @@ func (r *SQLiteRepository) InsertBashHistory(ctx context.Context, project string
 
 	// Also enqueue to search_outbox for indexing
 	return r.EnqueueOutbox(ctx, "bash_history", h.ID, "upsert", h)
+}
+
+func (r *SQLiteRepository) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
+	var h BashHistory
+	var createdAtStr string
+	query := `SELECT id, project, command, exit_code, duration_ms, output, importance, feedback_count, created_at FROM bash_history WHERE id = ?`
+	err := r.db.QueryRowContext(ctx, query, id).Scan(
+		&h.ID, &h.Project, &h.Command, &h.ExitCode, &h.DurationMs, &h.Output, &h.Importance, &h.FeedbackCount, &createdAtStr,
+	)
+	if err == sql.ErrNoRows {
+		return h, fmt.Errorf("bash history not found: %s", id)
+	} else if err != nil {
+		return h, err
+	}
+	h.CreatedAt, _ = time.Parse(time.RFC3339, createdAtStr)
+	return h, nil
+}
+
+func (r *SQLiteRepository) UpdateBashHistory(ctx context.Context, h BashHistory) error {
+	query := `UPDATE bash_history SET importance = ?, feedback_count = ? WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, h.Importance, h.FeedbackCount, h.ID)
+	if err != nil {
+		return err
+	}
+	return r.EnqueueOutbox(ctx, "bash_history", h.ID, "upsert", h)
+}
+
+func (r *SQLiteRepository) IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error {
+	_, err := r.db.ExecContext(ctx, `UPDATE bash_history SET feedback_count = feedback_count + 1 WHERE id = ?`, id)
+	return err
 }
 
 type BashStat struct {

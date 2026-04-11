@@ -85,6 +85,13 @@ func (r *vibeRepo) GetMemory(ctx context.Context, id string) (Memory, error) {
 }
 func (r *vibeRepo) RecordRetrievals(ctx context.Context, ids []string) error    { return nil }
 func (r *vibeRepo) IncrementFeedbackCount(ctx context.Context, id string) error { return nil }
+func (r *vibeRepo) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
+	return BashHistory{}, nil
+}
+func (r *vibeRepo) UpdateBashHistory(ctx context.Context, h BashHistory) error { return nil }
+func (r *vibeRepo) IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error {
+	return nil
+}
 
 func (r *vibeRepo) EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error {
 	return nil

@@ -64,6 +64,15 @@ func (r *repoSearchStub) RecordRetrievals(ctx context.Context, ids []string) err
 func (r *repoSearchStub) IncrementFeedbackCount(ctx context.Context, id string) error {
 	return nil
 }
+func (r *repoSearchStub) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
+	return BashHistory{}, nil
+}
+func (r *repoSearchStub) UpdateBashHistory(ctx context.Context, h BashHistory) error {
+	return nil
+}
+func (r *repoSearchStub) IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error {
+	return nil
+}
 
 type backendStub struct {
 	searchCalls int

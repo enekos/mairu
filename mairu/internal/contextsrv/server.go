@@ -42,6 +42,9 @@ func NewHandler(svc Service, authToken string) *Handler {
 	mux.HandleFunc("DELETE /api/memories", authMiddleware(h.deleteMemory))
 	mux.HandleFunc("POST /api/memories/feedback", authMiddleware(h.applyMemoryFeedback))
 
+	// Bash History
+	mux.HandleFunc("POST /api/bash/feedback", authMiddleware(h.applyBashHistoryFeedback))
+
 	// Skills
 	mux.HandleFunc("POST /api/skills", authMiddleware(h.createSkill))
 	mux.HandleFunc("GET /api/skills", authMiddleware(h.listSkills))

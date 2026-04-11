@@ -66,6 +66,13 @@ func (m *mockRepo) GetMemory(ctx context.Context, id string) (Memory, error) {
 }
 func (m *mockRepo) RecordRetrievals(ctx context.Context, ids []string) error    { return nil }
 func (m *mockRepo) IncrementFeedbackCount(ctx context.Context, id string) error { return nil }
+func (m *mockRepo) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
+	return BashHistory{}, nil
+}
+func (m *mockRepo) UpdateBashHistory(ctx context.Context, h BashHistory) error { return nil }
+func (m *mockRepo) IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error {
+	return nil
+}
 
 func (m *mockRepo) EnqueueOutbox(ctx context.Context, entityType, entityID, opType string, payload any) error {
 	return nil

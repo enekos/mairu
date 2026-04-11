@@ -14,7 +14,8 @@ func newSyncCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			app := GetLocalApp()
 
-			if err := app.Flush(context.Background()); err != nil {
+			err := app.Flush(context.Background())
+			if err != nil {
 				return fmt.Errorf("sync failed: %w", err)
 			}
 

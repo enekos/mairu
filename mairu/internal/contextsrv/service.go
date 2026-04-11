@@ -53,6 +53,10 @@ type VibeService interface {
 	ExecuteVibeMutation(ops []VibeMutationOp, project string) ([]map[string]any, error)
 }
 
+type BashHistoryService interface {
+	ApplyBashHistoryFeedback(id string, reward int) (BashHistory, error)
+}
+
 // Service defines the interface for core functionality, including memories, skills,
 // context nodes, vibe querying and mutation, and moderation.
 // It composes the domain-scoped sub-interfaces so that callers that only need
@@ -63,6 +67,7 @@ type Service interface {
 	NodeService
 	ModerationService
 	VibeService
+	BashHistoryService
 	Health() map[string]any
 	Search(opts SearchOptions) (map[string]any, error)
 	Dashboard(limit int, project string) (map[string]any, error)
@@ -100,12 +105,20 @@ type NodeRepository interface {
 	DeleteContextNode(ctx context.Context, uri string) error
 }
 
+// BashHistoryRepository covers bash history persistence.
+type BashHistoryRepository interface {
+	GetBashHistory(ctx context.Context, id string) (BashHistory, error)
+	UpdateBashHistory(ctx context.Context, h BashHistory) error
+	IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error
+}
+
 // Repository encapsulates data access logic, usually persisting to a database.
 // It composes the domain-scoped repository sub-interfaces.
 type Repository interface {
 	MemoryRepository
 	SkillRepository
 	NodeRepository
+	BashHistoryRepository
 	SearchText(ctx context.Context, opts SearchOptions) (map[string]any, error)
 	ListModerationQueue(ctx context.Context, limit int) ([]ModerationEvent, error)
 	ReviewModeration(ctx context.Context, input ModerationReviewInput) error

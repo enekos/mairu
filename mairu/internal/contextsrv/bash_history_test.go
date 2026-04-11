@@ -58,3 +58,50 @@ func TestBashHistoryStats(t *testing.T) {
 		t.Errorf("expected success ratio 1.0, got %f", stats[1].SuccessRatio)
 	}
 }
+
+func TestBashHistoryFeedback(t *testing.T) {
+	dbPath := t.TempDir() + "/test_bash_fb.db"
+	repo, err := NewSQLiteRepository("file:" + dbPath + "?cache=shared&mode=rwc")
+	if err != nil {
+		t.Fatalf("failed to init repo: %v", err)
+	}
+	defer repo.Close()
+	svc := NewService(repo)
+
+	ctx := context.Background()
+
+	// Create a history item
+	err = repo.InsertBashHistory(ctx, "proj1", "echo test", 0, 10, "test")
+	if err != nil {
+		t.Fatalf("insert failed: %v", err)
+	}
+
+	// We don't have the ID easily, so let's query the DB for it
+	var id string
+	err = repo.db.QueryRow("SELECT id FROM bash_history LIMIT 1").Scan(&id)
+	if err != nil {
+		t.Fatalf("failed to get id: %v", err)
+	}
+
+	// Apply feedback
+	h, err := svc.ApplyBashHistoryFeedback(id, 10)
+	if err != nil {
+		t.Fatalf("ApplyBashHistoryFeedback failed: %v", err)
+	}
+
+	if h.Importance != 8 { // 5 + 0.5 * (10 - 5) = 7.5 -> 8
+		t.Errorf("expected importance 8, got %d", h.Importance)
+	}
+
+	// Verify DB state
+	dbH, err := repo.GetBashHistory(ctx, id)
+	if err != nil {
+		t.Fatalf("GetBashHistory failed: %v", err)
+	}
+	if dbH.Importance != 8 {
+		t.Errorf("expected db importance 8, got %d", dbH.Importance)
+	}
+	if dbH.FeedbackCount != 1 {
+		t.Errorf("expected feedback_count 1, got %d", dbH.FeedbackCount)
+	}
+}

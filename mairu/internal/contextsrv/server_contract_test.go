@@ -210,6 +210,10 @@ func (s *stubService) ApplyMemoryFeedback(id string, reward int) (Memory, error)
 	return Memory{ID: id, Importance: reward}, nil
 }
 
+func (s *stubService) ApplyBashHistoryFeedback(id string, reward int) (BashHistory, error) {
+	return BashHistory{ID: id, Importance: reward}, nil
+}
+
 func (s *stubService) GetMemory(id string) (Memory, error) {
 	return Memory{ID: id}, nil
 }

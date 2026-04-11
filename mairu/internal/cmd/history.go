@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/spf13/cobra"
 	"mairu/internal/contextsrv"
@@ -84,6 +85,27 @@ func newHistoryCmd() *cobra.Command {
 	statsCmd.Flags().IntP("limit", "n", 10, "Number of stats to show")
 	statsCmd.Flags().StringP("project", "P", "", "Filter by project")
 
-	cmd.AddCommand(searchCmd, statsCmd)
+	feedbackCmd := &cobra.Command{
+		Use:   "feedback <id> <reward>",
+		Short: "Apply reinforcement learning feedback to a bash history item (reward 1-10)",
+		Args:  cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			reward, err := strconv.Atoi(args[1])
+			if err != nil {
+				return fmt.Errorf("reward must be an integer between 1 and 10")
+			}
+			out, err := ContextPost("/api/bash/feedback", map[string]any{
+				"id":     args[0],
+				"reward": reward,
+			})
+			if err != nil {
+				return err
+			}
+			PrintJSON(out)
+			return nil
+		},
+	}
+
+	cmd.AddCommand(searchCmd, statsCmd, feedbackCmd)
 	return cmd
 }

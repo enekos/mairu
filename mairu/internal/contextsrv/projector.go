@@ -89,22 +89,24 @@ func NewProjector(repo *SQLiteRepository, indexer *MeiliIndexer, embedder Embedd
 }
 
 func (p *Projector) RunOnce(ctx context.Context, batchSize int) (int, error) {
-	fmt.Printf("RunOnce called with batchSize %d\n", batchSize)
 	jobs, err := p.repo.PullOutboxBatch(ctx, batchSize)
 	if err != nil {
-		fmt.Printf("PullOutboxBatch err: %v\n", err)
 		return 0, err
 	}
-	fmt.Printf("Got %d jobs\n", len(jobs))
 	done := 0
 	for _, job := range jobs {
+		if err := ctx.Err(); err != nil {
+			break
+		}
 		if err := p.processJob(ctx, job); err != nil {
-			fmt.Printf("processJob failed: %v\n", err)
-			_ = p.repo.MarkOutboxFailed(ctx, job.ID, job.RetryCount+1, err.Error())
+			if ctx.Err() != nil {
+				// The context expired during processing. Don't mark the job as failed.
+				break
+			}
+			_ = p.repo.MarkOutboxFailed(context.WithoutCancel(ctx), job.ID, job.RetryCount+1, err.Error())
 			continue
 		}
-		if err := p.repo.MarkOutboxDone(ctx, job.ID); err != nil {
-			fmt.Printf("MarkOutboxDone failed: %v\n", err)
+		if err := p.repo.MarkOutboxDone(context.WithoutCancel(ctx), job.ID); err != nil {
 			return done, err
 		}
 		done++
