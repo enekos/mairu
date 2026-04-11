@@ -563,7 +563,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newVibeCmd()
+		return NewVibeCmd()
 	}, "-P", project, "query", "summarize auth context", "-k", "3")
 	execCommand(t, func() interface {
 		SetOut(io.Writer)
@@ -571,7 +571,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newVibeCmd()
+		return NewVibeCmd()
 	}, "-P", project, "mutation", "remember auth decision", "-k", "3")
 	execCommand(t, func() interface {
 		SetOut(io.Writer)
@@ -579,7 +579,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newVibeQueryAliasCmd()
+		return NewVibeQueryAliasCmd()
 	}, "-P", project, "summarize auth context", "-k", "2")
 	execCommand(t, func() interface {
 		SetOut(io.Writer)
@@ -587,7 +587,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newVibeMutationAliasCmd()
+		return NewVibeMutationAliasCmd()
 	}, "-P", project, "remember auth mutation", "-k", "2")
 
 	// ingest and scrape
@@ -597,7 +597,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newIngestCmd()
+		return NewIngestCmd()
 	}, "-P", project, "--text", "Auth flow and token rules", "--base-uri", "contextfs://e2e/ingest", "-y")
 	execCommand(t, func() interface {
 		SetOut(io.Writer)
@@ -605,7 +605,7 @@ func Skip_TestContextCommandsEndToEnd(t *testing.T) {
 		SetArgs([]string)
 		Execute() error
 	} {
-		return newScrapeWebCmd()
+		return NewScrapeWebCmd()
 	}, "-P", project, pageSrv.URL+"/docs")
 
 	api.mu.Lock()

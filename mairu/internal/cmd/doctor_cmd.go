@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newDoctorCmd() *cobra.Command {
+func NewDoctorCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "doctor",
 		Short: "Validate mairu configuration and connectivity",

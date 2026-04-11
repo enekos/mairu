@@ -16,7 +16,8 @@ var (
 	minionMaxRetries int
 )
 
-var minionCmd = &cobra.Command{
+func NewMinionCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "minion [prompt]",
 	Short: "Run Mairu in unattended, one-shot Minion Mode",
 	Long: `Minion Mode executes tasks completely unattended. It will automatically approve shell commands, 
@@ -52,17 +53,18 @@ Ideal for executing from background jobs or automation pipelines.`,
 		runMinion(prompt)
 	},
 }
+	cmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
+	cmd.Flags().StringVar(&minionGithubIssue, "github-issue", "", "GitHub Issue number to resolve")
+	cmd.Flags().StringVar(&minionGithubPR, "github-pr", "", "GitHub PR number to review and fix")
+	return cmd
+}
 
 var (
 	minionGithubIssue string
 	minionGithubPR    string
 )
 
-func init() {
-	minionCmd.Flags().IntVar(&minionMaxRetries, "max-retries", 2, "Maximum attempts to fix failing tests/linters")
-	minionCmd.Flags().StringVar(&minionGithubIssue, "github-issue", "", "GitHub Issue number to resolve")
-	minionCmd.Flags().StringVar(&minionGithubPR, "github-pr", "", "GitHub PR number to review and fix")
-}
+
 
 func fetchGitHubContext(entityType, number string) (string, error) {
 	var cmd *exec.Cmd

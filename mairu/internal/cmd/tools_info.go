@@ -17,10 +17,7 @@ import (
 var infoTop int
 var infoExtensions string
 
-func init() {
-	infoCmd.Flags().IntVar(&infoTop, "top", 0, "Show top N largest files by token count")
-	infoCmd.Flags().StringVarP(&infoExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
-}
+
 
 type langStat struct {
 	Files  int     `json:"files"`
@@ -50,7 +47,8 @@ var binaryExts = map[string]bool{
 	".ttf": true, ".eot": true, ".so": true, ".dylib": true, ".dll": true,
 }
 
-var infoCmd = &cobra.Command{
+func NewInfoCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "info [dir]",
 	Short: "AI-optimized repository stats (JSON)",
 	Args:  cobra.MaximumNArgs(1),
@@ -237,4 +235,8 @@ var infoCmd = &cobra.Command{
 			}
 		}
 	},
+}
+	cmd.Flags().IntVar(&infoTop, "top", 0, "Show top N largest files by token count")
+	cmd.Flags().StringVarP(&infoExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
+	return cmd
 }

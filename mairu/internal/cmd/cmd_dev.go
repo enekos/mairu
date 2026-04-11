@@ -12,16 +12,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	devCmd.AddCommand(devKillPortCmd)
-}
 
-var devCmd = &cobra.Command{
+
+func NewDevCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "dev",
 	Short: "AI-optimized development utilities",
 }
+	cmd.AddCommand(NewDevKillPortCmd())
+	return cmd
+}
 
-var devKillPortCmd = &cobra.Command{
+func NewDevKillPortCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "kill-port <port>",
 	Short: "Kill process running on a specific port",
 	Args:  cobra.ExactArgs(1),
@@ -61,4 +64,6 @@ var devKillPortCmd = &cobra.Command{
 			}
 		}
 	},
+}
+	return cmd
 }

@@ -11,7 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var setupCmd = &cobra.Command{
+func NewSetupCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "setup",
 	Short: "Setup Mairu configuration",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -50,6 +51,7 @@ var setupCmd = &cobra.Command{
 		fmt.Printf("Configuration saved successfully to %s!\n", targetPath)
 	},
 }
-
-func init() {
+	return cmd
 }
+
+

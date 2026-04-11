@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newSeedCmd() *cobra.Command {
+func NewSeedCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "seed",
 		Short: "Seed sample ContextFS data",

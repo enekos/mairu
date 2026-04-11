@@ -14,7 +14,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newScrapeWebCmd() *cobra.Command {
+func NewScrapeWebCmd() *cobra.Command {
 	var project string
 	var maxPages int
 	var maxDepth int
@@ -67,7 +67,7 @@ func newScrapeWebCmd() *cobra.Command {
 	cmd.Flags().IntVar(&concurrency, "concurrency", 3, "Concurrent requests")
 	return cmd
 }
-func newSmartScrapeCmd() *cobra.Command {
+func NewSmartScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var useRAG bool
@@ -127,7 +127,7 @@ func newSmartScrapeCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&refinePrompt, "refine", false, "Use LLM to refine the prompt before scraping")
 	return cmd
 }
-func newSearchScrapeCmd() *cobra.Command {
+func NewSearchScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var maxResults int
@@ -182,7 +182,7 @@ func newSearchScrapeCmd() *cobra.Command {
 	cmd.Flags().IntVar(&maxResults, "max-results", 3, "Maximum number of search results to process")
 	return cmd
 }
-func newMultiScrapeCmd() *cobra.Command {
+func NewMultiScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var concurrency int
@@ -237,7 +237,7 @@ func newMultiScrapeCmd() *cobra.Command {
 	cmd.Flags().IntVar(&concurrency, "concurrency", 3, "Concurrent scraping requests")
 	return cmd
 }
-func newScriptScrapeCmd() *cobra.Command {
+func NewScriptScrapeCmd() *cobra.Command {
 	var prompt string
 	var output string
 
@@ -291,7 +291,7 @@ func newScriptScrapeCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&output, "output", "", "scraper.go", "Output file for the script (default: scraper.go)")
 	return cmd
 }
-func newDepthScrapeCmd() *cobra.Command {
+func NewDepthScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var maxDepth int
@@ -349,7 +349,7 @@ func newDepthScrapeCmd() *cobra.Command {
 	cmd.Flags().IntVar(&concurrency, "concurrency", 3, "Concurrent scraping requests")
 	return cmd
 }
-func newOmniScrapeCmd() *cobra.Command {
+func NewOmniScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
 	var concurrency int
@@ -407,20 +407,20 @@ func newOmniScrapeCmd() *cobra.Command {
 	return cmd
 }
 
-func newScrapeCmd() *cobra.Command {
+func NewScrapeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "scrape",
 		Short: "Web scraping and content extraction tools",
 	}
 
 	cmd.AddCommand(
-		newScrapeWebCmd(),
-		newSmartScrapeCmd(),
-		newSearchScrapeCmd(),
-		newMultiScrapeCmd(),
-		newScriptScrapeCmd(),
-		newDepthScrapeCmd(),
-		newOmniScrapeCmd(),
+		NewScrapeWebCmd(),
+		NewSmartScrapeCmd(),
+		NewSearchScrapeCmd(),
+		NewMultiScrapeCmd(),
+		NewScriptScrapeCmd(),
+		NewDepthScrapeCmd(),
+		NewOmniScrapeCmd(),
 	)
 
 	return cmd

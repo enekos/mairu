@@ -19,10 +19,11 @@ func TestPeekCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewPeekCmd()
 	peekLines = ""
 	peekSymbol = "myTestFunc"
 
-	peekCmd.Run(peekCmd, []string{tmpFile.Name()})
+	cmd.Run(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -47,11 +48,12 @@ func TestPeekMultiSymbol(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewPeekCmd()
 	peekLines = ""
 	peekSymbol = "Alpha,Beta"
 	peekNumbered = false
 
-	peekCmd.Run(peekCmd, []string{tmpFile.Name()})
+	cmd.Run(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -79,11 +81,12 @@ func TestPeekPythonIndent(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewPeekCmd()
 	peekLines = ""
 	peekSymbol = "greet"
 	peekNumbered = false
 
-	peekCmd.Run(peekCmd, []string{tmpFile.Name()})
+	cmd.Run(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout

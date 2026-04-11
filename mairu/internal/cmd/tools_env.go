@@ -16,12 +16,7 @@ var envPattern string
 var envDiff string
 var envRequired string
 
-func init() {
-	envCmd.Flags().BoolVarP(&envReveal, "reveal", "r", false, "Reveal non-sensitive values (like booleans, numbers, or non-credential strings)")
-	envCmd.Flags().StringVarP(&envPattern, "match", "m", "", "Only return keys matching regex pattern")
-	envCmd.Flags().StringVar(&envDiff, "diff", "", "Compare with another env file, showing added/removed/changed keys")
-	envCmd.Flags().StringVar(&envRequired, "required", "", "Comma-separated keys that must exist (exit 1 if missing)")
-}
+
 
 type envKey struct {
 	Key      string `json:"key"`
@@ -107,7 +102,8 @@ func parseEnvFile(path string) (map[string]string, []string, error) {
 	return vars, order, nil
 }
 
-var envCmd = &cobra.Command{
+func NewEnvCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "env [file...]",
 	Short: "AI-optimized safe environment reader (JSON)",
 	Args:  cobra.ArbitraryArgs,
@@ -250,4 +246,10 @@ var envCmd = &cobra.Command{
 		out, _ := json.Marshal(res)
 		fmt.Println(string(out))
 	},
+}
+	cmd.Flags().BoolVarP(&envReveal, "reveal", "r", false, "Reveal non-sensitive values (like booleans, numbers, or non-credential strings)")
+	cmd.Flags().StringVarP(&envPattern, "match", "m", "", "Only return keys matching regex pattern")
+	cmd.Flags().StringVar(&envDiff, "diff", "", "Compare with another env file, showing added/removed/changed keys")
+	cmd.Flags().StringVar(&envRequired, "required", "", "Comma-separated keys that must exist (exit 1 if missing)")
+	return cmd
 }

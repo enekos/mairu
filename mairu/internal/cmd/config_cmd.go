@@ -14,19 +14,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-func newConfigCmd() *cobra.Command {
+func NewConfigCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Manage mairu configuration",
 	}
-	cmd.AddCommand(newConfigListCmd())
-	cmd.AddCommand(newConfigGetCmd())
-	cmd.AddCommand(newConfigSetCmd())
-	cmd.AddCommand(newConfigEditCmd())
+	cmd.AddCommand(NewConfigListCmd())
+	cmd.AddCommand(NewConfigGetCmd())
+	cmd.AddCommand(NewConfigSetCmd())
+	cmd.AddCommand(NewConfigEditCmd())
 	return cmd
 }
 
-func newConfigListCmd() *cobra.Command {
+func NewConfigListCmd() *cobra.Command {
 	var showOrigin bool
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -63,7 +63,7 @@ func newConfigListCmd() *cobra.Command {
 	return cmd
 }
 
-func newConfigGetCmd() *cobra.Command {
+func NewConfigGetCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get <key>",
 		Short: "Get a configuration value (dot-notation)",
@@ -81,7 +81,7 @@ func newConfigGetCmd() *cobra.Command {
 	}
 }
 
-func newConfigSetCmd() *cobra.Command {
+func NewConfigSetCmd() *cobra.Command {
 	var project bool
 	cmd := &cobra.Command{
 		Use:   "set <key> <value>",
@@ -125,7 +125,7 @@ func newConfigSetCmd() *cobra.Command {
 	return cmd
 }
 
-func newConfigEditCmd() *cobra.Command {
+func NewConfigEditCmd() *cobra.Command {
 	var project bool
 	cmd := &cobra.Command{
 		Use:   "edit",

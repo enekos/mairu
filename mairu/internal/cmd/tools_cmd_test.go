@@ -15,7 +15,7 @@ func TestMapCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	mapCmd.Run(mapCmd, []string{"."})
+	cmd := NewMapCmd(); cmd.Run(cmd, []string{"."})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -35,7 +35,7 @@ func TestSysCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	sysCmd.Run(sysCmd, []string{})
+	cmd := NewSysCmd(); cmd.Run(cmd, []string{})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -55,7 +55,7 @@ func TestInfoCmd(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	infoCmd.Run(infoCmd, []string{"."})
+	cmd := NewInfoCmd(); cmd.Run(cmd, []string{"."})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -81,9 +81,10 @@ func TestEnvCmd(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewEnvCmd()
 	envReveal = false
 	envPattern = ""
-	envCmd.Run(envCmd, []string{tmpFile.Name()})
+	cmd.Run(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -102,8 +103,9 @@ func TestEnvCmd(t *testing.T) {
 	// Run 2: Reveal mode
 	r, w, _ = os.Pipe()
 	os.Stdout = w
+	cmd = NewEnvCmd()
 	envReveal = true
-	envCmd.Run(envCmd, []string{tmpFile.Name()})
+	cmd.Run(cmd, []string{tmpFile.Name()})
 	w.Close()
 	os.Stdout = oldStdout
 	var buf2 bytes.Buffer
@@ -130,10 +132,11 @@ func TestInfoStructuredOutput(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewInfoCmd()
 	infoTop = 0
 	infoExtensions = ""
 	outputFormat = "json"
-	infoCmd.Run(infoCmd, []string{dir})
+	cmd.Run(cmd, []string{dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -173,10 +176,11 @@ func TestInfoTop(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewInfoCmd()
 	infoTop = 1
 	infoExtensions = ""
 	outputFormat = "json"
-	infoCmd.Run(infoCmd, []string{dir})
+	cmd.Run(cmd, []string{dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -206,13 +210,14 @@ func TestMapExtFilter(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewMapCmd()
 	mapDepth = 0
 	mapExtensions = ".go"
 	mapMin = 0
 	mapSort = ""
 	mapDirs = false
 	outputFormat = "json"
-	mapCmd.Run(mapCmd, []string{dir})
+	cmd.Run(cmd, []string{dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -240,13 +245,14 @@ func TestMapSortSize(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewMapCmd()
 	mapDepth = 0
 	mapExtensions = ""
 	mapMin = 0
 	mapSort = "size"
 	mapDirs = false
 	outputFormat = "json"
-	mapCmd.Run(mapCmd, []string{dir})
+	cmd.Run(cmd, []string{dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -275,13 +281,14 @@ func TestMapDirs(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewMapCmd()
 	mapDepth = 0
 	mapExtensions = ""
 	mapMin = 0
 	mapSort = ""
 	mapDirs = true
 	outputFormat = "json"
-	mapCmd.Run(mapCmd, []string{dir})
+	cmd.Run(cmd, []string{dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -318,11 +325,12 @@ func TestEnvDiff(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewEnvCmd()
 	envReveal = false
 	envPattern = ""
 	envDiff = f2.Name()
 	envRequired = ""
-	envCmd.Run(envCmd, []string{f1.Name()})
+	cmd.Run(cmd, []string{f1.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -356,12 +364,13 @@ func TestEnvRequired(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewEnvCmd()
 	envReveal = false
 	envPattern = ""
 	envDiff = ""
 	envRequired = "PORT,DEBUG"
 
-	envCmd.Run(envCmd, []string{f.Name()})
+	cmd.Run(cmd, []string{f.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -392,11 +401,12 @@ func TestEnvMultiFile(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewEnvCmd()
 	envReveal = true
 	envPattern = ""
 	envDiff = ""
 	envRequired = ""
-	envCmd.Run(envCmd, []string{f1.Name(), f2.Name()})
+	cmd.Run(cmd, []string{f1.Name(), f2.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -430,7 +440,7 @@ func TestSysEnhanced(t *testing.T) {
 	os.Stdout = w
 
 	outputFormat = "json"
-	sysCmd.Run(sysCmd, []string{})
+	cmd := NewSysCmd(); cmd.Run(cmd, []string{})
 
 	w.Close()
 	os.Stdout = oldStdout

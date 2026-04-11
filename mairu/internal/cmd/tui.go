@@ -11,7 +11,8 @@ import (
 
 var sessionName string
 
-var tuiCmd = &cobra.Command{
+func NewTuiCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "tui",
 	Short: "Start the Mairu interactive terminal session",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -45,7 +46,8 @@ var tuiCmd = &cobra.Command{
 		}
 	},
 }
-
-func init() {
-	tuiCmd.Flags().StringVarP(&sessionName, "session", "s", "", "Load/Save a named session (e.g. 'bug-123')")
+	cmd.Flags().StringVarP(&sessionName, "session", "s", "", "Load/Save a named session (e.g. 'bug-123')")
+	return cmd
 }
+
+

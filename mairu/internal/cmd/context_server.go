@@ -13,7 +13,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var contextServerCmd = &cobra.Command{
+func NewContextServerCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "context-server",
 	Short: "Start centralized context management server",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -98,12 +99,13 @@ var contextServerCmd = &cobra.Command{
 		}
 	},
 }
-
-func init() {
-	contextServerCmd.Flags().IntP("port", "p", 8788, "Port to run context server on")
-	contextServerCmd.Flags().String("sqlite-dsn", os.Getenv("CONTEXT_SERVER_SQLITE_DSN"), "SQLite DSN")
-	contextServerCmd.Flags().String("auth-token", os.Getenv("CONTEXT_SERVER_AUTH_TOKEN"), "Shared token for internal auth (X-Context-Token)")
-	contextServerCmd.Flags().Bool("projector", true, "Enable SQLite->Meilisearch outbox projector")
-	contextServerCmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
-	contextServerCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
+	cmd.Flags().IntP("port", "p", 8788, "Port to run context server on")
+	cmd.Flags().String("sqlite-dsn", os.Getenv("CONTEXT_SERVER_SQLITE_DSN"), "SQLite DSN")
+	cmd.Flags().String("auth-token", os.Getenv("CONTEXT_SERVER_AUTH_TOKEN"), "Shared token for internal auth (X-Context-Token)")
+	cmd.Flags().Bool("projector", true, "Enable SQLite->Meilisearch outbox projector")
+	cmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
+	cmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
+	return cmd
 }
+
+

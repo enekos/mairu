@@ -13,17 +13,20 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
-	procCmd.AddCommand(procPortsCmd)
-	procCmd.AddCommand(procTopCmd)
-}
 
-var procCmd = &cobra.Command{
+
+func NewProcCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "proc",
 	Short: "AI-optimized process and port helpers",
 }
+	cmd.AddCommand(NewProcPortsCmd())
+	cmd.AddCommand(NewProcTopCmd())
+	return cmd
+}
 
-var procPortsCmd = &cobra.Command{
+func NewProcPortsCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "ports",
 	Short: "List active listening ports and their processes",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -110,8 +113,11 @@ var procPortsCmd = &cobra.Command{
 		}
 	},
 }
+	return cmd
+}
 
-var procTopCmd = &cobra.Command{
+func NewProcTopCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "top",
 	Short: "Token-budgeted list of highest CPU/Memory processes",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -175,4 +181,6 @@ var procTopCmd = &cobra.Command{
 			)
 		}
 	},
+}
+	return cmd
 }

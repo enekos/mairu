@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newSyncCmd() *cobra.Command {
+func NewSyncCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Force process the search_outbox to sync DB with Meilisearch",

@@ -33,7 +33,7 @@ func runVibeMutation(project, prompt string, k int) error {
 	PrintJSON(execOut)
 	return nil
 }
-func newVibeCmd() *cobra.Command {
+func NewVibeCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "vibe",
@@ -80,7 +80,7 @@ func newVibeCmd() *cobra.Command {
 	cmd.AddCommand(queryCmd, mutationCmd)
 	return cmd
 }
-func newVibeQueryAliasCmd() *cobra.Command {
+func NewVibeQueryAliasCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "vibe-query <prompt>",
@@ -104,7 +104,7 @@ func newVibeQueryAliasCmd() *cobra.Command {
 	cmd.Flags().IntP("k", "k", 5, "Top K results")
 	return cmd
 }
-func newVibeMutationAliasCmd() *cobra.Command {
+func NewVibeMutationAliasCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "vibe-mutation [prompt]",

@@ -13,7 +13,7 @@ import (
 func init() {
 }
 
-func newMCPCmd() *cobra.Command {
+func NewMCPCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "mcp",
 		Short: "Start MCP server on stdio",

@@ -18,10 +18,11 @@ func TestOutlineStructuredSymbols(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewOutlineCmd()
 	outlineExports = false
 	outlineTree = false
 	outputFormat = "json"
-	_ = outlineCmd.RunE(outlineCmd, []string{tmpFile.Name()})
+	_ = cmd.RunE(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -63,10 +64,11 @@ func TestOutlineExportsFilter(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	cmd := NewOutlineCmd()
 	outlineExports = true
 	outlineTree = false
 	outputFormat = "json"
-	_ = outlineCmd.RunE(outlineCmd, []string{tmpFile.Name()})
+	_ = cmd.RunE(cmd, []string{tmpFile.Name()})
 
 	w.Close()
 	os.Stdout = oldStdout

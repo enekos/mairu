@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newImpactCmd() *cobra.Command {
+func NewImpactCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "impact <uri>",

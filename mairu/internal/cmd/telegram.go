@@ -79,7 +79,8 @@ func sendLongMessage(c tele.Context, text string) error {
 	return nil
 }
 
-var telegramCmd = &cobra.Command{
+func NewTelegramCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "telegram",
 	Short: "Start Telegram bot interface",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -294,10 +295,11 @@ var telegramCmd = &cobra.Command{
 		b.Start()
 	},
 }
-
-func init() {
-	telegramCmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
-	telegramCmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
-	telegramCmd.Flags().StringP("project", "P", "", "Project root path (default is current directory)")
-	telegramCmd.Flags().String("allowed-users", "", "Comma separated list of allowed telegram user IDs or usernames")
+	cmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")
+	cmd.Flags().String("meili-api-key", os.Getenv("MEILI_API_KEY"), "Meilisearch API key")
+	cmd.Flags().StringP("project", "P", "", "Project root path (default is current directory)")
+	cmd.Flags().String("allowed-users", "", "Comma separated list of allowed telegram user IDs or usernames")
+	return cmd
 }
+
+

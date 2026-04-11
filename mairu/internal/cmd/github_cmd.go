@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newGithubCmd() *cobra.Command {
+func NewGithubCmd() *cobra.Command {
 	var project string
 	var limit int
 	var state string

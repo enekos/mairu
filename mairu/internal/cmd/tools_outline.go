@@ -15,13 +15,10 @@ var outlineExports bool
 var outlineTree bool
 var outlineFull bool
 
-func init() {
-	outlineCmd.Flags().BoolVar(&outlineExports, "exports", false, "Only show exported/public symbols")
-	outlineCmd.Flags().BoolVar(&outlineTree, "tree", false, "Nest methods under their parent class")
-	outlineCmd.Flags().BoolVar(&outlineFull, "full", false, "Include variables, fields, and properties in output")
-}
 
-var outlineCmd = &cobra.Command{
+
+func NewOutlineCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "outline <file>",
 	Short: "AI-optimized file skeleton (JSON)",
 	Args:  cobra.ExactArgs(1),
@@ -98,4 +95,9 @@ var outlineCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+	cmd.Flags().BoolVar(&outlineExports, "exports", false, "Only show exported/public symbols")
+	cmd.Flags().BoolVar(&outlineTree, "tree", false, "Nest methods under their parent class")
+	cmd.Flags().BoolVar(&outlineFull, "full", false, "Include variables, fields, and properties in output")
+	return cmd
 }

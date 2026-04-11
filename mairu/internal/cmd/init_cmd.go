@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newInitCmd() *cobra.Command {
+func NewInitCmd() *cobra.Command {
 	var defaults bool
 	cmd := &cobra.Command{
 		Use:   "init",

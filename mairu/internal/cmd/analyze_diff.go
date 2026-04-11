@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newAnalyzeDiffCmd() *cobra.Command {
+func NewAnalyzeDiffCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "analyze-diff",

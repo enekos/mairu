@@ -16,11 +16,7 @@ var peekLines string
 var peekSymbol string
 var peekNumbered bool
 
-func init() {
-	peekCmd.Flags().StringVarP(&peekLines, "lines", "l", "", "Line range to peek (e.g. 10-20)")
-	peekCmd.Flags().StringVarP(&peekSymbol, "symbol", "s", "", "Symbol name to extract (finds bracket bounds, comma-separated for multiple)")
-	peekCmd.Flags().BoolVarP(&peekNumbered, "numbered", "N", false, "Prefix each line with its line number")
-}
+
 
 type peekResult struct {
 	F       string `json:"f"`
@@ -149,7 +145,8 @@ func formatSnippet(lines []string, startLine int, numbered bool) string {
 	return strings.Join(out, "\n")
 }
 
-var peekCmd = &cobra.Command{
+func NewPeekCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "peek <file>",
 	Short: "AI-optimized file peeker (JSON)",
 	Args:  cobra.ExactArgs(1),
@@ -211,4 +208,9 @@ var peekCmd = &cobra.Command{
 			fmt.Println(string(out))
 		}
 	},
+}
+	cmd.Flags().StringVarP(&peekLines, "lines", "l", "", "Line range to peek (e.g. 10-20)")
+	cmd.Flags().StringVarP(&peekSymbol, "symbol", "s", "", "Symbol name to extract (finds bracket bounds, comma-separated for multiple)")
+	cmd.Flags().BoolVarP(&peekNumbered, "numbered", "N", false, "Prefix each line with its line number")
+	return cmd
 }

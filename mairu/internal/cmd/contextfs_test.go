@@ -93,7 +93,7 @@ func TestVibeMutationAliasPlansThenExecutes(t *testing.T) {
 	t.Setenv("MAIRU_CONTEXT_SERVER_URL", srv.URL)
 	t.Setenv("MAIRU_CONTEXT_SERVER_TOKEN", "")
 
-	cmd := newVibeMutationAliasCmd()
+	cmd := NewVibeMutationAliasCmd()
 	cmd.SetOut(io.Discard)
 	cmd.SetErr(io.Discard)
 	cmd.SetArgs([]string{"-P", "demo", "remember architecture decision", "-k", "3"})

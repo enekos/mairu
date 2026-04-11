@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newAnalyzeGraphCmd() *cobra.Command {
+func NewAnalyzeGraphCmd() *cobra.Command {
 	var project string
 	var save bool
 	cmd := &cobra.Command{

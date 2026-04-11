@@ -9,7 +9,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var distillCmd = &cobra.Command{
+func NewDistillCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "distill [command...]",
 	Short: "AI-optimized error isolator (runs command, captures stack traces/errors)",
 	Args:  cobra.MinimumNArgs(1),
@@ -90,4 +91,6 @@ var distillCmd = &cobra.Command{
 
 		fmt.Printf("Command failed. Distilled Errors:\n\n%s\n", strings.Join(distilled, "\n"))
 	},
+}
+	return cmd
 }

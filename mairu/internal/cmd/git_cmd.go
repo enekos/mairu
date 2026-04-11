@@ -19,16 +19,16 @@ const (
 	colorGray   = "\033[90m"
 )
 
-func newGitCmd() *cobra.Command {
+func NewGitCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "git",
 		Short: "AI-Optimized Git helpers",
 	}
-	cmd.AddCommand(newGitSummaryCmd())
+	cmd.AddCommand(NewGitSummaryCmd())
 	return cmd
 }
 
-func newGitSummaryCmd() *cobra.Command {
+func NewGitSummaryCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "summary",
 		Short: "Produces a token-dense, strictly parsed git status and history summary for agents",

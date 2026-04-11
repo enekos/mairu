@@ -15,22 +15,22 @@ import (
 var dockerLogsLines int
 var dockerStatsStream bool
 
-func init() {
-	dockerLogsCmd.Flags().IntVarP(&dockerLogsLines, "lines", "n", 50, "Number of lines to tail")
-	dockerStatsCmd.Flags().BoolVarP(&dockerStatsStream, "stream", "s", false, "Stream stats (false by default for AI optimization)")
 
-	dockerCmd.AddCommand(dockerPsCmd)
-	dockerCmd.AddCommand(dockerLogsCmd)
-	dockerCmd.AddCommand(dockerStatsCmd)
-}
 
-var dockerCmd = &cobra.Command{
+func NewDockerCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "docker",
 	Short: "AI-optimized Docker helpers",
 	Long:  "Docker utilities designed to provide token-efficient, highly relevant context to AI agents and developers.",
 }
+	cmd.AddCommand(NewDockerPsCmd())
+	cmd.AddCommand(NewDockerLogsCmd())
+	cmd.AddCommand(NewDockerStatsCmd())
+	return cmd
+}
 
-var dockerPsCmd = &cobra.Command{
+func NewDockerPsCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "ps",
 	Short: "Clean, token-friendly list of running containers",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -77,8 +77,11 @@ var dockerPsCmd = &cobra.Command{
 		}
 	},
 }
+	return cmd
+}
 
-var dockerLogsCmd = &cobra.Command{
+func NewDockerLogsCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "logs <container>",
 	Short: "Token-budgeted container logs",
 	Args:  cobra.ExactArgs(1),
@@ -96,8 +99,12 @@ var dockerLogsCmd = &cobra.Command{
 		fmt.Println(string(out))
 	},
 }
+	cmd.Flags().IntVarP(&dockerLogsLines, "lines", "n", 50, "Number of lines to tail")
+	return cmd
+}
 
-var dockerStatsCmd = &cobra.Command{
+func NewDockerStatsCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "stats",
 	Short: "Token-friendly snapshot of container resource usage",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -147,4 +154,7 @@ var dockerStatsCmd = &cobra.Command{
 			)
 		}
 	},
+}
+	cmd.Flags().BoolVarP(&dockerStatsStream, "stream", "s", false, "Stream stats (false by default for AI optimization)")
+	return cmd
 }

@@ -25,13 +25,7 @@ var mapMin int64
 var mapSort string
 var mapDirs bool
 
-func init() {
-	mapCmd.Flags().IntVarP(&mapDepth, "depth", "d", 0, "Max depth to map (0 = unlimited)")
-	mapCmd.Flags().StringVarP(&mapExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
-	mapCmd.Flags().Int64Var(&mapMin, "min", 0, "Only show files with >= N tokens")
-	mapCmd.Flags().StringVar(&mapSort, "sort", "", "Sort order: 'size' for descending token count (default: path order)")
-	mapCmd.Flags().BoolVar(&mapDirs, "dirs", false, "Include directory entries with aggregated token counts")
-}
+
 
 type mapEntry struct {
 	P   string `json:"p"`
@@ -39,7 +33,8 @@ type mapEntry struct {
 	Dir bool   `json:"d,omitempty"`
 }
 
-var mapCmd = &cobra.Command{
+func NewMapCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "map [dir]",
 	Short: "AI-optimized directory tree (JSON token-aware)",
 	Args:  cobra.MaximumNArgs(1),
@@ -173,6 +168,13 @@ var mapCmd = &cobra.Command{
 		}
 	},
 }
+	cmd.Flags().IntVarP(&mapDepth, "depth", "d", 0, "Max depth to map (0 = unlimited)")
+	cmd.Flags().StringVarP(&mapExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
+	cmd.Flags().Int64Var(&mapMin, "min", 0, "Only show files with >= N tokens")
+	cmd.Flags().StringVar(&mapSort, "sort", "", "Sort order: 'size' for descending token count (default: path order)")
+	cmd.Flags().BoolVar(&mapDirs, "dirs", false, "Include directory entries with aggregated token counts")
+	return cmd
+}
 
 type sysEntry struct {
 	OS          string  `json:"os"`
@@ -185,7 +187,8 @@ type sysEntry struct {
 	Docker      bool    `json:"docker"`
 }
 
-var sysCmd = &cobra.Command{
+func NewSysCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "sys",
 	Short: "AI-optimized system health snapshot (JSON)",
 	Args:  cobra.NoArgs,
@@ -235,4 +238,6 @@ var sysCmd = &cobra.Command{
 			)
 		}
 	},
+}
+	return cmd
 }

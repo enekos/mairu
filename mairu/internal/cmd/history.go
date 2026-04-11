@@ -10,7 +10,7 @@ import (
 	"mairu/internal/contextsrv"
 )
 
-func newHistoryCmd() *cobra.Command {
+func NewHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",
 		Short: "Manage and search your bash command history",

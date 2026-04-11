@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"github.com/spf13/cobra"
 )
 
 func resetScanFlags() {
@@ -32,14 +33,14 @@ func resetScanFlags() {
 	scanHidden = false
 }
 
-func runScanCmd(t *testing.T, args ...string) scanResult {
+func runScanCmd(t *testing.T, cmd *cobra.Command, args ...string) scanResult {
 	t.Helper()
 
 	oldStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	scanCmd.Run(scanCmd, args)
+	cmd.Run(cmd, args)
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -53,6 +54,7 @@ func runScanCmd(t *testing.T, args ...string) scanResult {
 }
 
 func TestScanExclude(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "main.go"), []byte("func Hello() {}"), 0644)
@@ -60,7 +62,7 @@ func TestScanExclude(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "vendor", "lib.go"), []byte("func Hello() {}"), 0644)
 
 	scanExclude = "vendor/*"
-	res := runScanCmd(t, "Hello", dir)
+	res := runScanCmd(t, cmd, "Hello", dir)
 
 	if res.Total != 1 {
 		t.Errorf("expected 1 match (vendor excluded), got %d", res.Total)
@@ -73,12 +75,13 @@ func TestScanExclude(t *testing.T) {
 }
 
 func TestScanInvert(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "test.txt"), []byte("alpha\nbeta\ngamma"), 0644)
 
 	scanInvert = true
-	res := runScanCmd(t, "beta", dir)
+	res := runScanCmd(t, cmd, "beta", dir)
 
 	// "alpha" and "gamma" should match (lines NOT containing "beta")
 	if res.Total != 2 {
@@ -92,6 +95,7 @@ func TestScanInvert(t *testing.T) {
 }
 
 func TestScanGroup(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "a.go"), []byte("Hello\nWorld\n"), 0644)
@@ -102,7 +106,7 @@ func TestScanGroup(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	scanCmd.Run(scanCmd, []string{"Hello", dir})
+	cmd.Run(cmd, []string{"Hello", dir})
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -124,6 +128,7 @@ func TestScanGroup(t *testing.T) {
 }
 
 func TestScanMulti(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	// File with both patterns
@@ -132,7 +137,7 @@ func TestScanMulti(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "other.go"), []byte("func HandleOther() {\n  return\n}\n"), 0644)
 
 	scanMulti = "validate"
-	res := runScanCmd(t, "Handle", dir)
+	res := runScanCmd(t, cmd, "Handle", dir)
 
 	// Only auth.go has both "Handle" and "validate"
 	if res.Total != 1 {
@@ -144,12 +149,13 @@ func TestScanMulti(t *testing.T) {
 }
 
 func TestScanFixedStrings(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "regex.txt"), []byte("match .* this\nmatch all this\n"), 0644)
 
 	scanFixedStrings = true
-	res := runScanCmd(t, ".*", dir)
+	res := runScanCmd(t, cmd, ".*", dir)
 
 	if res.Total != 1 {
 		t.Errorf("expected 1 fixed match, got %d", res.Total)
@@ -160,33 +166,36 @@ func TestScanFixedStrings(t *testing.T) {
 }
 
 func TestScanSmartCase(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "case.txt"), []byte("HELLO\nhello\n"), 0644)
 
 	// Lowercase query -> ignore case
 	scanSmartCase = true
-	res1 := runScanCmd(t, "hello", dir)
+	res1 := runScanCmd(t, cmd, "hello", dir)
 	if res1.Total != 2 {
 		t.Errorf("smart-case lowercase: expected 2 matches, got %d", res1.Total)
 	}
 
 	// Uppercase query -> case sensitive
+	cmd = NewScanCmd()
 	resetScanFlags()
 	scanSmartCase = true
-	res2 := runScanCmd(t, "HELLO", dir)
+	res2 := runScanCmd(t, cmd, "HELLO", dir)
 	if res2.Total != 1 {
 		t.Errorf("smart-case uppercase: expected 1 match, got %d", res2.Total)
 	}
 }
 
 func TestScanWordRegexp(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "words.txt"), []byte("the dog\nthe underdog\n"), 0644)
 
 	scanWordRegexp = true
-	res := runScanCmd(t, "dog", dir)
+	res := runScanCmd(t, cmd, "dog", dir)
 
 	if res.Total != 1 {
 		t.Errorf("word-regexp: expected 1 match, got %d", res.Total)
@@ -197,12 +206,13 @@ func TestScanWordRegexp(t *testing.T) {
 }
 
 func TestScanOnlyMatching(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "only.txt"), []byte("find apples and oranges\n"), 0644)
 
 	scanOnlyMatching = true
-	res := runScanCmd(t, "apples|oranges", dir)
+	res := runScanCmd(t, cmd, "apples|oranges", dir)
 
 	if res.Total != 1 {
 		t.Errorf("only-matching: expected 1 match line, got %d", res.Total)
@@ -213,45 +223,49 @@ func TestScanOnlyMatching(t *testing.T) {
 }
 
 func TestScanHidden(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "visible.go"), []byte("secret_key = 123\n"), 0644)
 	os.WriteFile(filepath.Join(dir, ".env"), []byte("secret_key = 456\n"), 0644)
 
 	// Default is false, should not see .env
-	res := runScanCmd(t, "secret_key", dir)
+	res := runScanCmd(t, cmd, "secret_key", dir)
 	if res.Total != 1 {
 		t.Errorf("expected 1 match (visible only), got %d", res.Total)
 	}
 
+	cmd = NewScanCmd()
 	resetScanFlags()
 	scanHidden = true
-	res = runScanCmd(t, "secret_key", dir)
+	res = runScanCmd(t, cmd, "secret_key", dir)
 	if res.Total != 2 {
 		t.Errorf("expected 2 matches (including hidden), got %d", res.Total)
 	}
 }
 
 func TestScanMaxCount(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "many.txt"), []byte("foo\nfoo\nfoo\nfoo\n"), 0644)
 
 	scanMaxCount = 2
-	res := runScanCmd(t, "foo", dir)
+	res := runScanCmd(t, cmd, "foo", dir)
 	if res.Total != 2 {
 		t.Errorf("expected 2 matches (max-count limited), got %d", res.Total)
 	}
 }
 
 func TestScanFilesWithoutMatch(t *testing.T) {
+	cmd := NewScanCmd()
 	resetScanFlags()
 	dir := t.TempDir()
 	os.WriteFile(filepath.Join(dir, "has_foo.txt"), []byte("foo\n"), 0644)
 	os.WriteFile(filepath.Join(dir, "no_foo.txt"), []byte("bar\n"), 0644)
 
 	scanFilesWithoutMatch = true
-	res := runScanCmd(t, "foo", dir)
+	res := runScanCmd(t, cmd, "foo", dir)
 	if res.Total != 1 {
 		t.Errorf("expected 1 match (files without match), got %d", res.Total)
 	}

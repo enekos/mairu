@@ -14,13 +14,7 @@ var spliceTarget string
 var spliceReplaceWith string
 var spliceAddImport string
 
-func init() {
-	spliceCmd.Flags().StringVarP(&spliceTarget, "target", "t", "", "Symbol name to replace (e.g. calculateTotal)")
-	spliceCmd.Flags().StringVarP(&spliceReplaceWith, "replace-with", "r", "", "File containing the new code")
-	spliceCmd.Flags().StringVarP(&spliceAddImport, "add-import", "i", "", "Import statement to inject at the top of the file")
-	spliceCmd.MarkFlagRequired("target")
-	spliceCmd.MarkFlagRequired("replace-with")
-}
+
 
 func getSymbolBounds(lines []string, file string, symbol string) (int, int, error) {
 	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(symbol) + `\b`)
@@ -46,7 +40,8 @@ func getSymbolBounds(lines []string, file string, symbol string) (int, int, erro
 	return foundIdx, endIdx, nil
 }
 
-var spliceCmd = &cobra.Command{
+func NewSpliceCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "splice <file>",
 	Short: "AI-optimized AST-aware symbol replacer",
 	Args:  cobra.ExactArgs(1),
@@ -97,4 +92,11 @@ var spliceCmd = &cobra.Command{
 
 		fmt.Printf("Successfully spliced '%s' in %s (lines %d-%d replaced)\n", spliceTarget, file, startIdx+1, endIdx+1)
 	},
+}
+	cmd.Flags().StringVarP(&spliceTarget, "target", "t", "", "Symbol name to replace (e.g. calculateTotal)")
+	cmd.Flags().StringVarP(&spliceReplaceWith, "replace-with", "r", "", "File containing the new code")
+	cmd.Flags().StringVarP(&spliceAddImport, "add-import", "i", "", "Import statement to inject at the top of the file")
+		cmd.MarkFlagRequired("target")
+	cmd.MarkFlagRequired("replace-with")
+	return cmd
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newSummarizeCmd() *cobra.Command {
+func NewSummarizeCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "summarize <query>",
@@ -33,7 +33,7 @@ func newSummarizeCmd() *cobra.Command {
 	cmd.Flags().IntP("k", "k", 5, "Top K results")
 	return cmd
 }
-func newFlushCmd() *cobra.Command {
+func NewFlushCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "flush [prompt]",
@@ -51,7 +51,7 @@ func newFlushCmd() *cobra.Command {
 	cmd.Flags().IntP("k", "k", 5, "Top K results")
 	return cmd
 }
-func newNudgeCmd() *cobra.Command {
+func NewNudgeCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "nudge [prompt]",
@@ -69,7 +69,7 @@ func newNudgeCmd() *cobra.Command {
 	cmd.Flags().IntP("k", "k", 5, "Top K results")
 	return cmd
 }
-func newIngestCmd() *cobra.Command {
+func NewIngestCmd() *cobra.Command {
 	var project, baseURI, textStr string
 	var yes, noRouter bool
 

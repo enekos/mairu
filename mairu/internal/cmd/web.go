@@ -10,7 +10,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var webCmd = &cobra.Command{
+func NewWebCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "web",
 	Short: "Start the Mairu web interface",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -37,7 +38,8 @@ var webCmd = &cobra.Command{
 		}
 	},
 }
-
-func init() {
-	webCmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
+	cmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")
+	return cmd
 }
+
+

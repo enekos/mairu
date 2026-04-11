@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newLinearCmd() *cobra.Command {
+func NewLinearCmd() *cobra.Command {
 	var project string
 	var limit int
 	var state string

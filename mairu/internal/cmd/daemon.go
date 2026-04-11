@@ -45,7 +45,7 @@ func (remoteManager) DeleteContextNode(ctx context.Context, uri string) error {
 	return err
 }
 
-func newDaemonCmd() *cobra.Command {
+func NewDaemonCmd() *cobra.Command {
 	var project string
 	cmd := &cobra.Command{
 		Use:   "daemon [dir]",

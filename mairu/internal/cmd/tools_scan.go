@@ -40,28 +40,7 @@ var scanAfterContext int
 var scanMaxCount int
 var scanFilesWithoutMatch bool
 
-func init() {
-	scanCmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
-	scanCmd.Flags().IntVarP(&scanContext, "context", "C", 0, "Number of context lines around match")
-	scanCmd.Flags().IntVarP(&scanBeforeContext, "before-context", "B", 0, "Number of context lines before match")
-	scanCmd.Flags().IntVarP(&scanAfterContext, "after-context", "A", 0, "Number of context lines after match")
-	scanCmd.Flags().StringVarP(&scanExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
-	scanCmd.Flags().IntVarP(&scanLimit, "limit", "n", 0, "Max number of matches to return (0 = unlimited)")
-	scanCmd.Flags().IntVarP(&scanMaxCount, "max-count", "m", 0, "Max number of matches per file (0 = unlimited)")
-	scanCmd.Flags().BoolVarP(&scanIgnoreCase, "ignore-case", "i", false, "Case-insensitive search")
-	scanCmd.Flags().BoolVarP(&scanFilesOnly, "files-with-matches", "l", false, "Only print matching filenames")
-	scanCmd.Flags().BoolVarP(&scanFilesWithoutMatch, "files-without-match", "L", false, "Only print filenames that contain no matches")
-	scanCmd.Flags().BoolVarP(&scanHeading, "heading", "H", false, "Attempt to find nearest function/class heading above match")
-	scanCmd.Flags().StringVarP(&scanExclude, "exclude", "x", "", "Comma-separated glob patterns to exclude (e.g. vendor/*,*_test.go)")
-	scanCmd.Flags().BoolVarP(&scanGroup, "group", "g", false, "Group matches by file")
-	scanCmd.Flags().BoolVarP(&scanInvert, "invert", "v", false, "Invert match (select non-matching lines)")
-	scanCmd.Flags().StringVar(&scanMulti, "multi", "", "Additional patterns that must ALL match in the file (comma-separated, AND logic)")
-	scanCmd.Flags().BoolVarP(&scanFixedStrings, "fixed-strings", "F", false, "Treat the pattern as a literal string instead of a regular expression")
-	scanCmd.Flags().BoolVarP(&scanSmartCase, "smart-case", "S", false, "Search case insensitively if the pattern is all lowercase, case sensitively otherwise")
-	scanCmd.Flags().BoolVar(&scanHidden, "hidden", false, "Search hidden files and directories")
-	scanCmd.Flags().BoolVarP(&scanWordRegexp, "word-regexp", "w", false, "Only show matches surrounded by word boundaries")
-	scanCmd.Flags().BoolVarP(&scanOnlyMatching, "only-matching", "O", false, "Print only the matched (non-empty) parts of a matching line")
-}
+
 
 type scanMatch struct {
 	F       string `json:"f"`
@@ -86,7 +65,8 @@ type scanGroupedResult struct {
 	Grouped   map[string][]scanMatch `json:"grouped"`
 }
 
-var scanCmd = &cobra.Command{
+func NewScanCmd() *cobra.Command {
+	cmd := &cobra.Command{
 	Use:   "scan <regex> [dir]",
 	Short: "AI-optimized semantic search with token budget (JSON)",
 	Args:  cobra.MinimumNArgs(1),
@@ -624,4 +604,26 @@ var scanCmd = &cobra.Command{
 			}
 		}
 	},
+}
+	cmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")
+	cmd.Flags().IntVarP(&scanContext, "context", "C", 0, "Number of context lines around match")
+	cmd.Flags().IntVarP(&scanBeforeContext, "before-context", "B", 0, "Number of context lines before match")
+	cmd.Flags().IntVarP(&scanAfterContext, "after-context", "A", 0, "Number of context lines after match")
+	cmd.Flags().StringVarP(&scanExtensions, "ext", "e", "", "Comma-separated extensions to filter (e.g. .go,.ts)")
+	cmd.Flags().IntVarP(&scanLimit, "limit", "n", 0, "Max number of matches to return (0 = unlimited)")
+	cmd.Flags().IntVarP(&scanMaxCount, "max-count", "m", 0, "Max number of matches per file (0 = unlimited)")
+	cmd.Flags().BoolVarP(&scanIgnoreCase, "ignore-case", "i", false, "Case-insensitive search")
+	cmd.Flags().BoolVarP(&scanFilesOnly, "files-with-matches", "l", false, "Only print matching filenames")
+	cmd.Flags().BoolVarP(&scanFilesWithoutMatch, "files-without-match", "L", false, "Only print filenames that contain no matches")
+	cmd.Flags().BoolVarP(&scanHeading, "heading", "H", false, "Attempt to find nearest function/class heading above match")
+	cmd.Flags().StringVarP(&scanExclude, "exclude", "x", "", "Comma-separated glob patterns to exclude (e.g. vendor/*,*_test.go)")
+	cmd.Flags().BoolVarP(&scanGroup, "group", "g", false, "Group matches by file")
+	cmd.Flags().BoolVarP(&scanInvert, "invert", "v", false, "Invert match (select non-matching lines)")
+	cmd.Flags().StringVar(&scanMulti, "multi", "", "Additional patterns that must ALL match in the file (comma-separated, AND logic)")
+	cmd.Flags().BoolVarP(&scanFixedStrings, "fixed-strings", "F", false, "Treat the pattern as a literal string instead of a regular expression")
+	cmd.Flags().BoolVarP(&scanSmartCase, "smart-case", "S", false, "Search case insensitively if the pattern is all lowercase, case sensitively otherwise")
+	cmd.Flags().BoolVar(&scanHidden, "hidden", false, "Search hidden files and directories")
+	cmd.Flags().BoolVarP(&scanWordRegexp, "word-regexp", "w", false, "Only show matches surrounded by word boundaries")
+	cmd.Flags().BoolVarP(&scanOnlyMatching, "only-matching", "O", false, "Print only the matched (non-empty) parts of a matching line")
+	return cmd
 }
