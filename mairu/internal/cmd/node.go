@@ -87,7 +87,7 @@ func NewNodeCmd() *cobra.Command {
 		},
 	}
 	storeCmd.Flags().StringP("parent", "p", "", "Parent URI")
-	storeCmd.Flags().StringP("overview", "o", "", "Overview content")
+	storeCmd.Flags().String("overview", "", "Overview content")
 	storeCmd.Flags().StringP("content", "c", "", "Detailed content")
 
 	addCmd := &cobra.Command{
@@ -103,7 +103,7 @@ func NewNodeCmd() *cobra.Command {
 		},
 	}
 	addCmd.Flags().StringP("parent", "p", "", "Parent URI")
-	addCmd.Flags().StringP("overview", "o", "", "Overview content")
+	addCmd.Flags().String("overview", "", "Overview content")
 	addCmd.Flags().StringP("content", "c", "", "Detailed content")
 
 	listCmd := &cobra.Command{

@@ -15,8 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	ignore "github.com/sabhiram/go-gitignore"
 	"github.com/spf13/cobra"
+	"mairu/internal/fsutil"
 )
 
 var mapDepth int
@@ -42,10 +42,7 @@ func NewMapCmd() *cobra.Command {
 				dir = args[0]
 			}
 
-			var ignorer *ignore.GitIgnore
-			if gi, err := ignore.CompileIgnoreFile(filepath.Join(dir, ".gitignore")); err == nil {
-				ignorer = gi
-			}
+			ignorer := fsutil.NewProjectIgnorer(dir)
 
 			allowedExts := make(map[string]bool)
 			if mapExtensions != "" {
@@ -79,7 +76,7 @@ func NewMapCmd() *cobra.Command {
 				if rel == ".git" || rel == "node_modules" {
 					return filepath.SkipDir
 				}
-				if ignorer != nil && ignorer.MatchesPath(rel) {
+				if ignorer != nil && ignorer.IsIgnored(path) {
 					if d.IsDir() {
 						return filepath.SkipDir
 					}

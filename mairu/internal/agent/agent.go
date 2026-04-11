@@ -38,8 +38,9 @@ type Agent struct {
 
 	Unattended bool
 
-	historyLogger HistoryLogger
-	interceptors  []ToolInterceptor
+	historyLogger   HistoryLogger
+	interceptors    []ToolInterceptor
+	AgentSystemData map[string]any
 
 	mu           sync.Mutex
 	cancel       context.CancelFunc
@@ -47,11 +48,12 @@ type Agent struct {
 }
 
 type Config struct {
-	SymbolLocator SymbolLocator
-	Unattended    bool
-	HistoryLogger HistoryLogger
-	Interceptors  []ToolInterceptor
-	UTCPProviders []string
+	SymbolLocator   SymbolLocator
+	Unattended      bool
+	HistoryLogger   HistoryLogger
+	Interceptors    []ToolInterceptor
+	UTCPProviders   []string
+	AgentSystemData map[string]any
 }
 
 func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
@@ -86,17 +88,18 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 	}
 
 	return &Agent{
-		llm:           llmProvider,
-		locator:       locator,
-		root:          projectRoot,
-		currentDir:    projectRoot,
-		apiKey:        apiKey,
-		stuckDetector: NewStuckDetector(),
-		utcp:          utcpManager,
-		Unattended:    unattended,
-		historyLogger: historyLogger,
-		interceptors:  interceptors,
-		approvalChan:  make(chan bool),
+		llm:             llmProvider,
+		locator:         locator,
+		root:            projectRoot,
+		currentDir:      projectRoot,
+		apiKey:          apiKey,
+		stuckDetector:   NewStuckDetector(),
+		utcp:            utcpManager,
+		Unattended:      unattended,
+		historyLogger:   historyLogger,
+		interceptors:    interceptors,
+		AgentSystemData: cfg[0].AgentSystemData,
+		approvalChan:    make(chan bool),
 	}, nil
 }
 
@@ -190,7 +193,7 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 
 	fullPrompt := prompt
 	if a.llm.IsNewSession() {
-		systemPrompt := prompts.Render("agent_system", nil)
+		systemPrompt := prompts.Render("agent_system", a.AgentSystemData)
 
 		contextFiles := a.loadContextFiles()
 		if contextFiles != "" {
