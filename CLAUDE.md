@@ -223,8 +223,14 @@ Agents are encouraged to use the `mairu` binary for token-dense, strictly parsab
 - `mairu info [dir]` -> Repository analytics (token sizes, file counts, extensions)
 - `mairu env [file] -r` -> Smart env reader. Extracts keys, flags secrets (`is_secret: true`), and safely reveals non-sensitive config values (booleans, ports)
 
-### Extended Namespaces (Code Analysis & Scraping)
+### Extended Namespaces (Code Analysis, Scraping & History)
 Mairu commands are grouped into logical namespaces.
+
+**Bash Command History (`mairu history`)**
+Agents can query the developer's bash history to understand previous commands, outputs, and workflows:
+- `mairu history search "test fail"` -> Semantically search past bash commands and their outputs.
+- `mairu history stats` -> Show the most frequently run bash commands.
+- `mairu history feedback <id> -r 10` -> Apply reinforcement learning feedback to a command execution.
 
 **Code Analysis (`mairu analyze`)**
 - `mairu analyze diff` -> Analyzes blast radius of current git changes.
@@ -331,6 +337,34 @@ Global Flags:
       --verbose         Show extra details (timing, weights, query plan)
 
 Use "mairu analyze [command] --help" for more information about a command.
+
+```
+</details>
+
+<details>
+<summary>History Commands (`mairu history`)</summary>
+
+```
+Manage and search your bash command history
+
+Usage:
+  mairu history [command]
+
+Available Commands:
+  feedback    Apply reinforcement learning feedback to a bash history item (reward 1-10)
+  search      Semantically search past bash commands and outputs
+  stats       Show the most frequently run bash commands
+
+Flags:
+  -h, --help   help for history
+
+Global Flags:
+      --debug           Enable debug logging
+  -o, --output string   Output format: table, json, plain (default "table")
+      --quiet           Only output results, no status messages
+      --verbose         Show extra details (timing, weights, query plan)
+
+Use "mairu history [command] --help" for more information about a command.
 
 ```
 </details>
