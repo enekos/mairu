@@ -1,27 +1,11 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"strconv"
 
 	"github.com/spf13/cobra"
 )
-
-func runMemoryStore(project, content, category, owner string, importance int) error {
-	out, err := ContextPost("/api/memories", map[string]any{
-		"project":    project,
-		"content":    content,
-		"category":   category,
-		"owner":      owner,
-		"importance": importance,
-	})
-	if err != nil {
-		return err
-	}
-	PrintJSON(out)
-	return nil
-}
 
 func NewMemoryCmd() *cobra.Command {
 	var project string
@@ -41,27 +25,13 @@ func NewMemoryCmd() *cobra.Command {
 				return err
 			}
 
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out) // fallback
-					return nil
+			printSearchOrListResults(out, []string{"score", "category", "content"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"score":    fmt.Sprintf("%.2f", item["_rankingScore"]),
+					"category": fmt.Sprintf("%v", item["category"]),
+					"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"score", "category", "content"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"score":    fmt.Sprintf("%.2f", item["_rankingScore"]),
-							"category": fmt.Sprintf("%v", item["category"]),
-							"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}
@@ -75,7 +45,7 @@ func NewMemoryCmd() *cobra.Command {
 			category, _ := cmd.Flags().GetString("category")
 			owner, _ := cmd.Flags().GetString("owner")
 			importance, _ := cmd.Flags().GetInt("importance")
-			return runMemoryStore(project, args[0], category, owner, importance)
+			return RunMemoryStore(project, args[0], category, owner, importance)
 		},
 	}
 	storeCmd.Flags().StringP("category", "c", "observation", "Memory category")
@@ -91,7 +61,7 @@ func NewMemoryCmd() *cobra.Command {
 			category, _ := cmd.Flags().GetString("category")
 			owner, _ := cmd.Flags().GetString("owner")
 			importance, _ := cmd.Flags().GetInt("importance")
-			return runMemoryStore(project, args[0], category, owner, importance)
+			return RunMemoryStore(project, args[0], category, owner, importance)
 		},
 	}
 	addCmd.Flags().StringP("category", "c", "observation", "Memory category")
@@ -111,27 +81,13 @@ func NewMemoryCmd() *cobra.Command {
 				return err
 			}
 
-			if outputFormat == "json" || outputFormat == "" {
-				PrintJSON(out)
-			} else {
-				var results []map[string]any
-				if err := json.Unmarshal(out, &results); err != nil {
-					PrintJSON(out) // fallback
-					return nil
+			printSearchOrListResults(out, []string{"id", "category", "content"}, func(item map[string]any) map[string]string {
+				return map[string]string{
+					"id":       fmt.Sprintf("%v", item["id"]),
+					"category": fmt.Sprintf("%v", item["category"]),
+					"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
 				}
-				f := GetFormatter()
-				f.PrintItems(
-					[]string{"id", "category", "content"},
-					results,
-					func(item map[string]any) map[string]string {
-						return map[string]string{
-							"id":       fmt.Sprintf("%v", item["id"]),
-							"category": fmt.Sprintf("%v", item["category"]),
-							"content":  Truncate(fmt.Sprintf("%v", item["content"]), 80),
-						}
-					},
-				)
-			}
+			})
 			return nil
 		},
 	}

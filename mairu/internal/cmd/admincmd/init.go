@@ -1,4 +1,4 @@
-package cmd
+package admincmd
 
 import (
 	"bufio"
@@ -72,7 +72,7 @@ func runInitWizard(target, cwd string) error {
 		b.WriteString("# debounce = \"200ms\"\n\n")
 	}
 
-	if err := os.WriteFile(target, []byte(b.String()), 0644); err != nil {
+	if err := os.WriteFile(target, []byte(b.String()), 0o644); err != nil {
 		return fmt.Errorf("write .mairu.toml: %w", err)
 	}
 
@@ -83,12 +83,9 @@ func runInitWizard(target, cwd string) error {
 
 func writeMinimalConfig(target, projectName string) error {
 	content := fmt.Sprintf("# Mairu project config for %s\n", projectName)
-	if err := os.WriteFile(target, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
 		return fmt.Errorf("write .mairu.toml: %w", err)
 	}
 	fmt.Printf("Created %s\n", target)
 	return nil
-}
-
-func init() {
 }

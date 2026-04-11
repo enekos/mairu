@@ -221,6 +221,3 @@ func printConfigWithOrigin(f *Formatter) error {
 	f.PrintTable([]string{"key", "value", "origin"}, rows)
 	return nil
 }
-
-func init() {
-}

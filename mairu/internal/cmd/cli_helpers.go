@@ -5,6 +5,29 @@ import (
 	"sort"
 )
 
+func prefersJSONOutput() bool {
+	return outputFormat == "" || outputFormat == "json"
+}
+
+func printSearchOrListResults(
+	out []byte,
+	columns []string,
+	rowFn func(map[string]any) map[string]string,
+) {
+	if prefersJSONOutput() {
+		PrintJSON(out)
+		return
+	}
+
+	var results []map[string]any
+	if err := json.Unmarshal(out, &results); err != nil {
+		PrintJSON(out)
+		return
+	}
+
+	GetFormatter().PrintItems(columns, results, rowFn)
+}
+
 func RunNodeStore(project, uri, name, abstract, parent, overview, content string) error {
 	out, err := StoreNodeRaw(project, uri, name, abstract, parent, overview, content)
 	if err != nil {
