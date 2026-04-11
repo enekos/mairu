@@ -27,11 +27,18 @@ func TestNormalizeConfig_NoInputReturnsZeroConfig(t *testing.T) {
 	if got.AgentSystemData != nil {
 		t.Fatalf("expected nil AgentSystemData")
 	}
+	if got.Council.Enabled {
+		t.Fatalf("expected council disabled by default")
+	}
+	if len(got.Council.Roles) != 0 {
+		t.Fatalf("expected empty Council roles in zero config")
+	}
 }
 
 func TestNormalizeConfig_ClonesSlicesAndMaps(t *testing.T) {
 	source := Config{
 		Unattended:      true,
+		Council:         CouncilConfig{Enabled: true, Roles: []CouncilRole{{Name: "Role A", Goal: "Goal A"}}},
 		HistoryLogger:   nil,
 		Interceptors:    []ToolInterceptor{noopInterceptor{}},
 		UTCPProviders:   []string{"provider-a"},
@@ -42,6 +49,7 @@ func TestNormalizeConfig_ClonesSlicesAndMaps(t *testing.T) {
 	source.UTCPProviders[0] = "changed"
 	source.AgentSystemData["cli_help"] = "y"
 	source.Interceptors = nil
+	source.Council.Roles[0].Name = "Mutated"
 
 	if got.UTCPProviders[0] != "provider-a" {
 		t.Fatalf("expected copied UTCPProviders to stay unchanged, got %q", got.UTCPProviders[0])
@@ -52,11 +60,21 @@ func TestNormalizeConfig_ClonesSlicesAndMaps(t *testing.T) {
 	if len(got.Interceptors) != 1 {
 		t.Fatalf("expected copied Interceptors to remain populated")
 	}
+	if !got.Council.Enabled {
+		t.Fatalf("expected copied Council.Enabled to remain true")
+	}
+	if got.Council.Roles[0].Name != "Role A" {
+		t.Fatalf("expected copied Council roles to stay unchanged, got %q", got.Council.Roles[0].Name)
+	}
 }
 
 func TestChildConfig_ClonesParentConfig(t *testing.T) {
 	parent := &Agent{
 		Unattended: true,
+		council: CouncilConfig{
+			Enabled: true,
+			Roles:   []CouncilRole{{Name: "Role A", Goal: "Goal A"}},
+		},
 		interceptors: []ToolInterceptor{
 			noopInterceptor{},
 		},
@@ -68,6 +86,7 @@ func TestChildConfig_ClonesParentConfig(t *testing.T) {
 	parent.utcpProviders[0] = "changed"
 	parent.AgentSystemData["k"] = "mutated"
 	parent.interceptors = nil
+	parent.council.Roles[0].Name = "Mutated"
 
 	if child.Unattended != true {
 		t.Fatalf("expected unattended to propagate")
@@ -80,6 +99,12 @@ func TestChildConfig_ClonesParentConfig(t *testing.T) {
 	}
 	if len(child.Interceptors) != 1 {
 		t.Fatalf("expected copied Interceptors to remain populated")
+	}
+	if !child.Council.Enabled {
+		t.Fatalf("expected council enabled to propagate")
+	}
+	if child.Council.Roles[0].Name != "Role A" {
+		t.Fatalf("expected copied Council roles, got %q", child.Council.Roles[0].Name)
 	}
 
 	_, _ = noopInterceptor{}.PreExecute(ToolContext{Context: context.Background()}, "tool", map[string]any{})

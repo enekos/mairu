@@ -27,7 +27,25 @@ go build -C mairu -o bin/mairu ./cmd/mairu
 ./mairu/bin/mairu tui
 ./mairu/bin/mairu web -p 8080
 ./mairu/bin/mairu context-server -p 8788
+```
 
+## Council Mode
+
+Mairu features **Council Mode**, an architectural orchestration layer where a panel of specialized agents (Architect, App Developer, Security, Tests Evangelist) collaborate on your task to ensure high code quality.
+
+### Quick Start
+
+Run an automated coding task using Council Mode:
+
+```bash
+./mairu/bin/mairu minion --council
+```
+
+Inside the TUI, use `/council status` to inspect current agent coordination. See `docs/COUNCIL.md` for role definitions and performance implications.
+
+## Run (Detailed)
+
+```bash
 # Go-native ContextFS commands (use -P for project)
 ./mairu/bin/mairu memory search "auth token" -P my-project -k 5
 ./mairu/bin/mairu memory store "we use Postgres for context server" -P my-project -c observation -o agent -i 5

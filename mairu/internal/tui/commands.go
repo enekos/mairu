@@ -42,6 +42,7 @@ var allSlashCommands = []SlashCommand{
 	{"/jump", "Jump to message number n"},
 	{"/approve", "Approve pending agent action"},
 	{"/deny", "Deny pending agent action"},
+	{"/council", "Council mode control: /council on|off|status"},
 	{"/exit", "Exit Mairu"},
 	{"/quit", "Exit Mairu"},
 }

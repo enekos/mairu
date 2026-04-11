@@ -548,6 +548,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.renderMessages()
 					m.viewport.GotoBottom()
 					return m, nil
+				case "/council":
+					if len(cmdParts) < 2 {
+						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /council <on|off|status>"})
+						m.renderMessages()
+						m.viewport.GotoBottom()
+						return m, nil
+					}
+					switch strings.ToLower(cmdParts[1]) {
+					case "on":
+						m.agent.SetCouncilEnabled(true)
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Council mode enabled."})
+					case "off":
+						m.agent.SetCouncilEnabled(false)
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Council mode disabled."})
+					case "status":
+						status := "disabled"
+						if m.agent.IsCouncilEnabled() {
+							status = "enabled"
+						}
+						m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Council mode is currently " + status + "."})
+					default:
+						m.messages = append(m.messages, ChatMessage{Role: "Error", Content: "Usage: /council <on|off|status>"})
+					}
+					m.renderMessages()
+					m.viewport.GotoBottom()
+					return m, nil
 				case "/clear":
 					m.messages = []ChatMessage{{Role: "System", Content: "Terminal cleared."}}
 					m.renderMessages()
@@ -573,6 +599,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 - /export <file>: Export conversation to a file
 - /approve: Approve pending agent action
 - /deny: Deny pending agent action
+- /council <on|off|status>: Toggle council expert review mode
 - /graph: Interactive Context Graph Explorer
 - /data: Interactive Workspace Data Explorer
 - /explore: Toggle explore sidebar (message navigator + tool drilldown)

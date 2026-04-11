@@ -38,6 +38,7 @@ type Agent struct {
 	utcpProviders []string
 
 	Unattended bool
+	council    CouncilConfig
 
 	historyLogger   HistoryLogger
 	interceptors    []ToolInterceptor
@@ -51,6 +52,7 @@ type Agent struct {
 type Config struct {
 	SymbolLocator   SymbolLocator
 	Unattended      bool
+	Council         CouncilConfig
 	HistoryLogger   HistoryLogger
 	Interceptors    []ToolInterceptor
 	UTCPProviders   []string
@@ -62,6 +64,7 @@ func normalizeConfig(cfg ...Config) Config {
 		return Config{}
 	}
 	resolved := cfg[0]
+	resolved.Council.Roles = append([]CouncilRole(nil), resolved.Council.Roles...)
 	resolved.Interceptors = append([]ToolInterceptor(nil), resolved.Interceptors...)
 	resolved.UTCPProviders = append([]string(nil), resolved.UTCPProviders...)
 	if resolved.AgentSystemData != nil {
@@ -103,6 +106,7 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 		utcp:            utcpManager,
 		utcpProviders:   resolved.UTCPProviders,
 		Unattended:      resolved.Unattended,
+		council:         resolved.Council.withDefaults(),
 		historyLogger:   resolved.HistoryLogger,
 		interceptors:    resolved.Interceptors,
 		AgentSystemData: resolved.AgentSystemData,
@@ -114,6 +118,7 @@ func (a *Agent) childConfig() Config {
 	return normalizeConfig(Config{
 		SymbolLocator:   a.locator,
 		Unattended:      a.Unattended,
+		Council:         a.council,
 		HistoryLogger:   a.historyLogger,
 		Interceptors:    a.interceptors,
 		UTCPProviders:   a.utcpProviders,
@@ -153,6 +158,18 @@ func (a *Agent) GetRoot() string {
 
 func (a *Agent) SetModel(modelName string) {
 	a.llm.SetModel(modelName)
+}
+
+func (a *Agent) SetCouncilEnabled(enabled bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.council.Enabled = enabled
+}
+
+func (a *Agent) IsCouncilEnabled() bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return a.council.Enabled
 }
 
 type AgentEvent struct {
@@ -210,6 +227,14 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 	a.stuckDetector.Reset()
 
 	fullPrompt := prompt
+	if a.IsCouncilEnabled() {
+		synthesized, err := a.runCouncil(outChan, prompt)
+		if err != nil {
+			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Council fallback: %v", err)}
+		} else {
+			fullPrompt = synthesized
+		}
+	}
 	if a.llm.IsNewSession() {
 		systemPrompt, err := prompts.GetForProject("agent_system", a.AgentSystemData, a.root)
 		if err != nil {
