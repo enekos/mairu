@@ -22,6 +22,11 @@ jobs:
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'agent-fix')) ||
       (github.event_name == 'issue_comment' && startsWith(github.event.comment.body, '/mairu'))
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MEILI_URL: http://localhost:7700
+      MEILI_API_KEY: test_key_for_ci
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     services:
       meilisearch:
@@ -49,22 +54,9 @@ jobs:
           go build -o ../mairu_bin ./cmd/mairu
           sudo mv ../mairu_bin /usr/local/bin/mairu
 
-      - name: Setup environment
-        run: |
-          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "MEILI_URL=http://localhost:7700" >> $GITHUB_ENV
-          echo "MEILI_API_KEY=test_key_for_ci" >> $GITHUB_ENV
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-
-      - name: Initialize Mairu Database
-        run: mairu setup
-        working-directory: mairu
-
       - name: Ingest Codebase
         run: mairu daemon .. -P default
         working-directory: mairu
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Configure Git User
         run: |
@@ -76,13 +68,15 @@ jobs:
         run: |
           mairu minion --github-issue ${{ github.event.issue.number }} "Address the issue described."
         working-directory: mairu
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   pr-reviewer-on-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      MEILI_URL: http://localhost:7700
+      MEILI_API_KEY: test_key_for_ci
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
     services:
       meilisearch:
@@ -109,23 +103,6 @@ jobs:
           cd mairu
           go build -o ../mairu_bin ./cmd/mairu
           sudo mv ../mairu_bin /usr/local/bin/mairu
-
-      - name: Setup environment
-        run: |
-          echo "GH_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
-          echo "MEILI_URL=http://localhost:7700" >> $GITHUB_ENV
-          echo "MEILI_API_KEY=test_key_for_ci" >> $GITHUB_ENV
-          echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> $GITHUB_ENV
-
-      - name: Initialize Mairu Database
-        run: mairu setup
-        working-directory: mairu
-
-      - name: Ingest Codebase
-        run: mairu daemon .. -P default
-        working-directory: mairu
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Resolve PR for pushed branch
         id: pr
@@ -140,14 +117,16 @@ jobs:
           echo "number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
           echo "Found PR #$PR_NUMBER for branch '${{ github.ref_name }}'."
 
+      - name: Start tree-sitter daemon ingestion
+        if: steps.pr.outputs.found == 'true'
+        run: mairu daemon .. -P default
+        working-directory: mairu
+
       - name: Run Minion PR Reviewer Council
         if: steps.pr.outputs.found == 'true'
         run: |
           mairu minion --pr-review-only --github-pr "${{ steps.pr.outputs.number }}"
         working-directory: mairu
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run Mairu on PR Comment
         if: github.event.issue != null && github.event.issue.pull_request != null
@@ -156,6 +135,3 @@ jobs:
           gh pr checkout ${{ github.event.issue.number }}
           mairu minion --github-pr ${{ github.event.issue.number }} "Address the feedback in the comments."
         working-directory: mairu
-        env:
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
