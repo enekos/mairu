@@ -19,7 +19,6 @@ type UTCPManager struct {
 	transport     *transports.HttpClientTransport
 	schemaCache   *lru.Cache[string, []tools.Tool]
 	providerCache *lru.Cache[string, *http.HttpProvider]
-	mu            sync.RWMutex
 }
 
 func NewUTCPManager(providersList []string) (*UTCPManager, error) {

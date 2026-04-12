@@ -58,13 +58,6 @@ func (f *localServiceFactory) init() {
 	f.app = app
 }
 
-func (f *localServiceFactory) service() contextsrv.Service {
-	f.init()
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.app.Service()
-}
-
 func (f *localServiceFactory) handler() http.Handler {
 	f.init()
 	f.mu.Lock()
@@ -97,10 +90,6 @@ func (f *localServiceFactory) getApp() *contextsrv.App {
 }
 
 var localFactory localServiceFactory
-
-func getLocalService() contextsrv.Service {
-	return localFactory.service()
-}
 
 func getLocalHandler() http.Handler {
 	return localFactory.handler()
