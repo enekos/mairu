@@ -38,6 +38,8 @@ declare namespace Preferences {
   export type AnalyzeDiff = ExtensionPreferences & {}
   /** Preferences accessible in the `analyze-graph` command */
   export type AnalyzeGraph = ExtensionPreferences & {}
+  /** Preferences accessible in the `menubar-status` command */
+  export type MenubarStatus = ExtensionPreferences & {}
 }
 
 declare namespace Arguments {
@@ -61,5 +63,7 @@ declare namespace Arguments {
   export type AnalyzeDiff = {}
   /** Arguments passed to the `analyze-graph` command */
   export type AnalyzeGraph = {}
+  /** Arguments passed to the `menubar-status` command */
+  export type MenubarStatus = {}
 }
 

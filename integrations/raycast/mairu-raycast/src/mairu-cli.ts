@@ -28,11 +28,14 @@ export async function runMairuCmd(
       "/usr/local/bin",
       "/opt/homebrew/bin",
       `${process.env.HOME}/go/bin`,
-      `${process.env.HOME}/.local/bin`
+      `${process.env.HOME}/.local/bin`,
     ].join(":");
 
     const { stdout, stderr } = await execAsync(fullCmd, {
-      env: { ...process.env, PATH: `${process.env.PATH || ""}:${defaultPaths}` },
+      env: {
+        ...process.env,
+        PATH: `${process.env.PATH || ""}:${defaultPaths}`,
+      },
       cwd: cwd || process.cwd(),
     });
     if (stderr && !stdout) {
@@ -40,11 +43,13 @@ export async function runMairuCmd(
     }
     return stdout;
   } catch (error: Error | unknown) {
-    const err = error as any;
+    const err = error as { message?: string; code?: number | string; stdout?: string };
     console.error(`Error running mairu: ${err.message}`);
-    
-    if (err.code === 127 || err.message.includes("command not found")) {
-      throw new Error(`Mairu CLI not found. Please set the absolute path to the 'mairu' executable in the Raycast extension preferences (e.g., /usr/local/bin/mairu or /Users/username/go/bin/mairu).`);
+
+    if (err.code === 127 || (err.message && err.message.includes("command not found"))) {
+      throw new Error(
+        `Mairu CLI not found. Please set the absolute path to the 'mairu' executable in the Raycast extension preferences (e.g., /usr/local/bin/mairu or /Users/username/go/bin/mairu).`,
+      );
     }
 
     if (err.stdout) {

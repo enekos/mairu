@@ -2,7 +2,11 @@ import { Form, ActionPanel, Action, showToast, Toast } from "@raycast/api";
 import { useState } from "react";
 import { runMairuCmd } from "./mairu-cli";
 
-export default function Command() {
+export default function Command({
+  initialContent = "",
+}: {
+  initialContent?: string;
+}) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(values: {
@@ -40,6 +44,7 @@ export default function Command() {
         id="content"
         title="Content"
         placeholder="Memory content..."
+        defaultValue={initialContent}
       />
       <Form.TextField
         id="category"

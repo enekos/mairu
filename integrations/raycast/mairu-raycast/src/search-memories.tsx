@@ -1,6 +1,7 @@
-import { ActionPanel, Action, List } from "@raycast/api";
+import { ActionPanel, Action, List, Icon } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { runMairuCmd } from "./mairu-cli";
+import StoreMemory from "./store-memory";
 
 interface Memory {
   id: string;
@@ -48,6 +49,21 @@ export default function Command() {
       searchBarPlaceholder="Search memories..."
       throttle
     >
+      {memories.length === 0 && searchText.length > 0 && !isLoading && (
+        <List.EmptyView
+          title="No memories found"
+          description="Press Enter to store this as a new memory"
+          actions={
+            <ActionPanel>
+              <Action.Push
+                title="Store New Memory"
+                icon={Icon.Plus}
+                target={<StoreMemory initialContent={searchText} />}
+              />
+            </ActionPanel>
+          }
+        />
+      )}
       {memories.map((memory) => (
         <List.Item
           key={memory.id}
@@ -60,6 +76,12 @@ export default function Command() {
                 content={memory.content}
               />
               <Action.CopyToClipboard title="Copy Id" content={memory.id} />
+              <Action.Push
+                title="Store New Memory"
+                icon={Icon.Plus}
+                target={<StoreMemory initialContent={searchText} />}
+                shortcut={{ modifiers: ["cmd"], key: "n" }}
+              />
             </ActionPanel>
           }
         />

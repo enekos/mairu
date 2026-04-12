@@ -1,6 +1,7 @@
-import { ActionPanel, Action, List } from "@raycast/api";
+import { ActionPanel, Action, List, Icon } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { runMairuCmd } from "./mairu-cli";
+import ScrapeWeb from "./scrape-web";
 
 interface ContextNode {
   uri: string;
@@ -49,6 +50,21 @@ export default function Command() {
       searchBarPlaceholder="Search context nodes..."
       throttle
     >
+      {nodes.length === 0 && searchText.length > 0 && !isLoading && (
+        <List.EmptyView
+          title="No nodes found"
+          description="Press Enter to scrape this as a URL if it is one"
+          actions={
+            <ActionPanel>
+              <Action.Push
+                title="Scrape Web URL"
+                icon={Icon.Globe}
+                target={<ScrapeWeb initialUrl={searchText} />}
+              />
+            </ActionPanel>
+          }
+        />
+      )}
       {nodes.map((node) => (
         <List.Item
           key={node.uri}
@@ -64,6 +80,12 @@ export default function Command() {
               <Action.CopyToClipboard
                 title="Copy Abstract"
                 content={node.abstract}
+              />
+              <Action.Push
+                title="Scrape Web URL"
+                icon={Icon.Globe}
+                target={<ScrapeWeb initialUrl={searchText} />}
+                shortcut={{ modifiers: ["cmd"], key: "s" }}
               />
             </ActionPanel>
           }

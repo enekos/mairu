@@ -2,7 +2,7 @@ import { Form, ActionPanel, Action, showToast, Toast } from "@raycast/api";
 import { useState } from "react";
 import { runMairuCmd } from "./mairu-cli";
 
-export default function Command() {
+export default function Command({ initialUrl = "" }: { initialUrl?: string }) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function handleSubmit(values: { url: string; maxDepth: string }) {
@@ -42,7 +42,12 @@ export default function Command() {
         </ActionPanel>
       }
     >
-      <Form.TextField id="url" title="URL" placeholder="https://example.com" />
+      <Form.TextField
+        id="url"
+        title="URL"
+        placeholder="https://example.com"
+        defaultValue={initialUrl}
+      />
       <Form.TextField
         id="maxDepth"
         title="Max Depth"
