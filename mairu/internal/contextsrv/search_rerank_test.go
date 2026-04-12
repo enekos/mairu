@@ -17,6 +17,7 @@ func TestScoreHybrid_RecencyAndImportanceAffectOrdering(t *testing.T) {
 		tokens,
 		time.Now().Add(-1*time.Hour),
 		1,
+		0.0,
 		opts,
 		defaultMemoryWeights(nil),
 	)
@@ -25,6 +26,7 @@ func TestScoreHybrid_RecencyAndImportanceAffectOrdering(t *testing.T) {
 		tokens,
 		time.Now().Add(-60*24*time.Hour),
 		10,
+		0.0,
 		opts,
 		defaultMemoryWeights(nil),
 	)

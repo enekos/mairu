@@ -74,11 +74,7 @@ func Get(name string, data any) (string, error) {
 	return GetForProject(name, data, cwd)
 }
 
-// Render is a convenience function that panics on error, useful for static prompts or when you know the template is valid.
-func Render(name string, data any) string {
-	res, err := Get(name, data)
-	if err != nil {
-		panic(err)
-	}
-	return res
+// Render is a convenience wrapper around Get.
+func Render(name string, data any) (string, error) {
+	return Get(name, data)
 }

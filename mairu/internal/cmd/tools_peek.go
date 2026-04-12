@@ -70,95 +70,20 @@ func extractSymbol(lines []string, file string, symbol string, numbered bool) pe
 	}
 }
 
-func extractByBracket(lines []string, foundIdx int) int {
-	openBrackets := 0
-	startedBrackets := false
-	endIdx := foundIdx
-
-	for i := foundIdx; i < len(lines); i++ {
-		endIdx = i
-		openBrackets += strings.Count(lines[i], "{")
-		openBrackets -= strings.Count(lines[i], "}")
-
-		if strings.Contains(lines[i], "{") {
-			startedBrackets = true
-		}
-
-		if startedBrackets && openBrackets <= 0 {
-			break
-		}
-		if !startedBrackets && i-foundIdx > 10 {
-			break
-		}
-		if i-foundIdx > 500 {
-			break
-		}
-	}
-	return endIdx
-}
-
-func extractByIndent(lines []string, startIdx int) int {
-	baseIndent := indentLevel(lines[startIdx])
-	endIdx := startIdx
-	for i := startIdx + 1; i < len(lines); i++ {
-		line := lines[i]
-		if strings.TrimSpace(line) == "" {
-			endIdx = i
-			continue
-		}
-		if indentLevel(line) > baseIndent {
-			endIdx = i
-		} else {
-			break
-		}
-		if i-startIdx > 500 {
-			break
-		}
-	}
-	return endIdx
-}
-
-func indentLevel(line string) int {
-	n := 0
-	for _, ch := range line {
-		if ch == ' ' {
-			n++
-		} else if ch == '\t' {
-			n += 4
-		} else {
-			break
-		}
-	}
-	return n
-}
-
-func formatSnippet(lines []string, startLine int, numbered bool) string {
-	if !numbered {
-		return strings.Join(lines, "\n")
-	}
-	var out []string
-	for i, line := range lines {
-		out = append(out, fmt.Sprintf("%d: %s", startLine+i, line))
-	}
-	return strings.Join(out, "\n")
-}
-
 func NewPeekCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "peek <file>",
 		Short: "AI-optimized file peeker (JSON)",
 		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			file := args[0]
 			contentBytes, err := os.ReadFile(file)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error: %w", err)
 			}
 
 			if peekLines == "" && peekSymbol == "" {
-				fmt.Fprintf(os.Stderr, "error: --lines (-l) or --symbol (-s) flag is required for peek\n")
-				os.Exit(1)
+				return fmt.Errorf("error: --lines (-l) or --symbol (-s) flag is required for peek")
 			}
 
 			lines := strings.Split(string(contentBytes), "\n")
@@ -167,14 +92,15 @@ func NewPeekCmd() *cobra.Command {
 				// Line range extraction (unchanged logic)
 				parts := strings.Split(peekLines, "-")
 				if len(parts) != 2 {
-					fmt.Fprintf(os.Stderr, "error: invalid lines format, expected N-M\n")
-					os.Exit(1)
+					return fmt.Errorf("error: invalid lines format, expected N-M")
 				}
 				start, err := strconv.Atoi(parts[0])
-				end, _ := strconv.Atoi(parts[1])
+				if err != nil {
+					return fmt.Errorf("error: invalid line range")
+				}
+				end, err := strconv.Atoi(parts[1])
 				if err != nil || start < 1 || end < start {
-					fmt.Fprintf(os.Stderr, "error: invalid line range\n")
-					os.Exit(1)
+					return fmt.Errorf("error: invalid line range")
 				}
 				if start > len(lines) {
 					start = len(lines)
@@ -188,7 +114,7 @@ func NewPeekCmd() *cobra.Command {
 				res := peekResult{F: file, Lines: peekLines, Content: content}
 				out, _ := json.Marshal(res)
 				fmt.Println(string(out))
-				return
+				return nil
 			}
 
 			// Symbol extraction
@@ -205,6 +131,7 @@ func NewPeekCmd() *cobra.Command {
 				out, _ := json.Marshal(results)
 				fmt.Println(string(out))
 			}
+			return nil
 		},
 	}
 	cmd.Flags().StringVarP(&peekLines, "lines", "l", "", "Line range to peek (e.g. 10-20)")

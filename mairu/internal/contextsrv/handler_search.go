@@ -8,19 +8,14 @@ import (
 func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query().Get("q")
 	if query == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "q parameter required"})
+		writeJSONErrorString(w, http.StatusBadRequest, "q parameter required")
 		return
 	}
 	topK := intParam(r.URL.Query().Get("topK"), 10)
-	store := (func() string {
-		v := r.URL.Query().Get("type")
-		if v == "" {
-			return "all"
-		}
-		return v
-	})()
+	store := r.URL.Query().Get("type")
+	if store == "" {
+		store = "all"
+	}
 	out, err := h.svc.Search(SearchOptions{
 		Query:         query,
 		Project:       r.URL.Query().Get("project"),
@@ -39,9 +34,7 @@ func (h *Handler) search(w http.ResponseWriter, r *http.Request) {
 		RecencyDecay:  floatParam(r.URL.Query().Get("recencyDecay"), 0),
 	})
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -53,13 +53,16 @@ func DecideMemoryAction(ctx context.Context, client RouterLLMClient, newContent 
 	}
 	candidateList := strings.Join(list, "\n---\n")
 
-	prompt := prompts.Render("router_memory_action", struct {
+	prompt, err := prompts.Render("router_memory_action", struct {
 		NewContent    string
 		CandidateList string
 	}{
 		NewContent:    newContent,
 		CandidateList: candidateList,
 	})
+	if err != nil {
+		return RouterAction{Action: "create"}, fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	var decision RouterAction
 	schema := &JSONSchema{
@@ -84,7 +87,7 @@ func DecideMemoryAction(ctx context.Context, client RouterLLMClient, newContent 
 		},
 		Required: []string{"action", "reason"},
 	}
-	err := client.GenerateJSON(ctx, "system", prompt, schema, &decision)
+	err = client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err
 	}
@@ -124,7 +127,7 @@ func DecideContextAction(ctx context.Context, client RouterLLMClient, uri, name,
 	}
 	candidateList := strings.Join(list, "\n---\n")
 
-	prompt := prompts.Render("router_context_action", struct {
+	prompt, err := prompts.Render("router_context_action", struct {
 		URI           string
 		Name          string
 		Abstract      string
@@ -135,6 +138,9 @@ func DecideContextAction(ctx context.Context, client RouterLLMClient, uri, name,
 		Abstract:      abstract,
 		CandidateList: candidateList,
 	})
+	if err != nil {
+		return RouterAction{Action: "create"}, fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	var decision RouterAction
 	schema := &JSONSchema{
@@ -159,7 +165,7 @@ func DecideContextAction(ctx context.Context, client RouterLLMClient, uri, name,
 		},
 		Required: []string{"action", "reason"},
 	}
-	err := client.GenerateJSON(ctx, "system", prompt, schema, &decision)
+	err = client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err
 	}

@@ -15,19 +15,17 @@ func NewSetupCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "setup",
 		Short: "Setup Mairu configuration",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			fmt.Println("Welcome to Mairu Setup!")
 			fmt.Print("Please enter your Gemini API Key: ")
 			reader := bufio.NewReader(os.Stdin)
 			apiKey, err := reader.ReadString('\n')
 			if err != nil {
-				fmt.Printf("Error reading input: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error reading input: %w", err)
 			}
 			apiKey = strings.TrimSpace(apiKey)
 			if apiKey == "" {
-				fmt.Println("API Key cannot be empty.")
-				os.Exit(1)
+				return fmt.Errorf("API key cannot be empty")
 			}
 
 			targetPath := config.UserConfigPath()
@@ -40,15 +38,14 @@ func NewSetupCmd() *cobra.Command {
 
 			dir := filepath.Dir(targetPath)
 			if err := os.MkdirAll(dir, 0755); err != nil {
-				fmt.Printf("Error creating config directory: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error creating config directory: %w", err)
 			}
 			if err := fv.WriteConfigAs(targetPath); err != nil {
-				fmt.Printf("Error saving configuration: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error saving configuration: %w", err)
 			}
 
 			fmt.Printf("Configuration saved successfully to %s!\n", targetPath)
+			return nil
 		},
 	}
 	return cmd

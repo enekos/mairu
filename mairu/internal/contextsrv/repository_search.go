@@ -54,7 +54,7 @@ func (r *SQLiteRepository) SearchText(ctx context.Context, opts SearchOptions) (
 				return nil, err
 			}
 			fields := map[string]string{"content": content}
-			score := scoreHybrid(fields, queryTokens, createdAt, importance, opts, defaultMemoryWeights(nil))
+			score := scoreHybrid(fields, queryTokens, createdAt, importance, 0.0, opts, defaultMemoryWeights(nil))
 			doc := map[string]any{"id": id, "content": content, "_score": score}
 			if opts.Highlight {
 				if h := highlightsForFields(fields, queryTokens); len(h) > 0 {
@@ -89,7 +89,7 @@ func (r *SQLiteRepository) SearchText(ctx context.Context, opts SearchOptions) (
 				"name":        name,
 				"description": description,
 			}
-			score := scoreHybrid(fields, queryTokens, createdAt, 0, opts, defaultSkillWeights(nil))
+			score := scoreHybrid(fields, queryTokens, createdAt, 0, 0.0, opts, defaultSkillWeights(nil))
 			doc := map[string]any{"id": id, "name": name, "description": description, "_score": score}
 			if opts.Highlight {
 				if h := highlightsForFields(fields, queryTokens); len(h) > 0 {
@@ -125,7 +125,7 @@ func (r *SQLiteRepository) SearchText(ctx context.Context, opts SearchOptions) (
 				"abstract": abstract,
 				"content":  content,
 			}
-			score := scoreHybrid(fields, queryTokens, createdAt, 0, opts, defaultContextWeights(nil))
+			score := scoreHybrid(fields, queryTokens, createdAt, 0, 0.0, opts, defaultContextWeights(nil))
 			doc := map[string]any{"uri": uri, "name": name, "abstract": abstract, "_score": score}
 			if opts.Highlight {
 				if h := highlightsForFields(fields, queryTokens); len(h) > 0 {

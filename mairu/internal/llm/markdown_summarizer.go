@@ -21,13 +21,16 @@ func SummarizeMarkdownDoc(ctx context.Context, gen ContentGenerator, model, file
 		content = content[:MaxInputChars]
 	}
 
-	prompt := prompts.Render("markdown_summarize", struct {
+	prompt, err := prompts.Render("markdown_summarize", struct {
 		Filename string
 		Content  string
 	}{
 		Filename: filename,
 		Content:  content,
 	})
+	if err != nil {
+		return "", "", fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	raw, err := generateWithRetry(ctx, gen, model, prompt, 1)
 	if err != nil {

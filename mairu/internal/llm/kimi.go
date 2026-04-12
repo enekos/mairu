@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 )
 
 // Ensure KimiProvider implements Provider interface
@@ -147,7 +148,10 @@ func (k *KimiProvider) ChatStream(ctx context.Context, prompt string) (ChatStrea
 // SendFunctionResponseStream sends a single tool response back to the model
 func (k *KimiProvider) SendFunctionResponseStream(ctx context.Context, name string, result map[string]any) ChatStreamIterator {
 	// Convert result to JSON string
-	resultJSON, _ := json.Marshal(result)
+	resultJSON, err := json.Marshal(result)
+	if err != nil {
+		return &errorStreamIterator{err: err}
+	}
 
 	// Add tool response to history
 	k.history = append(k.history, Message{
@@ -181,7 +185,10 @@ func (k *KimiProvider) SendFunctionResponseStream(ctx context.Context, name stri
 func (k *KimiProvider) SendFunctionResponsesStream(ctx context.Context, responses []FunctionResponsePayload) ChatStreamIterator {
 	// Add all tool responses to history
 	for _, resp := range responses {
-		resultJSON, _ := json.Marshal(resp.Response)
+		resultJSON, err := json.Marshal(resp.Response)
+		if err != nil {
+			return &errorStreamIterator{err: err}
+		}
 		k.history = append(k.history, Message{
 			Role:       "tool",
 			Content:    string(resultJSON),
@@ -236,7 +243,10 @@ func (k *KimiProvider) GenerateJSON(ctx context.Context, system, user string, sc
 
 	// Add schema instructions to user prompt if provided
 	if schema != nil {
-		schemaJSON, _ := json.Marshal(schema)
+		schemaJSON, err := json.Marshal(schema)
+		if err != nil {
+			return fmt.Errorf("failed to marshal schema: %w", err)
+		}
 		messages[1].Content += "\n\nRespond with JSON conforming to this schema:\n" + string(schemaJSON)
 	}
 
@@ -579,7 +589,9 @@ func (k *KimiProvider) convertKimiToolCalls(calls []KimiToolCall) []ToolCall {
 	for _, call := range calls {
 		var args map[string]any
 		if call.Function.Arguments != "" {
-			_ = json.Unmarshal([]byte(call.Function.Arguments), &args)
+			if err := json.Unmarshal([]byte(call.Function.Arguments), &args); err != nil {
+				slog.Error("failed to unmarshal tool call arguments", "error", err)
+			}
 		}
 		toolCalls = append(toolCalls, ToolCall{
 			ID:        call.ID,
@@ -593,7 +605,11 @@ func (k *KimiProvider) convertKimiToolCalls(calls []KimiToolCall) []ToolCall {
 func (k *KimiProvider) convertToolCallsToKimi(calls []ToolCall) []KimiToolCall {
 	kimiCalls := make([]KimiToolCall, 0, len(calls))
 	for _, call := range calls {
-		argsJSON, _ := json.Marshal(call.Arguments)
+		argsJSON, err := json.Marshal(call.Arguments)
+		if err != nil {
+			slog.Error("failed to marshal tool call arguments", "error", err)
+			argsJSON = []byte("{}")
+		}
 		kimiCalls = append(kimiCalls, KimiToolCall{
 			ID:   call.ID,
 			Type: "function",

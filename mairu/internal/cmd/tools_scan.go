@@ -69,7 +69,7 @@ func NewScanCmd() *cobra.Command {
 		Use:   "scan <regex> [dir]",
 		Short: "AI-optimized semantic search with token budget (JSON)",
 		Args:  cobra.MinimumNArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			pattern := args[0]
 			dir := "."
 			if len(args) > 1 {
@@ -103,8 +103,7 @@ func NewScanCmd() *cobra.Command {
 
 			re, err := regexp.Compile(pattern)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error compiling regex: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error compiling regex: %w", err)
 			}
 
 			var multiRes []*regexp.Regexp
@@ -135,8 +134,7 @@ func NewScanCmd() *cobra.Command {
 					}
 					mre, err := regexp.Compile(p)
 					if err != nil {
-						fmt.Fprintf(os.Stderr, "error compiling multi regex: %v\n", err)
-						os.Exit(1)
+						return fmt.Errorf("error compiling multi regex: %w", err)
 					}
 					multiRes = append(multiRes, mre)
 				}
@@ -513,7 +511,7 @@ func NewScanCmd() *cobra.Command {
 					}
 					out, _ := json.Marshal(grouped)
 					fmt.Println(string(out))
-					return
+					return nil
 				}
 				out, _ := json.Marshal(res)
 				fmt.Println(string(out))
@@ -599,6 +597,7 @@ func NewScanCmd() *cobra.Command {
 					})
 				}
 			}
+			return nil
 		},
 	}
 	cmd.Flags().IntVar(&scanBudget, "budget", 3000, "Token budget circuit breaker")

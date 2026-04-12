@@ -9,9 +9,7 @@ func (h *Handler) listModerationQueue(w http.ResponseWriter, r *http.Request) {
 	limit := intParam(r.URL.Query().Get("limit"), 100)
 	items, err := h.svc.ListModerationQueue(limit)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -27,9 +25,7 @@ func (h *Handler) reviewModeration(w http.ResponseWriter, r *http.Request) {
 		Notes    string `json:"notes"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := h.svc.ReviewModeration(ModerationReviewInput{
@@ -38,9 +34,7 @@ func (h *Handler) reviewModeration(w http.ResponseWriter, r *http.Request) {
 		Reviewer: req.Reviewer,
 		Notes:    req.Notes,
 	}); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

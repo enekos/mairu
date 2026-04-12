@@ -12,16 +12,12 @@ func (h *Handler) vibeQuery(w http.ResponseWriter, r *http.Request) {
 		TopK    int    `json:"topK"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.VibeQuery(req.Prompt, req.Project, req.TopK)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -36,16 +32,12 @@ func (h *Handler) vibeMutationPlan(w http.ResponseWriter, r *http.Request) {
 		TopK    int    `json:"topK"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.PlanVibeMutation(req.Prompt, req.Project, req.TopK)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -59,16 +51,12 @@ func (h *Handler) vibeMutationExecute(w http.ResponseWriter, r *http.Request) {
 		Operations []VibeMutationOp `json:"operations"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	results, err := h.svc.ExecuteVibeMutation(req.Operations, req.Project)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -82,16 +70,12 @@ func (h *Handler) vibeIngest(w http.ResponseWriter, r *http.Request) {
 		BaseURI string `json:"base_uri"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	nodes, err := h.svc.Ingest(req.Text, req.BaseURI)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

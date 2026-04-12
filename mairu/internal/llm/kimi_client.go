@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -117,8 +118,11 @@ func (c *KimiClient) ChatCompletionStream(ctx context.Context, req KimiChatReque
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, readErr := io.ReadAll(resp.Body)
 		resp.Body.Close()
+		if readErr != nil {
+			return nil, fmt.Errorf("API error (status %d): failed to read error body: %w", resp.StatusCode, readErr)
+		}
 		var errResp KimiErrorResponse
 		if err := json.Unmarshal(respBody, &errResp); err == nil && errResp.Error.Message != "" {
 			return nil, &KimiAPIError{
@@ -180,6 +184,7 @@ func (k *KimiStreamIterator) Next() (ChatStreamChunk, error) {
 
 		var streamResp KimiStreamResponse
 		if err := json.Unmarshal([]byte(data), &streamResp); err != nil {
+			slog.Error("failed to unmarshal stream chunk", "error", err)
 			continue // Skip malformed chunks
 		}
 
@@ -199,7 +204,9 @@ func (k *KimiStreamIterator) Next() (ChatStreamChunk, error) {
 					// Parse arguments from JSON string
 					var args map[string]any
 					if tc.Function.Arguments != "" {
-						_ = json.Unmarshal([]byte(tc.Function.Arguments), &args)
+						if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
+							slog.Error("failed to unmarshal stream tool call arguments", "error", err)
+						}
 					}
 					chunk.ToolCalls = append(chunk.ToolCalls, ToolCall{
 						ID:        tc.ID,

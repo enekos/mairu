@@ -197,7 +197,6 @@ func init() {
 		admincmd.NewCompletionCmd(rootCmd),
 		NewDoctorCmd(),
 		NewSetupCmd(),
-		NewSeedCmd(),
 		NewEvalCmd(),
 	)
 }

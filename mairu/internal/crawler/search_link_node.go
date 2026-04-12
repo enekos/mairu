@@ -61,12 +61,18 @@ func (n *SearchLinkNode) Execute(ctx context.Context, state State) (State, error
 		linksText = linksText[:60000] + "\n...[truncated]"
 	}
 
-	systemInstruction := prompts.Render("crawler_search_link_sys", nil)
+	systemInstruction, err := prompts.Render("crawler_search_link_sys", nil)
+	if err != nil {
+		return state, fmt.Errorf("SearchLinkNode: failed to render prompt: %w", err)
+	}
 
-	fullPrompt := prompts.Render("crawler_search_link_user", map[string]any{
+	fullPrompt, err := prompts.Render("crawler_search_link_user", map[string]any{
 		"UserPrompt": userPrompt,
 		"LinksText":  linksText,
 	})
+	if err != nil {
+		return state, fmt.Errorf("SearchLinkNode: failed to render prompt: %w", err)
+	}
 
 	var result []string
 	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &result)

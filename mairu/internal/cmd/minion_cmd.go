@@ -122,13 +122,17 @@ func runMinion(userPrompt string) {
 	defer a.Close()
 
 	// Minion specific instructions wrapping the user prompt
-	minionPrompt := prompts.Render("minion_prompt", struct {
+	minionPrompt, err := prompts.Render("minion_prompt", struct {
 		Task       string
 		MaxRetries int
 	}{
 		Task:       userPrompt,
 		MaxRetries: minionMaxRetries,
 	})
+	if err != nil {
+		slog.Error("Failed to render minion prompt", "error", err)
+		os.Exit(1)
+	}
 
 	outChan := make(chan agent.AgentEvent)
 	go a.RunStream(minionPrompt, outChan)
@@ -264,7 +268,7 @@ func runSinglePRReviewer(cwd string, prNumber, prContext string, role prReviewer
 	}
 	defer a.Close()
 
-	prompt := prompts.Render("council_pr_reviewer_expert", struct {
+	prompt, err := prompts.Render("council_pr_reviewer_expert", struct {
 		PRNumber string
 		PRData   string
 		Role     string
@@ -275,6 +279,9 @@ func runSinglePRReviewer(cwd string, prNumber, prContext string, role prReviewer
 		Role:     role.Name,
 		Focus:    role.Focus,
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	outChan := make(chan agent.AgentEvent, 100)
 	go a.RunStream(prompt, outChan)
@@ -311,13 +318,16 @@ func runProductLeadSynthesis(cwd string, prNumber string, findings map[string]st
 	}
 	defer a.Close()
 
-	prompt := prompts.Render("council_pr_reviewer_product_lead", struct {
+	prompt, err := prompts.Render("council_pr_reviewer_product_lead", struct {
 		PRNumber string
 		Findings string
 	}{
 		PRNumber: prNumber,
 		Findings: formatReviewerFindings(findings),
 	})
+	if err != nil {
+		return "", fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	outChan := make(chan agent.AgentEvent, 100)
 	go a.RunStream(prompt, outChan)

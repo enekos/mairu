@@ -15,9 +15,7 @@ func (h *Handler) createMemory(w http.ResponseWriter, r *http.Request) {
 		Importance int    `json:"importance"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.CreateMemory(MemoryCreateInput{
@@ -29,14 +27,10 @@ func (h *Handler) createMemory(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrModerationRejected) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+			writeJSONError(w, http.StatusUnprocessableEntity, err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -48,9 +42,7 @@ func (h *Handler) listMemories(w http.ResponseWriter, r *http.Request) {
 	limit := intParam(r.URL.Query().Get("limit"), 200)
 	items, err := h.svc.ListMemories(r.URL.Query().Get("project"), limit)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -67,9 +59,7 @@ func (h *Handler) updateMemory(w http.ResponseWriter, r *http.Request) {
 		Importance int    `json:"importance"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.UpdateMemory(MemoryUpdateInput{
@@ -80,9 +70,7 @@ func (h *Handler) updateMemory(w http.ResponseWriter, r *http.Request) {
 		Importance: req.Importance,
 	})
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -96,23 +84,17 @@ func (h *Handler) applyMemoryFeedback(w http.ResponseWriter, r *http.Request) {
 		Reward int    `json:"reward"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.ID == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "id is required"})
+		writeJSONErrorString(w, http.StatusBadRequest, "id is required")
 		return
 	}
 
 	out, err := h.svc.ApplyMemoryFeedback(req.ID, req.Reward)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -122,9 +104,7 @@ func (h *Handler) applyMemoryFeedback(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteMemory(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.DeleteMemory(r.URL.Query().Get("id")); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -1,4 +1,11 @@
-import { ActionPanel, Action, List, Icon } from "@raycast/api";
+import {
+  ActionPanel,
+  Action,
+  List,
+  Icon,
+  showToast,
+  Toast,
+} from "@raycast/api";
 import { useState, useEffect } from "react";
 import { runMairuCmd } from "./mairu-cli";
 import StoreMemory from "./store-memory";
@@ -31,8 +38,12 @@ export default function Command() {
         );
         const data: MairuResponse = JSON.parse(stdout);
         setMemories(data.memories || []);
-      } catch (error) {
-        console.error(error);
+      } catch (error: Error | unknown) {
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Search failed",
+          message: (error as Error).message,
+        });
       } finally {
         setIsLoading(false);
       }

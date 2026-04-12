@@ -107,8 +107,7 @@ func NewDoctorCmd() *cobra.Command {
 			if allOk {
 				fmt.Println("All checks passed.")
 			} else {
-				fmt.Println("Some checks failed. Fix the issues above and run 'mairu doctor' again.")
-				os.Exit(1)
+				return fmt.Errorf("some checks failed. Fix the issues above and run 'mairu doctor' again")
 			}
 			return nil
 		},

@@ -17,8 +17,11 @@ pub fn extract(html: &str) -> ExtractedPage {
     // 1. Extract Metadata
     let title = extract_metadata(&document, &mut metadata);
 
-    // 2. Identify the main content root
-    let root = find_main_content(&document);
+    // 2. Identify the main content root (fallback to body, then document root)
+    let root = Selector::parse("body")
+        .ok()
+        .and_then(|sel| document.select(&sel).next())
+        .or_else(|| Some(document.root_element()));
 
     // 3. Traverse and extract sections
     if let Some(root_node) = root {
@@ -37,7 +40,7 @@ fn extract_metadata(doc: &Html, meta: &mut PageMetadata) -> String {
 
     if let Ok(sel) = Selector::parse("title") {
         if let Some(el) = doc.select(&sel).next() {
-            title = collect_text(el).trim().to_string();
+            title = collect_text_trimmed(el);
         }
     }
 
@@ -68,15 +71,6 @@ fn extract_metadata(doc: &Html, meta: &mut PageMetadata) -> String {
     title
 }
 
-fn find_main_content(doc: &Html) -> Option<ElementRef<'_>> {
-    // Fallback to body
-    if let Ok(sel) = Selector::parse("body") {
-        return doc.select(&sel).next();
-    }
-
-    // Fallback to root document if body is missing
-    Some(doc.root_element())
-}
 
 // Nodes we completely ignore
 const SKIP_TAGS: &[&str] = &[
@@ -85,12 +79,24 @@ const SKIP_TAGS: &[&str] = &[
 
 fn is_hidden(node: ElementRef) -> bool {
     let style = node.value().attr("style").unwrap_or("");
-    let s = style.replace(" ", "");
-    if s.contains("display:none")
-        || s.contains("visibility:hidden")
-        || s.contains("opacity:0;")
-        || s.ends_with("opacity:0")
-    {
+    let mut display_none = false;
+    let mut visibility_hidden = false;
+    let mut opacity_zero = false;
+    for decl in style.split(';') {
+        let decl = decl.trim();
+        if let Some((prop, val)) = decl.split_once(':') {
+            let prop = prop.trim();
+            let val = val.trim();
+            if prop == "display" && val == "none" {
+                display_none = true;
+            } else if prop == "visibility" && val == "hidden" {
+                visibility_hidden = true;
+            } else if prop == "opacity" && val == "0" {
+                opacity_zero = true;
+            }
+        }
+    }
+    if display_none || visibility_hidden || opacity_zero {
         return true;
     }
 
@@ -127,7 +133,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
 
     // Special handling for accessible roles that mimic structural elements
     if role == "button" && tag != "button" {
-        let text = collect_text(node).trim().to_string();
+        let text = collect_text_trimmed(node);
         if !text.is_empty() {
             sections.push(ContentSection {
                 kind: SectionKind::Paragraph,
@@ -140,7 +146,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
     }
 
     if role == "link" && tag != "a" {
-        let text = collect_text(node).trim().to_string();
+        let text = collect_text_trimmed(node);
         if !text.is_empty() {
             sections.push(ContentSection {
                 kind: SectionKind::Link,
@@ -154,7 +160,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
 
     match tag {
         "h1" | "h2" | "h3" | "h4" | "h5" | "h6" => {
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 let depth: u8 = tag[1..2].parse().unwrap_or(1);
                 sections.push(ContentSection {
@@ -168,7 +174,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             return;
         }
         "summary" | "legend" | "figcaption" => {
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 sections.push(ContentSection {
                     kind: SectionKind::Heading,
@@ -189,7 +195,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             return;
         }
         "p" | "blockquote" => {
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 sections.push(ContentSection {
                     kind: SectionKind::Paragraph,
@@ -202,7 +208,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
         }
         "pre" => {
             // Check for code inside
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 sections.push(ContentSection {
                     kind: SectionKind::CodeBlock,
@@ -254,7 +260,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             // But usually links are inline. If we hit an <a> directly as a block
             // we will extract it as a Paragraph-like element or Link.
             let href = node.value().attr("href").unwrap_or("").to_string();
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 sections.push(ContentSection {
                     kind: SectionKind::Link,
@@ -287,7 +293,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             return;
         }
         "button" => {
-            let text = collect_text(node).trim().to_string();
+            let text = collect_text_trimmed(node);
             if !text.is_empty() {
                 sections.push(ContentSection {
                     kind: SectionKind::Paragraph,
@@ -387,7 +393,7 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
             let mut title_text = String::new();
             if let Ok(sel) = Selector::parse("title") {
                 if let Some(t) = node.select(&sel).next() {
-                    title_text = collect_text(t).trim().to_string();
+                    title_text = collect_text_trimmed(t);
                 }
             }
 
@@ -452,7 +458,7 @@ fn collect_text(node: ElementRef) -> String {
             let tag = child_el.value().name();
             if tag == "a" {
                 let href = child_el.value().attr("href").unwrap_or("").to_string();
-                let text = collect_text(child_el).trim().to_string();
+                let text = collect_text_trimmed(child_el);
                 if !text.is_empty() {
                     result.push_str(&format!(" [{}]({}) ", text, href));
                 }
@@ -469,7 +475,7 @@ fn collect_text(node: ElementRef) -> String {
             } else if tag == "hr" {
                 result.push_str("\n---\n");
             } else if tag == "del" || tag == "s" || tag == "strike" {
-                let text = collect_text(child_el).trim().to_string();
+                let text = collect_text_trimmed(child_el);
                 if !text.is_empty() {
                     result.push_str(&format!(" ~{}~ ", text));
                 }
@@ -478,7 +484,7 @@ fn collect_text(node: ElementRef) -> String {
                 let mut title_text = String::new();
                 if let Ok(sel) = Selector::parse("title") {
                     if let Some(t) = child_el.select(&sel).next() {
-                        title_text = collect_text(t).trim().to_string();
+                        title_text = collect_text_trimmed(t);
                     }
                 }
                 let label = if !aria_label.is_empty() {
@@ -513,6 +519,10 @@ fn collect_text(node: ElementRef) -> String {
     }
 
     cleaned
+}
+
+fn collect_text_trimmed(node: ElementRef) -> String {
+    collect_text(node).trim().to_string()
 }
 
 fn extract_list(node: ElementRef) -> Vec<String> {
@@ -563,12 +573,12 @@ fn extract_definition_list(node: ElementRef) -> Vec<String> {
         if let Some(child_el) = ElementRef::wrap(child) {
             let tag = child_el.value().name();
             if tag == "dt" {
-                let text = collect_text(child_el).trim().to_string();
+                let text = collect_text_trimmed(child_el);
                 if !text.is_empty() {
                     items.push(format!("- **{}**", text));
                 }
             } else if tag == "dd" {
-                let text = collect_text(child_el).trim().to_string();
+                let text = collect_text_trimmed(child_el);
                 if !text.is_empty() {
                     items.push(format!("  {}", text));
                 }
@@ -593,12 +603,12 @@ fn extract_table(node: ElementRef) -> String {
 
         // Extract headers
         for th in tr.select(&th_sel) {
-            row_data.push(collect_text(th).trim().to_string());
+            row_data.push(collect_text_trimmed(th));
         }
 
         // Extract cells
         for td in tr.select(&td_sel) {
-            row_data.push(collect_text(td).trim().to_string());
+            row_data.push(collect_text_trimmed(td));
         }
 
         if !row_data.is_empty() {

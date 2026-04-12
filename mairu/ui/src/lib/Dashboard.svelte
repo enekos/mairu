@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { LayoutDashboard, Zap, Clock, Code, Database, BrainCircuit, LineChart, FileCode, CheckCircle2, MessageSquare } from 'lucide-svelte';
+  import { LayoutDashboard, Zap, Code, BrainCircuit, FileCode, CheckCircle2, MessageSquare } from 'lucide-svelte';
   import { messages, isGenerating } from './store';
   import { derived } from 'svelte/store';
 

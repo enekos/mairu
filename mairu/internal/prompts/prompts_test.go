@@ -8,7 +8,10 @@ import (
 )
 
 func TestRenderAgentSystem(t *testing.T) {
-	out := Render("agent_system", nil)
+	out, err := Render("agent_system", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "You are Mairu") {
 		t.Errorf("agent_system prompt missing expected string, got:\n%s", out)
 	}
@@ -20,7 +23,10 @@ func TestRenderSessionSummarize(t *testing.T) {
 	}{
 		Conversation: "Hello, this is a test.",
 	}
-	out := Render("session_summarize", data)
+	out, err := Render("session_summarize", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "Please summarize") {
 		t.Errorf("missing string in session_summarize")
 	}
@@ -37,7 +43,10 @@ func TestRenderDelegateTask(t *testing.T) {
 		Context: "Some Context",
 		Task:    "Some Task",
 	}
-	out := Render("delegate_task", data)
+	out, err := Render("delegate_task", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "Main Agent Context:") {
 		t.Errorf("missing string in delegate_task")
 	}
@@ -57,14 +66,20 @@ func TestGetUnknownPrompt(t *testing.T) {
 }
 
 func TestRenderVibeQueryPlanner(t *testing.T) {
-	out := Render("vibe_query_planner", nil)
+	out, err := Render("vibe_query_planner", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "You are a search planner") {
 		t.Errorf("vibe_query_planner prompt missing expected string, got:\n%s", out)
 	}
 }
 
 func TestRenderVibeMutationPlanner(t *testing.T) {
-	out := Render("vibe_mutation_planner", nil)
+	out, err := Render("vibe_mutation_planner", nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "You are a mutation planner") {
 		t.Errorf("vibe_mutation_planner prompt missing expected string, got:\n%s", out)
 	}
@@ -78,7 +93,10 @@ func TestRenderVibeMutationPlannerCompact(t *testing.T) {
 		Project:                "demo",
 		ExistingEntriesSummary: `[{ "id": "mem_1" }]`,
 	}
-	out := Render("vibe_mutation_planner_compact", data)
+	out, err := Render("vibe_mutation_planner_compact", data)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !strings.Contains(out, "You are a JSON mutation planner") {
 		t.Errorf("vibe_mutation_planner_compact missing expected heading")
 	}

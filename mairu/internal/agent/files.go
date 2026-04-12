@@ -69,7 +69,10 @@ func (a *Agent) WriteFile(filePath string, content string) (string, error) {
 
 	var oldContent []byte
 	if _, err := os.Stat(fullPath); err == nil {
-		oldContent, _ = os.ReadFile(fullPath)
+		oldContent, err = os.ReadFile(fullPath)
+		if err != nil {
+			return "", fmt.Errorf("failed to read existing file %s: %w", filePath, err)
+		}
 	}
 
 	err := os.WriteFile(fullPath, []byte(content), 0644)

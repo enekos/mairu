@@ -70,8 +70,6 @@ func NewScrapeWebCmd() *cobra.Command {
 func NewSmartScrapeCmd() *cobra.Command {
 	var project string
 	var prompt string
-	var useRAG bool
-	var refinePrompt bool
 
 	cmd := &cobra.Command{
 		Use:   "smart <url>",
@@ -123,8 +121,6 @@ func NewSmartScrapeCmd() *cobra.Command {
 	}
 	cmd.Flags().StringVarP(&project, "project", "P", "default", "Project namespace")
 	cmd.Flags().StringVar(&prompt, "prompt", "", "Prompt to instruct LLM what to extract")
-	cmd.Flags().BoolVar(&useRAG, "rag", false, "Use vector embeddings to parse massive documents without hitting token limits")
-	cmd.Flags().BoolVar(&refinePrompt, "refine", false, "Use LLM to refine the prompt before scraping")
 	return cmd
 }
 func NewSearchScrapeCmd() *cobra.Command {

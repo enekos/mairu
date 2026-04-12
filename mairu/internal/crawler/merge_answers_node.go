@@ -39,15 +39,21 @@ func (n *MergeAnswersNode) Execute(ctx context.Context, state State) (State, err
 		resultsStr = resultsStr[:80000] + "\n...[truncated]"
 	}
 
-	systemInstruction := prompts.Render("crawler_merge_answers_sys", nil)
+	systemInstruction, err := prompts.Render("crawler_merge_answers_sys", nil)
+	if err != nil {
+		return state, fmt.Errorf("MergeAnswersNode: failed to render prompt: %w", err)
+	}
 
-	fullPrompt := prompts.Render("crawler_merge_answers_user", map[string]any{
+	fullPrompt, err := prompts.Render("crawler_merge_answers_user", map[string]any{
 		"UserPrompt": userPrompt,
 		"Results":    resultsStr,
 	})
+	if err != nil {
+		return state, fmt.Errorf("MergeAnswersNode: failed to render prompt: %w", err)
+	}
 
 	var mergedResult map[string]any
-	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &mergedResult)
+	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &mergedResult)
 	if err != nil {
 		return state, fmt.Errorf("MergeAnswersNode: LLM failed: %w", err)
 	}

@@ -1,7 +1,7 @@
 services:
   meilisearch:
     image: getmeili/meilisearch:v1.12
-    container_name: contextfs-meili
+    container_name: mairu-meili
     ports:
       - "7700:7700"
     environment:
@@ -12,7 +12,7 @@ services:
 
   ollama:
     image: ollama/ollama:latest
-    container_name: contextfs-ollama
+    container_name: mairu-ollama
     ports:
       - "11434:11434"
     volumes:
@@ -25,7 +25,7 @@ services:
 
   ollama-pull:
     image: ollama/ollama:latest
-    container_name: contextfs-ollama-pull
+    container_name: mairu-ollama-pull
     depends_on:
       ollama:
         condition: service_healthy

@@ -83,11 +83,10 @@ func NewTelegramCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "telegram",
 		Short: "Start Telegram bot interface",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			token := os.Getenv("TELEGRAM_BOT_TOKEN")
 			if token == "" {
-				slog.Error("TELEGRAM_BOT_TOKEN environment variable is required")
-				os.Exit(1)
+				return fmt.Errorf("TELEGRAM_BOT_TOKEN environment variable is required")
 			}
 
 			providerCfg := GetLLMProviderConfig()
@@ -96,16 +95,14 @@ func NewTelegramCmd() *cobra.Command {
 				if providerName == "" {
 					providerName = "gemini"
 				}
-				slog.Error(fmt.Sprintf("%s API key not found. Please set the appropriate API key environment variable.", providerName))
-				os.Exit(1)
+				return fmt.Errorf("%s API key not found. Please set the appropriate API key environment variable", providerName)
 			}
 
 			projectRoot, _ := cmd.Flags().GetString("project")
 			if projectRoot == "" {
 				pwd, err := os.Getwd()
 				if err != nil {
-					slog.Error("failed to get current directory", "error", err)
-					os.Exit(1)
+					return fmt.Errorf("failed to get current directory: %w", err)
 				}
 				projectRoot = pwd
 			}
@@ -130,8 +127,7 @@ func NewTelegramCmd() *cobra.Command {
 
 			b, err := tele.NewBot(pref)
 			if err != nil {
-				slog.Error("failed to create telegram bot", "error", err)
-				os.Exit(1)
+				return fmt.Errorf("failed to create telegram bot: %w", err)
 			}
 
 			activeSessions := make(map[int64]string)
@@ -297,6 +293,7 @@ func NewTelegramCmd() *cobra.Command {
 
 			slog.Info("Telegram bot is running...")
 			b.Start()
+			return nil
 		},
 	}
 	cmd.Flags().String("meili-url", os.Getenv("MEILI_URL"), "Meilisearch URL")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -27,7 +26,7 @@ func NewProcPortsCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "ports",
 		Short: "List active listening ports and their processes",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -39,13 +38,11 @@ func NewProcPortsCmd() *cobra.Command {
 			} else if runtime.GOOS == "linux" {
 				out, err = exec.CommandContext(ctx, "ss", "-ltnp").Output()
 			} else {
-				fmt.Fprintf(os.Stderr, "OS %s not supported for proc ports yet\n", runtime.GOOS)
-				os.Exit(1)
+				return fmt.Errorf("OS %s not supported for proc ports yet", runtime.GOOS)
 			}
 
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error getting ports: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error getting ports: %w", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -109,6 +106,7 @@ func NewProcPortsCmd() *cobra.Command {
 					},
 				)
 			}
+			return nil
 		},
 	}
 	return cmd
@@ -118,7 +116,7 @@ func NewProcTopCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "top",
 		Short: "Token-budgeted list of highest CPU/Memory processes",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
 
@@ -129,8 +127,7 @@ func NewProcTopCmd() *cobra.Command {
 			out, err = exec.CommandContext(ctx, "ps", "aux").Output()
 
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "error getting processes: %v\n", err)
-				os.Exit(1)
+				return fmt.Errorf("error getting processes: %w", err)
 			}
 
 			lines := strings.Split(strings.TrimSpace(string(out)), "\n")
@@ -178,6 +175,7 @@ func NewProcTopCmd() *cobra.Command {
 					},
 				)
 			}
+			return nil
 		},
 	}
 	return cmd

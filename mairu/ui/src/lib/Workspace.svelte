@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FolderGit2, Search, RefreshCw, Trash2, ChevronRight, ChevronDown, Database, BrainCircuit, Wrench } from 'lucide-svelte';
+  import { Search, RefreshCw, Trash2, ChevronRight, ChevronDown, Database, BrainCircuit, Wrench } from 'lucide-svelte';
   import { onMount } from 'svelte';
   import { dashboard, deleteContextNode, deleteMemory, deleteSkill } from './api';
 
@@ -21,8 +21,8 @@
       contextNodes = d.contextNodes ?? [];
       memories = d.memories ?? [];
       skills = d.skills ?? [];
-    } catch (e) {
-      console.error("Failed to load workspace data", e);
+    } catch {
+      // ignore load error
     } finally {
       loading = false;
     }
@@ -39,8 +39,8 @@
       if (type === 'context') contextNodes = contextNodes.filter(n => n.uri !== id);
       else if (type === 'memories') memories = memories.filter(m => m.id !== id);
       else if (type === 'skills') skills = skills.filter(s => s.id !== id);
-    } catch (e) {
-      console.error(`Failed to delete ${type} item`, e);
+    } catch {
+      // ignore delete error
     }
   }
 

@@ -45,12 +45,15 @@ func (s *AppService) Autocomplete(req AutocompleteRequest) (AutocompleteResponse
 
 	// We use gemini-pro or whatever is configured, wait, we don't have model injected easily,
 	// let's just pass "" and let the provider pick the default model.
-	prompt := prompts.Render("autocomplete", map[string]any{
+	prompt, err := prompts.Render("autocomplete", map[string]any{
 		"ContextStr": contextStr,
 		"Filename":   req.Filename,
 		"Prefix":     req.Prefix,
 		"Suffix":     req.Suffix,
 	})
+	if err != nil {
+		return AutocompleteResponse{}, fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	completion, err := s.llmClient.GenerateContent(context.Background(), "gemini-2.5-flash", prompt)
 	if err != nil {

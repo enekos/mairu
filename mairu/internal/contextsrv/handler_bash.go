@@ -19,16 +19,12 @@ type createBashHistoryRequest struct {
 func (h *Handler) createBashHistory(w http.ResponseWriter, r *http.Request) {
 	var req createBashHistoryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if req.Command == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "command is required"})
+		writeJSONErrorString(w, http.StatusBadRequest, "command is required")
 		return
 	}
 
@@ -51,18 +47,14 @@ func (h *Handler) createBashHistory(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if repo == nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]any{"error": "bash history storage not available"})
+		writeJSONErrorString(w, http.StatusServiceUnavailable, "bash history storage not available")
 		return
 	}
 
 	ctx := r.Context()
 	err := repo.InsertBashHistory(ctx, project, req.Command, req.ExitCode, req.DurationMs, req.Output)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -82,23 +74,17 @@ func (h *Handler) applyBashHistoryFeedback(w http.ResponseWriter, r *http.Reques
 		Reward int    `json:"reward"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if req.ID == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "id is required"})
+		writeJSONErrorString(w, http.StatusBadRequest, "id is required")
 		return
 	}
 
 	out, err := h.svc.ApplyBashHistoryFeedback(req.ID, req.Reward)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

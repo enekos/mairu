@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"mairu/internal/logger"
 	"mairu/internal/web"
-	"os"
 
 	"github.com/spf13/cobra"
 )
@@ -14,7 +13,7 @@ func NewWebCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "web",
 		Short: "Start the Mairu web interface",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			logger.Init(logger.Config{
 				Level:      "info",
 				Structured: true,
@@ -28,14 +27,14 @@ func NewWebCmd() *cobra.Command {
 
 			providerCfg := GetLLMProviderConfig()
 			if providerCfg.APIKey == "" {
-				fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api key in config", "API key not found"))
-				os.Exit(1)
+				return fmt.Errorf("API key not found. Run 'mairu setup' or set api key in config")
 			}
 
 			slog.Info("Starting Mairu web interface", "port", port)
 			if err := web.StartServer(port, providerCfg, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
-				slog.Error("Error starting web server", "error", err)
+				return fmt.Errorf("error starting web server: %w", err)
 			}
+			return nil
 		},
 	}
 	cmd.Flags().IntP("port", "p", 8080, "Port to run the web server on")

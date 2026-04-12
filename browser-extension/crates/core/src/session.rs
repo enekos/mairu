@@ -5,6 +5,7 @@ use crate::scorer::TfIdfIndex;
 use crate::types::*;
 
 const MAX_PAGES: usize = 50;
+const DEDUP_THRESHOLD: u32 = 3;
 
 pub struct SessionManager {
     session: BrowserSession,
@@ -37,7 +38,7 @@ impl SessionManager {
             .find(|p| p.url == snapshot.url)
         {
             // Skip if content hasn't changed meaningfully
-            if dedup::is_near_duplicate(existing.content_hash, snapshot.content_hash, 3) {
+            if dedup::is_near_duplicate(existing.content_hash, snapshot.content_hash, DEDUP_THRESHOLD) {
                 return AddPageResult::Duplicate;
             }
             snapshot.revision = existing.revision + 1;
@@ -46,12 +47,7 @@ impl SessionManager {
             *existing = snapshot;
             // Re-index with updated content
             let doc_id = existing.url.clone();
-            let full_text: String = existing
-                .sections
-                .iter()
-                .map(|s| s.text.as_str())
-                .collect::<Vec<_>>()
-                .join(" ");
+            let full_text = existing.full_text();
             self.index.add(&doc_id, &full_text);
             return AddPageResult::Updated;
         }
@@ -61,7 +57,7 @@ impl SessionManager {
             .session
             .pages
             .iter()
-            .any(|p| dedup::is_near_duplicate(p.content_hash, snapshot.content_hash, 3))
+            .any(|p| dedup::is_near_duplicate(p.content_hash, snapshot.content_hash, DEDUP_THRESHOLD))
         {
             return AddPageResult::Duplicate;
         }
@@ -75,12 +71,7 @@ impl SessionManager {
 
         // Index text for search
         let doc_id = snapshot.url.clone();
-        let full_text: String = snapshot
-            .sections
-            .iter()
-            .map(|s| s.text.as_str())
-            .collect::<Vec<_>>()
-            .join(" ");
+        let full_text = snapshot.full_text();
         self.index.add(&doc_id, &full_text);
 
         // Add to pages, evict oldest if needed
@@ -171,13 +162,7 @@ impl SessionManager {
         let mut index = TfIdfIndex::new();
         for page in &session.pages {
             let doc_id = page.url.clone();
-            let full_text: String = page
-                .sections
-                .iter()
-                .map(|s| s.text.as_str())
-                .collect::<Vec<_>>()
-                .join(" ");
-            index.add(&doc_id, &full_text);
+            index.add(&doc_id, &page.full_text());
         }
         Ok(Self {
             session,
@@ -277,7 +262,7 @@ mod tests {
     fn test_evicts_oldest_beyond_max() {
         let mut mgr = SessionManager::new("s1".to_string());
         for i in 0..(MAX_PAGES + 5) {
-            let text = format!("{} ", i.to_string()).repeat(20);
+            let text = format!("{} ", i).repeat(20);
             let snap = make_snapshot(
                 &format!("https://page{}.com", i),
                 &format!("Page {}", i),

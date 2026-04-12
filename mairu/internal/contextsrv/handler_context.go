@@ -17,9 +17,7 @@ func (h *Handler) createContext(w http.ResponseWriter, r *http.Request) {
 		Content   string  `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.CreateContextNode(ContextCreateInput{
@@ -33,14 +31,10 @@ func (h *Handler) createContext(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, ErrModerationRejected) {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+			writeJSONError(w, http.StatusUnprocessableEntity, err)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -56,9 +50,7 @@ func (h *Handler) listContext(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.svc.ListContextNodes(r.URL.Query().Get("project"), parentURI, limit)
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusInternalServerError, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -75,9 +67,7 @@ func (h *Handler) updateContext(w http.ResponseWriter, r *http.Request) {
 		Content  string `json:"content"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": "invalid request body"})
+		writeJSONErrorString(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 	out, err := h.svc.UpdateContextNode(ContextUpdateInput{
@@ -88,9 +78,7 @@ func (h *Handler) updateContext(w http.ResponseWriter, r *http.Request) {
 		Content:  req.Content,
 	})
 	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -100,9 +88,7 @@ func (h *Handler) updateContext(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) deleteContext(w http.ResponseWriter, r *http.Request) {
 	if err := h.svc.DeleteContextNode(r.URL.Query().Get("uri")); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]any{"error": err.Error()})
+		writeJSONError(w, http.StatusBadRequest, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

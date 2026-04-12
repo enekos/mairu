@@ -102,7 +102,7 @@ func tokenizeForSearch(query string) []string {
 	return out
 }
 
-func scoreHybrid(fields map[string]string, queryTokens []string, createdAt time.Time, importance int, opts SearchOptions, defaults hybridWeights) float64 {
+func scoreHybrid(fields map[string]string, queryTokens []string, createdAt time.Time, importance int, churnScore float64, opts SearchOptions, defaults hybridWeights) float64 {
 	weights := effectiveWeights(opts, defaults)
 	keywordScore := scoreKeyword(fields, queryTokens, opts.FieldBoosts)
 	recencyScore := scoreRecency(createdAt, opts.RecencyScale, opts.RecencyDecay)
@@ -111,7 +111,7 @@ func scoreHybrid(fields map[string]string, queryTokens []string, createdAt time.
 		importanceScore = float64(importance) / 10.0
 	}
 
-	return keywordScore*weights.keyword + recencyScore*weights.recency + importanceScore*weights.importance
+	return keywordScore*weights.keyword + recencyScore*weights.recency + importanceScore*weights.importance + churnScore*weights.churn
 }
 
 func effectiveWeights(opts SearchOptions, defaults hybridWeights) hybridWeights {

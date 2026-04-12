@@ -373,11 +373,14 @@ func (a *Agent) CompactContext() error {
 		}
 	}
 
-	prompt := prompts.Render("session_summarize", struct {
+	prompt, err := prompts.Render("session_summarize", struct {
 		Conversation string
 	}{
 		Conversation: conversation,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to render prompt: %w", err)
+	}
 
 	// We use a fresh LLM instance to summarize it to avoid messing up current history
 	// Use the agent's stored provider config

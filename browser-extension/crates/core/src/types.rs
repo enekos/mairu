@@ -68,6 +68,12 @@ pub struct PageSnapshot {
     pub iframe_content: Vec<IframeContent>,
 }
 
+impl PageSnapshot {
+    pub fn full_text(&self) -> String {
+        self.sections.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ")
+    }
+}
+
 /// Result of adding a page to the session.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]

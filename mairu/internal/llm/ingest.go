@@ -75,13 +75,16 @@ func ParseTextIntoContextNodes(ctx context.Context, gen ContentGenerator, model,
 		baseURI = "contextfs://ingested"
 	}
 
-	prompt := prompts.Render("ingest_context_nodes", struct {
+	prompt, err := prompts.Render("ingest_context_nodes", struct {
 		BaseURI string
 		Text    string
 	}{
 		BaseURI: baseURI,
 		Text:    text,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to render prompt: %w", err)
+	}
 	raw, err := generateWithRetry(ctx, gen, model, prompt, 1)
 	if err != nil {
 		return nil, err

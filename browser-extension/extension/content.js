@@ -207,16 +207,7 @@
     return full.length > HTML_SIZE_LIMIT ? full.slice(0, HTML_SIZE_LIMIT) : full;
   }
 
-  function captureAndSend() {
-    const html = getSerializedHtml();
-    const selection = window.getSelection().toString();
-
-    let activeEl = document.activeElement;
-    while (activeEl && activeEl.shadowRoot && activeEl.shadowRoot.activeElement) {
-      activeEl = activeEl.shadowRoot.activeElement;
-    }
-    const active_element = getCssSelector(activeEl);
-
+  function captureVisualRects() {
     const visual_rects = {};
     document.querySelectorAll('header, nav, main, article, aside, footer, h1, h2, form, button, input').forEach(el => {
       const selector = getCssSelector(el);
@@ -227,6 +218,25 @@
         }
       }
     });
+    return visual_rects;
+  }
+
+  function gatherPageState() {
+    const html = getSerializedHtml();
+    const selection = window.getSelection().toString();
+
+    let activeEl = document.activeElement;
+    while (activeEl && activeEl.shadowRoot && activeEl.shadowRoot.activeElement) {
+      activeEl = activeEl.shadowRoot.activeElement;
+    }
+    const active_element = getCssSelector(activeEl);
+    const visual_rects = captureVisualRects();
+
+    return { html, selection, active_element, visual_rects };
+  }
+
+  function captureAndSend() {
+    const { html, selection, active_element, visual_rects } = gatherPageState();
 
     const storage_state = {};
     try {
@@ -292,27 +302,7 @@
   document.addEventListener('scroll', trackInteraction, { passive: true, capture: true });
 
   function captureStateForEval() {
-    const html = getSerializedHtml();
-    const selection = window.getSelection().toString();
-
-    let activeEl = document.activeElement;
-    while (activeEl && activeEl.shadowRoot && activeEl.shadowRoot.activeElement) {
-      activeEl = activeEl.shadowRoot.activeElement;
-    }
-    const active_element = getCssSelector(activeEl);
-
-    const visual_rects = {};
-    document.querySelectorAll('header, nav, main, article, aside, footer, h1, h2, form, button, input').forEach(el => {
-      const selector = getCssSelector(el);
-      if (selector && !visual_rects[selector]) {
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-          visual_rects[selector] = `x:${Math.round(rect.x)},y:${Math.round(rect.y)},w:${Math.round(rect.width)},h:${Math.round(rect.height)}`;
-        }
-      }
-    });
-
-    return { html, selection, active_element, visual_rects };
+    return gatherPageState();
   }
 
   // 8. Listen for execution commands from background script (from Agent)

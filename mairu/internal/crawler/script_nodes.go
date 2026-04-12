@@ -73,13 +73,19 @@ func (n *GenerateScriptNode) Execute(ctx context.Context, state State) (State, e
 		htmlContent = htmlContent[:80000] + "...[truncated]"
 	}
 
-	systemInstruction := prompts.Render("crawler_script_generator_sys", nil)
+	systemInstruction, err := prompts.Render("crawler_script_generator_sys", nil)
+	if err != nil {
+		return state, fmt.Errorf("GenerateScriptNode: failed to render prompt: %w", err)
+	}
 
-	fullPrompt := prompts.Render("crawler_script_generator_user", map[string]any{
+	fullPrompt, err := prompts.Render("crawler_script_generator_user", map[string]any{
 		"TargetURL":   targetURL,
 		"UserPrompt":  userPrompt,
 		"HTMLContent": htmlContent,
 	})
+	if err != nil {
+		return state, fmt.Errorf("GenerateScriptNode: failed to render prompt: %w", err)
+	}
 
 	script, err := geminiProvider.GenerateContent(ctx, geminiProvider.GetModelName(), systemInstruction+"\n\n"+fullPrompt)
 	if err != nil {

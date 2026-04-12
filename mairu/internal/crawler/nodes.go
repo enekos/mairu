@@ -128,20 +128,26 @@ func (n *ExtractNode) Execute(ctx context.Context, state State) (State, error) {
 		return state, fmt.Errorf("ExtractNode: missing GeminiProvider")
 	}
 
-	systemInstruction := prompts.Render("crawler_extract_sys", nil)
+	systemInstruction, err := prompts.Render("crawler_extract_sys", nil)
+	if err != nil {
+		return state, fmt.Errorf("ExtractNode: failed to render prompt: %w", err)
+	}
 
 	// Ensure we don't blow up context size (cap at ~60k chars roughly)
 	if len(doc) > 60000 {
 		doc = doc[:60000] + "\n...[truncated]"
 	}
 
-	fullPrompt := prompts.Render("crawler_extract_user", map[string]any{
+	fullPrompt, err := prompts.Render("crawler_extract_user", map[string]any{
 		"Doc":        doc,
 		"UserPrompt": userPrompt,
 	})
+	if err != nil {
+		return state, fmt.Errorf("ExtractNode: failed to render prompt: %w", err)
+	}
 
 	var result map[string]any
-	err := geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &result)
+	err = geminiProvider.GenerateJSON(ctx, systemInstruction, fullPrompt, nil, &result)
 	if err != nil {
 		return state, fmt.Errorf("ExtractNode: LLM extraction failed: %w", err)
 	}

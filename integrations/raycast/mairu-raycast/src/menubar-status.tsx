@@ -1,4 +1,4 @@
-import { MenuBarExtra, Icon } from "@raycast/api";
+import { MenuBarExtra, Icon, showToast, Toast } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { runMairuCmd } from "./mairu-cli";
 
@@ -23,7 +23,11 @@ export default function Command() {
         const stdout = await runMairuCmd(`sys`);
         setSysInfo(JSON.parse(stdout));
       } catch (error: Error | unknown) {
-        console.error("Error fetching mairu sys:", (error as Error).message);
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Error fetching mairu sys",
+          message: (error as Error).message,
+        });
       } finally {
         setIsLoading(false);
       }

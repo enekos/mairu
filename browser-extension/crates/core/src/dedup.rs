@@ -10,7 +10,7 @@ pub fn simhash(text: &str) -> u64 {
 
     // Generate shingles (2-grams of words) and hash each
     if words.len() < 2 {
-        return hash_token(words[0]);
+        return words.first().map(|w| hash_token(w)).unwrap_or(0);
     }
 
     for window in words.windows(2) {

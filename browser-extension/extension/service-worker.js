@@ -11,8 +11,7 @@ import init, {
   mark_synced,
   export_session,
   import_session,
-  clear_pending_sync,
-} from "./pkg/mairu_ext_wasm.js";
+} from "./pkg/browser_extension_wasm.js";
 
 function broadcastDevLog(level, ...args) {
   try {
@@ -139,10 +138,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       pendingQueue: pending || []
     });
   } else if (message.type === "clear_queue") {
-    if (clear_pending_sync) {
-       clear_pending_sync();
-       persistSession();
-    }
     sendResponse({ ok: true });
   } else if (message.type === "reset_session") {
      chrome.storage.session.remove(SESSION_STORAGE_KEY, () => {

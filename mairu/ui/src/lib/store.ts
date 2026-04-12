@@ -2,11 +2,9 @@ import { writable } from 'svelte/store';
 
 const isWails = typeof window !== 'undefined' && !!window.go?.desktop?.App;
 let EventsOn: any = () => {};
-let EventsOff: any = () => {};
 if (isWails) {
   const runtime = window.runtime;
   EventsOn = runtime?.EventsOn ?? (() => {});
-  EventsOff = runtime?.EventsOff ?? (() => {});
 }
 
 export type AgentEvent = {
@@ -73,8 +71,8 @@ async function loadSessionMessages(sessionName: string) {
     try {
       const msgs = await (window as any).go.desktop.App.LoadSessionHistory(sessionName);
       payload.messages = msgs;
-    } catch(e) {
-      console.error("Failed to load Wails session history", e);
+    } catch {
+      // ignore Wails session history load error
     }
   } else {
     const response = await fetch(`/api/sessions/${encodeURIComponent(sessionName)}/messages`);
@@ -158,8 +156,7 @@ export async function loadSessions() {
       const sessList = await (window as any).go.desktop.App.ListSessions();
       const available = [...new Set([...(sessList ?? []), "default"])].sort();
       sessions.set(available);
-    } catch (e) {
-      console.error("Failed to load Wails sessions", e);
+    } catch {
       sessions.set(["default"]);
     }
     return;
@@ -341,8 +338,8 @@ export async function connectChat(sessionName?: string, forceReconnect = false) 
   try {
     await loadSessions();
     await loadSessionMessages(activeSession);
-  } catch (err) {
-    console.error("Failed to load initial session data", err);
+  } catch {
+    // ignore initial session load error
   }
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -368,8 +365,8 @@ export async function connectChat(sessionName?: string, forceReconnect = false) 
 function connectWailsChat(session: string) {
   connectionState.set("connecting");
   
-  loadSessions().then(() => loadSessionMessages(session)).catch(err => {
-    console.error("Failed to load initial session data", err);
+  loadSessions().then(() => loadSessionMessages(session)).catch(() => {
+    // ignore initial session load error
   });
 
   connectionState.set("connected");
@@ -418,6 +415,5 @@ export function sendMessage(content: string) {
     ws.send(content);
   } else {
     isGenerating.set(false);
-    console.error("WebSocket not connected");
   }
 }

@@ -21,7 +21,7 @@ func truncateMarkdown(markdown string) string {
 	return markdown[:maxInputChars] + "\n\n[content truncated]"
 }
 
-func buildPrompt(title, markdown, url string) string {
+func buildPrompt(title, markdown, url string) (string, error) {
 	return prompts.Render("scraper_page_summarize", struct {
 		URL      string
 		Title    string
@@ -72,7 +72,10 @@ func SummarizePage(ctx context.Context, apiKey, title, markdown, url string) Pag
 	}
 	defer client.Close()
 
-	prompt := buildPrompt(title, markdown, url)
+	prompt, err := buildPrompt(title, markdown, url)
+	if err != nil {
+		return fallbackSummary(title, markdown, url)
+	}
 	model := client.GenerativeModel("gemini-2.5-flash") // Default model
 
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))

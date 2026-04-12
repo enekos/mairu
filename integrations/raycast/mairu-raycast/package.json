@@ -97,7 +97,6 @@
   ],
   "dependencies": {
     "@raycast/api": "^1.69.0",
-    "@raycast/utils": "^1.13.0",
     "react": "^19.0.0",
     "react-dom": "^19.2.5"
   },

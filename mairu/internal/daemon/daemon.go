@@ -216,7 +216,11 @@ func (d *Daemon) HandleFileDelete(ctx context.Context, filePath string) error {
 	delete(d.fileContentHashes, abs)
 	delete(d.nodePayloadHashes, abs)
 	d.mu.Unlock()
-	return d.manager.DeleteContextNode(ctx, d.fileToURI(abs))
+	uri, err := d.fileToURI(abs)
+	if err != nil {
+		return err
+	}
+	return d.manager.DeleteContextNode(ctx, uri)
 }
 
 func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
@@ -258,7 +262,10 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		return nil
 	}
 
-	summary := d.summarizeSourceFile(ctx, abs, string(raw))
+	summary, err := d.summarizeSourceFile(ctx, abs, string(raw))
+	if err != nil {
+		return err
+	}
 	metadata := map[string]any{
 		"type":        "file",
 		"path":        abs,
@@ -268,7 +275,10 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 
 	// Run enricher pipeline if configured
 	if d.enricherPipeline != nil {
-		rel, _ := filepath.Rel(d.watchDir, abs)
+		rel, err := filepath.Rel(d.watchDir, abs)
+		if err != nil {
+			return err
+		}
 		fc := &enricher.FileContext{
 			FilePath: abs,
 			RelPath:  filepath.ToSlash(rel),
@@ -292,14 +302,22 @@ func (d *Daemon) ProcessFile(ctx context.Context, filePath string) error {
 		return nil
 	}
 
+	uri, err := d.fileToURI(abs)
+	if err != nil {
+		return err
+	}
+	parentURI, err := d.fileToParentURI(abs)
+	if err != nil {
+		return err
+	}
 	if err := d.manager.UpsertFileContextNode(
 		ctx,
-		d.fileToURI(abs),
+		uri,
 		filepath.Base(abs),
 		summary.Abstract,
 		summary.Overview,
 		summary.Content,
-		d.fileToParentURI(abs),
+		parentURI,
 		d.project,
 		metadata,
 	); err != nil {
@@ -398,18 +416,24 @@ func (d *Daemon) runWithConcurrency(ctx context.Context, items []string, concurr
 	return firstErr
 }
 
-func (d *Daemon) fileToURI(filePath string) string {
-	rel, _ := filepath.Rel(d.watchDir, filePath)
-	return "contextfs://" + d.project + "/" + filepath.ToSlash(rel)
+func (d *Daemon) fileToURI(filePath string) (string, error) {
+	rel, err := filepath.Rel(d.watchDir, filePath)
+	if err != nil {
+		return "", err
+	}
+	return "contextfs://" + d.project + "/" + filepath.ToSlash(rel), nil
 }
 
-func (d *Daemon) fileToParentURI(filePath string) string {
-	rel, _ := filepath.Rel(d.watchDir, filePath)
+func (d *Daemon) fileToParentURI(filePath string) (string, error) {
+	rel, err := filepath.Rel(d.watchDir, filePath)
+	if err != nil {
+		return "", err
+	}
 	dir := filepath.ToSlash(filepath.Dir(rel))
 	if dir == "." || dir == "" {
-		return "contextfs://" + d.project
+		return "contextfs://" + d.project, nil
 	}
-	return "contextfs://" + d.project + "/" + dir
+	return "contextfs://" + d.project + "/" + dir, nil
 }
 
 type sourceSummary struct {
@@ -419,7 +443,7 @@ type sourceSummary struct {
 	LogicGraph map[string]any
 }
 
-func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) sourceSummary {
+func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) (sourceSummary, error) {
 	var fileDoc string
 	var abstract string
 	var overview string
@@ -434,8 +458,12 @@ func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) 
 			abstract = fileDoc
 		}
 
+		rel, err := mustRel(d.watchDir, filePath)
+		if err != nil {
+			return sourceSummary{}, err
+		}
 		lines := []string{
-			"File: " + filepath.ToSlash(mustRel(d.watchDir, filePath)),
+			"File: " + filepath.ToSlash(rel),
 			"Language: " + describer.LanguageID(),
 			"LogicGraph: v1",
 			fmt.Sprintf("GraphStats: symbols=%d edges=%d", len(fg.Symbols), len(fg.Edges)),
@@ -513,9 +541,12 @@ func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) 
 				abstract = "This file defines: " + strings.Join(names, ", ")
 			}
 		}
-		rel := filepath.ToSlash(mustRel(d.watchDir, filePath))
+		rel, err := mustRel(d.watchDir, filePath)
+		if err != nil {
+			return sourceSummary{}, err
+		}
 		lines := []string{
-			"File: " + rel,
+			"File: " + filepath.ToSlash(rel),
 			"Language: " + strings.TrimPrefix(strings.ToLower(filepath.Ext(filePath)), "."),
 			"LogicGraph: v1",
 			fmt.Sprintf("GraphStats: symbols=%d shown=%d edges=%d shown=%d", len(symbols), len(symbols), len(edges), len(edges)),
@@ -561,7 +592,7 @@ func (d *Daemon) summarizeSourceFile(ctx context.Context, filePath, src string) 
 		Overview:   overview,
 		Content:    content,
 		LogicGraph: logicGraph,
-	}
+	}, nil
 }
 
 type symbol struct {
@@ -735,12 +766,8 @@ func mustJSON(v any) string {
 	return string(raw)
 }
 
-func mustRel(base, p string) string {
-	rel, err := filepath.Rel(base, p)
-	if err != nil {
-		return p
-	}
-	return rel
+func mustRel(base, p string) (string, error) {
+	return filepath.Rel(base, p)
 }
 
 func hashText(v string) string {

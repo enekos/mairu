@@ -39,12 +39,12 @@ export async function runMairuCmd(
       cwd: cwd || process.cwd(),
     });
     if (stderr && !stdout) {
-      console.error("Mairu stderr:", stderr);
+      // Mairu returned stderr without stdout; error will be thrown below if needed
     }
     return stdout;
   } catch (error: Error | unknown) {
     const err = error as { message?: string; code?: number | string; stdout?: string };
-    console.error(`Error running mairu: ${err.message}`);
+    // Error running mairu; details included in thrown error
 
     if (err.code === 127 || (err.message && err.message.includes("command not found"))) {
       throw new Error(

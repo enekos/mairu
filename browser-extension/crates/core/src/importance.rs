@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_code_blocks_boost_score() {
-        let mut plain = make_snap(500, false, 0);
+        let plain = make_snap(500, false, 0);
         let mut rich = make_snap(500, false, 0);
         for _ in 0..3 {
             rich.sections.push(ContentSection {
@@ -155,7 +155,6 @@ mod tests {
             });
         }
         assert!(compute_importance(&rich) > compute_importance(&plain));
-        // silence unused warning
-        plain.revision = 0;
+        let _ = plain;
     }
 }

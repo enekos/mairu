@@ -28,10 +28,16 @@ func (n *PromptRefinerNode) Execute(ctx context.Context, state State) (State, er
 		return state, fmt.Errorf("PromptRefinerNode: missing GeminiProvider")
 	}
 
-	systemInstruction := prompts.Render("crawler_prompt_refiner_sys", nil)
-	userPromptStr := prompts.Render("crawler_prompt_refiner_user", map[string]any{
+	systemInstruction, err := prompts.Render("crawler_prompt_refiner_sys", nil)
+	if err != nil {
+		return state, fmt.Errorf("PromptRefinerNode: failed to render prompt: %w", err)
+	}
+	userPromptStr, err := prompts.Render("crawler_prompt_refiner_user", map[string]any{
 		"UserPrompt": userPrompt,
 	})
+	if err != nil {
+		return state, fmt.Errorf("PromptRefinerNode: failed to render prompt: %w", err)
+	}
 
 	refinedPrompt, err := geminiProvider.GenerateContent(ctx, geminiProvider.GetModelName(), systemInstruction+"\n\n"+userPromptStr)
 	if err != nil {

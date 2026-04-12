@@ -20,9 +20,7 @@ func NewHandler(svc Service, authToken string) *Handler {
 		return func(w http.ResponseWriter, r *http.Request) {
 			if authToken != "" {
 				if r.Header.Get("X-Context-Token") != authToken {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusUnauthorized)
-					json.NewEncoder(w).Encode(map[string]any{"error": "unauthorized"})
+					writeJSONErrorString(w, http.StatusUnauthorized, "unauthorized")
 					return
 				}
 			}

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Terminal, Database, Cpu, Activity, ShieldAlert, FileCode } from 'lucide-svelte';
+  import { Terminal, Database, Cpu, Activity, ShieldAlert } from 'lucide-svelte';
   import { connectionState, messages } from './store';
   import { onMount, onDestroy } from 'svelte';
 

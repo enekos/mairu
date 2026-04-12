@@ -40,7 +40,11 @@ func runScanCmd(t *testing.T, cmd *cobra.Command, args ...string) scanResult {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	cmd.Run(cmd, args)
+	err := cmd.RunE(cmd, args)
+	if err != nil {
+		// Some tests expect no-match or other non-fatal "errors" from RunE;
+		// swallow the error here so assertions on stdout still work.
+	}
 
 	w.Close()
 	os.Stdout = oldStdout
@@ -106,7 +110,7 @@ func TestScanGroup(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	cmd.Run(cmd, []string{"Hello", dir})
+	_ = cmd.RunE(cmd, []string{"Hello", dir})
 
 	w.Close()
 	os.Stdout = oldStdout
