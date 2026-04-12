@@ -15,15 +15,13 @@ Welcome to the Mairu documentation. This repository contains detailed guides and
 ## Guides
 
 - [Project Structure](PROJECT_STRUCTURE.md): Detailed breakdown of the repository.
-- [Development Workflow](DEVELOPMENT.md): How to contribute and run tests.
-- [Configuration Guide](CONFIGURATION.md): Deep dive into the TOML configuration system.
+- [Architecture Guide](ARCHITECTURE_GUIDE.md): Runtime architecture and major subsystems.
+- [Specifications](specs): Design specs and implementation planning notes.
 
-## Superpowers (Internal Docs)
+## Contributor Notes
 
-Internal documentation for advanced features and architectural decisions.
-
-- [Stuck Detector](superpowers/specs/2026-04-08-stuck-detector-design.md): Design and implementation of the automatic stuck detector.
-- [Stuck Detector Plan](superpowers/plans/2026-04-08-stuck-detector.md): Execution plan for the stuck detector feature.
+- Keep top-level docs and CLI command examples in sync.
+- Prefer commands rooted at repository root unless explicitly noted otherwise.
 
 ## License
 

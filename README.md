@@ -8,6 +8,8 @@ Unified monorepo for:
 - the **central context server** (Go)
 - the **unified web UI dashboard** (Svelte)
 
+See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contributor workflow and quality gates.
+
 ## Repository Layout
 
 ```text
@@ -154,7 +156,8 @@ make mairu-build
 # Advanced Tools (Daemon, Ingest, Scraper & History)
 ./mairu/bin/mairu daemon ./src -P my-project                                        # Scan directory and extract AST to context nodes
 ./mairu/bin/mairu ingest design.md --base-uri "contextfs://design" -P my-project -y # Parse markdown via LLM and persist
-./mairu/bin/mairu scrape https://example.com --max-depth 2 -P my-project            # Crawl and summarize web content into context
+./mairu/bin/mairu scrape web https://example.com -P my-project                       # Scrape one URL into context
+./mairu/bin/mairu scrape depth https://example.com -d 2 -P my-project                # Crawl and summarize web content
 ./mairu/bin/mairu history search "test fail"                                        # Semantically search bash command history
 
 # Full TUI or Web Servers
@@ -170,7 +173,7 @@ See `mairu config list` for the complete list of settings.
 
 ```env
 MEILI_URL=http://localhost:7700
-MEILI_API_KEY=mairu-dev-key
+MEILI_API_KEY=contextfs-dev-key
 GEMINI_API_KEY=your_gemini_api_key
 EMBEDDING_MODEL=gemini-embedding-001
 EMBEDDING_DIM=3072

@@ -6,7 +6,7 @@ Copy these instructions into your project's `CLAUDE.md`, `.cursorrules`, `AGENTS
 
 ## Persistent Memory and Context with `mairu`
 
-This project uses the Mairu context engine through `mairu` (or compatibility alias `mairu`) to store and retrieve:
+This project uses the Mairu context engine through `mairu` to store and retrieve:
 - team conventions
 - architectural decisions
 - debugging findings
@@ -36,24 +36,24 @@ mairu node ls "contextfs://<project_name>/backend/auth" -P <project_name>
 
 When you learn something future sessions should know, store it immediately if you consider it's relevant for the future.
 
-Use `vibe-mutation` first because it can create/update memories and context nodes from one instruction.
+Use `vibe mutation` first because it can create/update memories and context nodes from one instruction.
 
 Use `-y` in non-interactive agent environments, only in case you are certain about the changes, be critical.
 
 ```bash
 # Save a convention or stable decision
-mairu vibe-mutation "Remember: we use Vitest for tests and place integration tests under tests/integration." -P <project_name> -y
+mairu vibe mutation "Remember: we use Vitest for tests and place integration tests under tests/integration." -P <project_name> -y
 
 # Update known architecture details
-mairu vibe-mutation "Update auth context: refresh tokens are now rotated on every renewal and revoked on logout." -P <project_name> -y
+mairu vibe mutation "Update auth context: refresh tokens are now rotated on every renewal and revoked on logout." -P <project_name> -y
 ```
 
 ### 3) Natural-language retrieval (optional fallback)
 
-Use `vibe-query` only when direct memory/node retrieval is not enough (for broad or ambiguous requests that benefit from multi-step planning).
+Use `vibe query` only when direct memory/node retrieval is not enough (for broad or ambiguous requests that benefit from multi-step planning).
 
 ```bash
-mairu vibe-query "How does authentication work in this codebase and what are the token validation rules?" -P <project_name>
+mairu vibe query "How does authentication work in this codebase and what are the token validation rules?" -P <project_name>
 ```
 
 ### 4) Precise operations
@@ -84,7 +84,7 @@ mairu node ls "contextfs://<project_name>/backend" -P <project_name>
 ```
 
 #### Context Rollback
-If a `vibe-mutation` or manual update hallucinates an operation and corrupts an existing node, you can restore its soft-deleted state:
+If a `vibe mutation` or manual update hallucinates an operation and corrupts an existing node, you can restore its soft-deleted state:
 ```bash
 mairu node restore "contextfs://<project_name>/backend/auth"
 ```

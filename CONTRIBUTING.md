@@ -24,21 +24,26 @@ make build
 bun run --cwd mairu/ui check
 ```
 
+4. Optional local hooks:
+
+```bash
+make install-hooks
+```
+
 ## Useful Commands
 
-- `make setup` - reset and initialize database schema (destructive).
+- `make setup` - initialize/reset Meilisearch indexes (destructive).
 - `make dashboard` - run Go context server API and Svelte dev server.
 - `bun run --cwd mairu/ui dev` - run unified Svelte dashboard (`mairu/ui`).
 - `make eval-retrieval` - run retrieval benchmark.
-- `mairu memory search "query" -P my-project --mode surface` - curated-memory-first retrieval.
-- `mairu memory feedback -P my-project --arm <arm> --outcome accepted|ignored --rank 1` - feed reward signals.
-- `mairu memory policy -P my-project` / `mairu memory policy -P my-project --reset` - inspect/reset adaptive policy state.
+- `./mairu/bin/mairu memory search "query" -P my-project` - search project memories.
+- `./mairu/bin/mairu vibe query "how does auth work?" -P my-project` - natural-language retrieval.
+- `./mairu/bin/mairu vibe mutation "remember X" -P my-project -y` - store/update context from plain English.
 
 ## Contribution Guidelines
 
 - Keep changes focused and incremental.
 - Update docs and examples when behavior changes.
-- Preserve backward compatibility where practical.
 - Do not commit secrets (`.env`, tokens, credentials).
 - If changing adaptive retrieval behavior, run eval in both baseline and adaptive modes.
 
