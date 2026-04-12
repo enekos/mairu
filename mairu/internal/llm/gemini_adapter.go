@@ -153,19 +153,6 @@ func messageRoleToGenaiRole(role string) string {
 	}
 }
 
-// genaiToolsToTools converts genai function declarations to our Tool format
-func genaiToolsToTools(funcDecls []*genai.FunctionDeclaration) []Tool {
-	tools := make([]Tool, 0, len(funcDecls))
-	for _, fd := range funcDecls {
-		tools = append(tools, Tool{
-			Name:        fd.Name,
-			Description: fd.Description,
-			Parameters:  ToJSONSchema(fd.Parameters),
-		})
-	}
-	return tools
-}
-
 // toolsToGenaiFunctionDeclarations converts our Tools to genai format
 func toolsToGenaiFunctionDeclarations(tools []Tool) []*genai.FunctionDeclaration {
 	funcDecls := make([]*genai.FunctionDeclaration, 0, len(tools))

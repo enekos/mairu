@@ -146,7 +146,6 @@ type KimiStreamIterator struct {
 	reader *bufio.Reader
 	body   io.ReadCloser
 	done   bool
-	buffer ChatStreamChunk
 }
 
 func (k *KimiStreamIterator) Next() (ChatStreamChunk, error) {

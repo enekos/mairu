@@ -1,0 +1,75 @@
+{
+  "edges": [
+    {
+      "From": "fn:decrement",
+      "Kind": "call",
+      "To": "fn:increment"
+    },
+    {
+      "From": "fn:decrement",
+      "Kind": "call",
+      "To": "fn:reset"
+    },
+    {
+      "From": "fn:increment",
+      "Kind": "call",
+      "To": "fn:decrement"
+    },
+    {
+      "From": "fn:increment",
+      "Kind": "call",
+      "To": "fn:reset"
+    },
+    {
+      "From": "fn:reset",
+      "Kind": "call",
+      "To": "fn:decrement"
+    },
+    {
+      "From": "fn:reset",
+      "Kind": "call",
+      "To": "fn:increment"
+    }
+  ],
+  "file_summary": "Svelte component graph extracted.",
+  "imports": [
+    "svelte"
+  ],
+  "symbol_descriptions": {
+    "fn:decrement": "Describes decrement",
+    "fn:increment": "Describes increment",
+    "fn:reset": "Describes reset"
+  },
+  "symbols": [
+    {
+      "ControlFlow": "",
+      "Doc": "",
+      "Exported": true,
+      "ID": "fn:decrement",
+      "Kind": "fn",
+      "Line": 10,
+      "Name": "decrement",
+      "Signature": ""
+    },
+    {
+      "ControlFlow": "",
+      "Doc": "",
+      "Exported": true,
+      "ID": "fn:increment",
+      "Kind": "fn",
+      "Line": 6,
+      "Name": "increment",
+      "Signature": ""
+    },
+    {
+      "ControlFlow": "",
+      "Doc": "",
+      "Exported": true,
+      "ID": "fn:reset",
+      "Kind": "fn",
+      "Line": 14,
+      "Name": "reset",
+      "Signature": ""
+    }
+  ]
+}

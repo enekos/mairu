@@ -30,16 +30,17 @@ func toApproved(g FileGraph) approvedGraph {
 }
 
 var describers = map[string]LanguageDescriber{
-	".ts":  TypeScriptDescriber{},
-	".js":  TypeScriptDescriber{},
-	".go":  GoDescriber{},
-	".py":  PythonDescriber{},
-	".php": PHPDescriber{},
-	".vue": VueDescriber{},
-	".tsx": TSXDescriber{},
-	".jsx": TSXDescriber{},
-	".md":  MarkdownDescriber{},
-	".mdx": MarkdownDescriber{},
+	".ts":     TypeScriptDescriber{},
+	".js":     TypeScriptDescriber{},
+	".go":     GoDescriber{},
+	".py":     PythonDescriber{},
+	".php":    PHPDescriber{},
+	".vue":    VueDescriber{},
+	".svelte": SvelteDescriber{},
+	".tsx":    TSXDescriber{},
+	".jsx":    TSXDescriber{},
+	".md":     MarkdownDescriber{},
+	".mdx":    MarkdownDescriber{},
 }
 
 func TestExtractFileGraph_Approved(t *testing.T) {
