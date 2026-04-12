@@ -28,7 +28,7 @@ type KimiProvider struct {
 // NewKimiProvider creates a new Kimi provider from configuration
 func NewKimiProvider(cfg ProviderConfig) (*KimiProvider, error) {
 	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("Kimi API key is required")
+		return nil, fmt.Errorf("kimi API key is required")
 	}
 
 	model := cfg.Model
@@ -572,12 +572,8 @@ func (k *KimiProvider) buildKimiTools() []KimiTool {
 
 	for _, tool := range allTools {
 		kimiTools = append(kimiTools, KimiTool{
-			Type: "function",
-			Function: KimiFunctionDef{
-				Name:        tool.Name,
-				Description: tool.Description,
-				Parameters:  tool.Parameters,
-			},
+			Type:     "function",
+			Function: KimiFunctionDef(tool),
 		})
 	}
 

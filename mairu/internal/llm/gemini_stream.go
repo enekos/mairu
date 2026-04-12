@@ -6,9 +6,8 @@ import (
 
 // geminiStreamIterator wraps genai.GenerateContentResponseIterator to implement ChatStreamIterator
 type geminiStreamIterator struct {
-	iter   *genai.GenerateContentResponseIterator
-	done   bool
-	buffer string
+	iter *genai.GenerateContentResponseIterator
+	done bool
 }
 
 func newGeminiStreamIterator(iter *genai.GenerateContentResponseIterator) ChatStreamIterator {

@@ -41,10 +41,7 @@ func runScanCmd(t *testing.T, cmd *cobra.Command, args ...string) scanResult {
 	os.Stdout = w
 
 	err := cmd.RunE(cmd, args)
-	if err != nil {
-		// Some tests expect no-match or other non-fatal "errors" from RunE;
-		// swallow the error here so assertions on stdout still work.
-	}
+	_ = err // swallow non-fatal errors so stdout assertions still work
 
 	w.Close()
 	os.Stdout = oldStdout

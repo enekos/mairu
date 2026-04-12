@@ -37,6 +37,7 @@ func GetDescriber(filePath string) ast.LanguageDescriber {
 		ast.TypeScriptDescriber{},
 		ast.TSXDescriber{},
 		ast.VueDescriber{},
+		ast.SvelteDescriber{},
 		ast.GoDescriber{},
 		ast.PythonDescriber{},
 		ast.PHPDescriber{},

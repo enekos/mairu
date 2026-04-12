@@ -28,7 +28,7 @@ const (
 
 var supportedExtensions = map[string]bool{
 	".ts": true, ".tsx": true, ".js": true, ".jsx": true, ".mjs": true, ".cjs": true, ".py": true, ".go": true,
-	".php": true, ".md": true, ".mdx": true,
+	".php": true, ".md": true, ".mdx": true, ".svelte": true,
 }
 
 var ignoredPathSegment = map[string]bool{
@@ -117,6 +117,7 @@ func New(manager Manager, project, watchDir string, opts Options) *Daemon {
 			ast.TypeScriptDescriber{},
 			ast.TSXDescriber{},
 			ast.VueDescriber{},
+			ast.SvelteDescriber{},
 			ast.GoDescriber{},
 			ast.PythonDescriber{},
 			ast.PHPDescriber{},
