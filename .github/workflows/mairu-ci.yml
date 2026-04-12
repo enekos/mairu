@@ -42,6 +42,16 @@ jobs:
         with:
           bun-version: latest
 
+      # UI must be built before Go lint: mairu/ui/embed.go uses //go:embed all:dist
+      - name: Install UI dependencies
+        run: bun install --cwd mairu/ui
+
+      - name: Run UI type checks
+        run: bun run --cwd mairu/ui check
+
+      - name: Build UI
+        run: bun run --cwd mairu/ui build
+
       - name: Run Go format check
         run: make fmt-go-check
 
@@ -57,15 +67,6 @@ jobs:
 
       - name: Run replaced module tests
         run: go -C mairu/generative-ai-go-patch test ./...
-
-      - name: Install UI dependencies
-        run: bun install --cwd mairu/ui
-
-      - name: Run UI type checks
-        run: bun run --cwd mairu/ui check
-
-      - name: Build UI
-        run: bun run --cwd mairu/ui build
 
       - name: Build Go binaries
         run: go -C mairu build -v ./...
