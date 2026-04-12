@@ -5,20 +5,22 @@ on:
     branches: [master, main]
     paths:
       - 'mairu/**'
+      - 'Makefile'
+      - 'scripts/**'
+      - '.githooks/**'
       - '.github/workflows/mairu-ci.yml'
   pull_request:
     branches: [master, main]
     paths:
       - 'mairu/**'
+      - 'Makefile'
+      - 'scripts/**'
+      - '.githooks/**'
       - '.github/workflows/mairu-ci.yml'
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./mairu
 
     steps:
       - uses: actions/checkout@v4
@@ -32,22 +34,39 @@ jobs:
           go-version-file: mairu/go.mod
           cache-dependency-path: mairu/go.sum
 
-      - name: Install dependencies
-        run: go mod download
+      - name: Download Go dependencies
+        run: go -C mairu mod download
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
+      # UI must be built before Go lint: mairu/ui/embed.go uses //go:embed all:dist
+      - name: Install UI dependencies
+        run: bun install --cwd mairu/ui
+
+      - name: Run UI type checks
+        run: bun run --cwd mairu/ui check
+
       - name: Build UI
-        run: |
-          cd ui
-          bun install
-          bun run build
+        run: bun run --cwd mairu/ui build
 
-      - name: Build
-        run: go build -v ./...
+      - name: Run Go format check
+        run: make fmt-go-check
 
-      - name: Test
-        run: go test -v ./...
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+          working-directory: mairu
+          args: ./...
+
+      - name: Run Go tests with race detector
+        run: make test-go-race
+
+      - name: Run replaced module tests
+        run: go -C mairu/generative-ai-go-patch test ./...
+
+      - name: Build Go binaries
+        run: go -C mairu build -v ./...

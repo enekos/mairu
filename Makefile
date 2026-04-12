@@ -24,7 +24,7 @@ help:
 	@echo "  make install            Install root Bun dependencies"
 	@echo "  make install-dashboard  Install dashboard dependencies"
 	@echo "  make build              Build Go output"
-	@echo "  make lint               Run Go vet"
+	@echo "  make lint               Run Go lint checks"
 	@echo "  make test               Run Go tests"
 	@echo "  make fmt-go             Format Go code"
 	@echo "  make check-go           Run fmt check + lint + tests"

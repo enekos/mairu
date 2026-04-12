@@ -13,15 +13,14 @@ type ComplexAddress struct {
 }
 
 type ComplexStruct struct {
-	ID         int             `json:"id" desc:"The ID"`
-	Score      float64         `json:"score"`
-	IsActive   bool            `json:"is_active"`
-	Tags       []string        `json:"tags"`
-	Address    *ComplexAddress `json:"address"`
-	Secret     string          `json:"-"`
-	unexported string
-	Data       map[string]string `json:"data"`
-	History    []ComplexAddress  `json:"history"`
+	ID       int               `json:"id" desc:"The ID"`
+	Score    float64           `json:"score"`
+	IsActive bool              `json:"is_active"`
+	Tags     []string          `json:"tags"`
+	Address  *ComplexAddress   `json:"address"`
+	Secret   string            `json:"-"`
+	Data     map[string]string `json:"data"`
+	History  []ComplexAddress  `json:"history"`
 }
 
 func TestGenerateSchema_Comprehensive(t *testing.T) {

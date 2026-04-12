@@ -10,7 +10,7 @@ A dynamic context and memory storage system for coding agents. Provides native h
 - **Embeddings:** Google Gemini (`gemini-embedding-001`, 3072 dims)
 - **Frontend:** Svelte 5 + Vite
 - **Testing:** Go testing (`go test`)
-- **Linting:** Go vet (`go vet`)
+- **Linting:** `golangci-lint` (fallback: `go vet`)
 
 ## Setup
 
@@ -30,7 +30,7 @@ make setup              # create Meilisearch indexes (destructive — drops and 
 | `docker compose down` | Stop Meilisearch container |
 | `make build` | Compile Go binary to `bin/mairu` |
 | `make test` | Run Go tests |
-| `make lint` | Run go vet |
+| `make lint` | Run Go lint checks |
 | `make clean` | Remove `mairu/bin/` |
 | `make setup` | Init/reset Meilisearch indexes |
 | `make dashboard` | Start context server (API) + Svelte dev UI |
@@ -40,8 +40,8 @@ make setup              # create Meilisearch indexes (destructive — drops and 
 ### Evaluation
 
 ```bash
-bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --verbose true
-bun run eval:retrieval -- --dataset eval/dataset.json --topK 5 --fail-below-mrr 0.8 --fail-below-recall 0.75
+./mairu/bin/mairu eval:retrieval --dataset ./llmeval/sample_dataset.json --topK 5 --verbose true
+./mairu/bin/mairu eval:retrieval --dataset ./llmeval/sample_dataset.json --topK 5 --fail-below-mrr 0.8 --fail-below-recall 0.75
 ```
 
 ## Architecture
@@ -61,7 +61,7 @@ Meilisearch handles vector + full-text search natively; app-side re-ranking appl
 3. **App-side re-ranking** — exponential recency decay + importance score boost
 4. Results from both retrievers are merged and re-ranked before returning
 
-Weights (vector, keyword, recency, importance) are defined in `scorer.ts`.
+Weights (vector, keyword, recency, importance) are defined in `mairu/internal/contextsrv/search_rerank.go`.
 
 ### Meilisearch Indexes
 
@@ -88,13 +88,13 @@ Weights (vector, keyword, recency, importance) are defined in `scorer.ts`.
 
 | File | Role |
 |---|---|
-| `mairu/internal/db/meilisearchDB.go` | DB layer: CRUD, hybrid search (vector + full-text + re-ranking), tree queries |
+| `mairu/internal/contextsrv/meili.go` | Meilisearch integration, hybrid retrieval orchestration |
 | `mairu/internal/contextsrv/service.go` | High-level API used by CLI |
 | `mairu/internal/llm/embedder.go` | Gemini embedding calls |
-| `mairu/internal/contextsrv/scorer.go` | Hybrid weight definitions |
+| `mairu/internal/contextsrv/search_rerank.go` | Hybrid score blending and reranking weights |
 | `mairu/internal/llm/router.go` | LLM-powered deduplication (CREATE / UPDATE / SKIP) |
 | `mairu/internal/llm/ingestor.go` | Free-form text → structured context nodes |
-| `mairu/internal/contextsrv/vibe.go` | LLM-driven free-text query planning and mutation planning |
+| `mairu/internal/contextsrv/service_vibe.go` | LLM-driven free-text query planning and mutation planning |
 | `mairu/cmd/mairu/main.go` | CLI entry point |
 | `mairu/internal/web/server.go` | REST API for dashboard |
 | `mairu/internal/eval/evaluate.go` | Evaluation harness entry point |

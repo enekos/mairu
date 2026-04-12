@@ -38,11 +38,15 @@ func TestFormatCouncilFeedback_SortedStableOutput(t *testing.T) {
 }
 
 func TestBuildCouncilExecutionPrompt_IncludesTaskSynthesisAndFeedback(t *testing.T) {
-	prompt := buildCouncilExecutionPrompt(
+	prompt, err := buildCouncilExecutionPrompt(
+		"",
 		"Implement feature X",
 		"Prioritize safety checks",
 		map[string]string{"App Developer": "Looks good"},
 	)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	assertContains := []string{
 		"## Original Task",

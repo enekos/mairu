@@ -33,7 +33,7 @@ func TestPopulateFile(t *testing.T) {
 	}}
 	p2 := &pb.File{
 		Metadata: &pb.File_VideoMetadata{
-			VideoMetadata: &pb.VideoMetadata{
+			VideoMetadata: &pb.VideoFileMetadata{
 				VideoDuration: durationpb.New(time.Minute),
 			},
 		},
@@ -48,7 +48,7 @@ func TestPopulateFile(t *testing.T) {
 	} {
 		var pgot pb.File
 		populateFileTo(&pgot, test.f)
-		if !cmp.Equal(&pgot, test.p, cmpopts.IgnoreUnexported(pb.File{}, pb.VideoMetadata{}, durationpb.Duration{})) {
+		if !cmp.Equal(&pgot, test.p, cmpopts.IgnoreUnexported(pb.File{}, pb.VideoFileMetadata{}, durationpb.Duration{})) {
 			t.Errorf("got %+v, want %+v", &pgot, test.p)
 		}
 

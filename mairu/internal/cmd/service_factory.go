@@ -5,15 +5,21 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"mairu/internal/contextsrv"
 )
 
-var localApp *contextsrv.App
+type localServiceFactory struct {
+	mu  sync.Mutex
+	app *contextsrv.App
+}
 
-func initLocalApp() {
-	if localApp != nil {
+func (f *localServiceFactory) init() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.app != nil {
 		return
 	}
 
@@ -49,36 +55,51 @@ func initLocalApp() {
 		os.Exit(1)
 	}
 
-	localApp = app
+	f.app = app
 }
 
-func getLocalService() contextsrv.Service {
-	initLocalApp()
-	return localApp.Service()
+func (f *localServiceFactory) handler() http.Handler {
+	f.init()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.app.Handler()
 }
 
-func getLocalHandler() http.Handler {
-	initLocalApp()
-	return localApp.Handler()
-}
-
-func closeLocalService() {
-	if localApp != nil {
-		// Increase timeout to 30s to allow more items to be embedded
+func (f *localServiceFactory) close() {
+	f.mu.Lock()
+	app := f.app
+	f.app = nil
+	f.mu.Unlock()
+	if app != nil {
 		importCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		if err := localApp.Flush(importCtx); err != nil {
+		if err := app.Flush(importCtx); err != nil {
 			slog.Warn("Failed to flush local service outbox", "error", err)
 		}
 
-		_ = localApp.Shutdown(importCtx)
-		localApp = nil
+		_ = app.Shutdown(importCtx)
 	}
+}
+
+func (f *localServiceFactory) getApp() *contextsrv.App {
+	f.init()
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.app
+}
+
+var localFactory localServiceFactory
+
+func getLocalHandler() http.Handler {
+	return localFactory.handler()
+}
+
+func closeLocalService() {
+	localFactory.close()
 }
 
 // GetLocalApp returns the underlying App instance for accessing the SymbolLocator.
 func GetLocalApp() *contextsrv.App {
-	initLocalApp()
-	return localApp
+	return localFactory.getApp()
 }

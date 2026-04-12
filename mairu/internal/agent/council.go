@@ -106,7 +106,7 @@ func (a *Agent) runCouncil(outChan chan<- AgentEvent, task string) (string, erro
 		return "", fmt.Errorf("product lead synthesis failed: %w", err)
 	}
 	outChan <- AgentEvent{Type: "status", Content: "Council Product Lead: final guidance ready"}
-	return buildCouncilExecutionPrompt(task, synthesized, feedbackByRole), nil
+	return buildCouncilExecutionPrompt(a.root, task, synthesized, feedbackByRole)
 }
 
 func (a *Agent) generateCouncilFeedback(task string, role CouncilRole) (string, error) {
@@ -161,18 +161,14 @@ func formatCouncilFeedback(feedback map[string]string) string {
 	return strings.TrimSpace(b.String())
 }
 
-func buildCouncilExecutionPrompt(task, synthesis string, feedback map[string]string) string {
-	var b strings.Builder
-	b.WriteString("You are executing with guidance from a council of reviewers.\n\n")
-	b.WriteString("## Original Task\n")
-	b.WriteString(strings.TrimSpace(task))
-	b.WriteString("\n\n")
-	b.WriteString("## Product Lead Guidance\n")
-	b.WriteString(strings.TrimSpace(synthesis))
-	b.WriteString("\n\n")
-	b.WriteString("## Expert Reviews\n")
-	b.WriteString(formatCouncilFeedback(feedback))
-	b.WriteString("\n\n")
-	b.WriteString("Follow this guidance pragmatically while completing the task. If guidance conflicts with repository reality, explain the conflict and choose the safest implementation.")
-	return b.String()
+func buildCouncilExecutionPrompt(projectRoot, task, synthesis string, feedback map[string]string) (string, error) {
+	return prompts.GetForProject("council_execution", struct {
+		Task          string
+		Synthesis     string
+		ExpertReviews string
+	}{
+		Task:          strings.TrimSpace(task),
+		Synthesis:     strings.TrimSpace(synthesis),
+		ExpertReviews: formatCouncilFeedback(feedback),
+	}, projectRoot)
 }

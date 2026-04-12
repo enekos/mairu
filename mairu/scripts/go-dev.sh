@@ -4,6 +4,18 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 MAIRU_DIR="${ROOT_DIR}/mairu"
 
+# ui/embed.go uses //go:embed all:dist — the directory must exist and contain at least one file
+# or go vet / go test fail. CI runs `bun run build` first; locally we create a tiny stub if needed.
+ensure_ui_embed_dist() {
+  local d="${MAIRU_DIR}/ui/dist"
+  mkdir -p "${d}"
+  local n
+  n=$(find "${d}" -mindepth 1 -maxdepth 1 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "${n}" -eq 0 ]]; then
+    printf '%s\n' '<!doctype html><meta charset="utf-8"><title>mairu</title><!-- stub: run bun run build in mairu/ui -->' >"${d}/index.html"
+  fi
+}
+
 list_go_files() {
   git -C "${ROOT_DIR}" ls-files -- "*.go"
 }
@@ -43,6 +55,7 @@ fmt_check_go() {
 }
 
 lint_go() {
+  ensure_ui_embed_dist
   if command -v golangci-lint >/dev/null 2>&1; then
     echo "Linting with golangci-lint..."
     (cd "${MAIRU_DIR}" && golangci-lint run ./...)
@@ -55,16 +68,19 @@ lint_go() {
 }
 
 test_go() {
+  ensure_ui_embed_dist
   echo "Running Go tests..."
   (cd "${MAIRU_DIR}" && go test ./...)
 }
 
 test_race_go() {
+  ensure_ui_embed_dist
   echo "Running Go tests with race detector..."
   (cd "${MAIRU_DIR}" && go test -race ./...)
 }
 
 coverage_go() {
+  ensure_ui_embed_dist
   echo "Running Go coverage..."
   (
     cd "${MAIRU_DIR}"
