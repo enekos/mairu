@@ -1,0 +1,122 @@
+{
+  "$schema": "https://www.raycast.com/downloads/extension.schema.json",
+  "name": "mairu",
+  "title": "Mairu",
+  "description": "Interact with Mairu ContextFS directly from Raycast.",
+  "icon": "command-icon.png",
+  "author": "thomas",
+  "categories": [
+    "Developer Tools"
+  ],
+  "license": "MIT",
+  "commands": [
+    {
+      "name": "search-memories",
+      "title": "Search Memories",
+      "description": "Search Mairu memories.",
+      "mode": "view"
+    },
+    {
+      "name": "search-nodes",
+      "title": "Search Context Nodes",
+      "description": "Search Mairu context nodes.",
+      "mode": "view"
+    },
+    {
+      "name": "store-memory",
+      "title": "Store Memory",
+      "description": "Store a new memory in Mairu.",
+      "mode": "view"
+    },
+    {
+      "name": "vibe-query",
+      "title": "Vibe Query",
+      "description": "Query Mairu using natural language.",
+      "mode": "view"
+    },
+    {
+      "name": "history-search",
+      "title": "Search History",
+      "description": "Semantically search past bash commands and outputs.",
+      "mode": "view"
+    },
+    {
+      "name": "scrape-web",
+      "title": "Scrape Web",
+      "description": "Fetch a URL, extract content, summarize, and store as a context node.",
+      "mode": "view"
+    },
+    {
+      "name": "vibe-mutation",
+      "title": "Vibe Mutation",
+      "description": "Store instructions and memory using natural language.",
+      "mode": "view"
+    },
+    {
+      "name": "system-status",
+      "title": "System Status",
+      "description": "Show Mairu system status and health.",
+      "mode": "view"
+    },
+    {
+      "name": "analyze-diff",
+      "title": "Analyze Git Diff",
+      "description": "Analyze the current git diff against the codebase graph to determine blast radius.",
+      "mode": "view"
+    },
+    {
+      "name": "analyze-graph",
+      "title": "Analyze Codebase Graph",
+      "description": "Analyze the AST graph to generate execution flows and functional clusters (skills).",
+      "mode": "view"
+    },
+    {
+      "name": "menubar-status",
+      "title": "Mairu Status",
+      "description": "Quickly view Mairu system status from the menu bar.",
+      "mode": "menu-bar"
+    }
+  ],
+  "preferences": [
+    {
+      "name": "mairuCliPath",
+      "title": "Mairu CLI Path",
+      "description": "Absolute path to the mairu executable (e.g., /usr/local/bin/mairu). If left blank, it will assume 'mairu' is in your PATH.",
+      "type": "textfield",
+      "required": false,
+      "default": ""
+    },
+    {
+      "name": "defaultProject",
+      "title": "Default Project",
+      "description": "The default project namespace to use if none is specified.",
+      "type": "textfield",
+      "required": false,
+      "default": "default"
+    }
+  ],
+  "dependencies": {
+    "@raycast/api": "^1.69.0",
+    "@raycast/utils": "^1.13.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@raycast/eslint-config": "^1.0.8",
+    "@types/node": "22.19.17",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^8.51.0",
+    "prettier": "^3.0.3",
+    "typescript": "^5.2.2",
+    "vitest": "^4.1.4"
+  },
+  "scripts": {
+    "build": "ray build -e dist",
+    "dev": "ray develop",
+    "fix-lint": "ray lint --fix",
+    "lint": "ray lint",
+    "publish": "npx @raycast/api@latest publish",
+    "test": "vitest run"
+  }
+}
