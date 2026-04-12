@@ -2,7 +2,6 @@ package agent
 
 import (
 	"fmt"
-	"github.com/google/generative-ai-go/genai"
 )
 
 func (a *Agent) GetRecentContext() string {
@@ -17,15 +16,14 @@ func (a *Agent) GetRecentContext() string {
 
 	for i := start; i < len(history); i++ {
 		c := history[i]
-		if c.Role == "user" || c.Role == "model" {
-			var textContent string
-			for _, p := range c.Parts {
-				if t, ok := p.(genai.Text); ok {
-					textContent += string(t)
-				}
-			}
+		if c.Role == "user" || c.Role == "model" || c.Role == "assistant" {
+			textContent := c.Content
 			if textContent != "" {
-				conversation += fmt.Sprintf("[%s]: %s\n\n", c.Role, textContent)
+				role := c.Role
+				if role == "assistant" {
+					role = "model"
+				}
+				conversation += fmt.Sprintf("[%s]: %s\n\n", role, textContent)
 			}
 		}
 	}

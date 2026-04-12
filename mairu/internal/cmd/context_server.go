@@ -37,8 +37,8 @@ func NewContextServerCmd() *cobra.Command {
 				EnableProjector:   enableProjector,
 				ProjectorBatch:    appCfg.Server.ProjectorBatch,
 				ModerationEnabled: appCfg.Server.ModerationEnabled,
+				OllamaURL:         appCfg.Embedding.OllamaURL,
 				EmbeddingModel:    appCfg.Embedding.Model,
-				EmbeddingDim:      appCfg.Embedding.Dimensions,
 			}
 
 			// Parse projector interval from config

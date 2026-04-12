@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
+	"mairu/internal/llm"
 )
 
 type vibeRepo struct {
@@ -85,6 +85,9 @@ func (r *vibeRepo) GetMemory(ctx context.Context, id string) (Memory, error) {
 }
 func (r *vibeRepo) RecordRetrievals(ctx context.Context, ids []string) error    { return nil }
 func (r *vibeRepo) IncrementFeedbackCount(ctx context.Context, id string) error { return nil }
+func (r *vibeRepo) InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error {
+	return nil
+}
 func (r *vibeRepo) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
 	return BashHistory{}, nil
 }
@@ -103,7 +106,7 @@ type vibeLLM struct {
 	payload    map[string]any
 }
 
-func (l *vibeLLM) GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error {
+func (l *vibeLLM) GenerateJSON(ctx context.Context, system, user string, schema *llm.JSONSchema, out any) error {
 	l.lastSystem = system
 	l.lastUser = user
 	b, err := json.Marshal(l.payload)
@@ -129,7 +132,7 @@ func TestPlanVibeMutation_UsesBoundedExistingContext(t *testing.T) {
 			},
 		},
 	}
-	svc := NewServiceWithSearch(repo, nil, llm, true)
+	svc := NewServiceWithSearch(repo, nil, llm, nil, true)
 
 	plan, err := svc.PlanVibeMutation("remember migration rules", "demo", 5)
 	if err != nil {
@@ -170,7 +173,7 @@ func TestPlanVibeMutation_FiltersInvalidLLMOps(t *testing.T) {
 			},
 		},
 	}
-	svc := NewServiceWithSearch(repo, nil, llm, true)
+	svc := NewServiceWithSearch(repo, nil, llm, nil, true)
 
 	plan, err := svc.PlanVibeMutation("update architecture node", "demo", 5)
 	if err != nil {

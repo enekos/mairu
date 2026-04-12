@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
 	"mairu/internal/llm"
 	"mairu/internal/prompts"
 )
@@ -180,44 +179,41 @@ func (a *Agent) SaveSession(sessionName string) error {
 	var saved []SavedMessage
 
 	for _, c := range history {
-		if c.Role == "user" || c.Role == "model" {
+		if c.Role == "user" || c.Role == "model" || c.Role == "assistant" {
 			var savedParts []SavedPart
-			for _, p := range c.Parts {
-				switch v := p.(type) {
-				case genai.Text:
-					savedParts = append(savedParts, SavedPart{
-						Type: "text",
-						Text: string(v),
-					})
-				case genai.FunctionCall:
-					savedParts = append(savedParts, SavedPart{
-						Type:     "function_call",
-						FuncName: v.Name,
-						FuncArgs: v.Args,
-					})
-				case genai.FunctionResponse:
-					savedParts = append(savedParts, SavedPart{
-						Type:     "function_response",
-						FuncName: v.Name,
-						FuncResp: v.Response,
-					})
-				case genai.ExecutableCode:
-					savedParts = append(savedParts, SavedPart{
-						Type:     "executable_code",
-						Language: int32(v.Language),
-						Code:     v.Code,
-					})
-				case genai.CodeExecutionResult:
-					savedParts = append(savedParts, SavedPart{
-						Type:    "code_execution_result",
-						Outcome: int32(v.Outcome),
-						Output:  v.Output,
-					})
-				}
+
+			// Save text content
+			if c.Content != "" {
+				savedParts = append(savedParts, SavedPart{
+					Type: "text",
+					Text: c.Content,
+				})
 			}
+
+			// Save tool calls
+			for _, tc := range c.ToolCalls {
+				savedParts = append(savedParts, SavedPart{
+					Type:     "function_call",
+					FuncName: tc.Name,
+					FuncArgs: tc.Arguments,
+				})
+			}
+
+			// Save tool response indicator
+			if c.ToolCallID != "" {
+				savedParts = append(savedParts, SavedPart{
+					Type:     "function_response",
+					FuncName: c.ToolCallID,
+				})
+			}
+
 			if len(savedParts) > 0 {
+				role := c.Role
+				if role == "assistant" {
+					role = "model"
+				}
 				saved = append(saved, SavedMessage{
-					Role:  c.Role,
+					Role:  role,
 					Parts: savedParts,
 				})
 			}
@@ -250,40 +246,31 @@ func (a *Agent) LoadSession(sessionName string) error {
 		return err
 	}
 
-	var history []*genai.Content
+	var history []llm.Message
 	for _, m := range saved {
-		var genaiParts []genai.Part
+		msg := llm.Message{
+			Role: m.Role,
+		}
+		if m.Role == "model" {
+			msg.Role = "assistant"
+		}
+
 		for _, sp := range m.Parts {
 			switch sp.Type {
 			case "text":
-				genaiParts = append(genaiParts, genai.Text(sp.Text))
+				msg.Content += sp.Text
 			case "function_call":
-				genaiParts = append(genaiParts, genai.FunctionCall{
-					Name: sp.FuncName,
-					Args: sp.FuncArgs,
+				msg.ToolCalls = append(msg.ToolCalls, llm.ToolCall{
+					Name:      sp.FuncName,
+					Arguments: sp.FuncArgs,
 				})
 			case "function_response":
-				genaiParts = append(genaiParts, genai.FunctionResponse{
-					Name:     sp.FuncName,
-					Response: sp.FuncResp,
-				})
-			case "executable_code":
-				genaiParts = append(genaiParts, genai.ExecutableCode{
-					Language: genai.ExecutableCodeLanguage(sp.Language),
-					Code:     sp.Code,
-				})
-			case "code_execution_result":
-				genaiParts = append(genaiParts, genai.CodeExecutionResult{
-					Outcome: genai.CodeExecutionResultOutcome(sp.Outcome),
-					Output:  sp.Output,
-				})
+				msg.ToolCallID = sp.FuncName
+				// Note: Function response content is stored in Content field
 			}
 		}
-		if len(genaiParts) > 0 {
-			history = append(history, &genai.Content{
-				Role:  m.Role,
-				Parts: genaiParts,
-			})
+		if msg.Content != "" || len(msg.ToolCalls) > 0 || msg.ToolCallID != "" {
+			history = append(history, msg)
 		}
 	}
 
@@ -333,30 +320,18 @@ func (a *Agent) GetHistoryText() []string {
 	var lines []string
 
 	for _, c := range history {
-		if c.Role == "user" || c.Role == "model" {
-			var textContent string
-			for _, p := range c.Parts {
-				if t, ok := p.(genai.Text); ok {
-					textContent += string(t)
-				}
-				if execCode, ok := p.(genai.ExecutableCode); ok {
-					langStr := ""
-					if execCode.Language == genai.ExecutableCodePython {
-						langStr = "python"
-					}
-					textContent += fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code)
-				}
-				if execResult, ok := p.(genai.CodeExecutionResult); ok {
-					outcomeStr := "OK"
-					if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
-						outcomeStr = execResult.Outcome.String()
-					}
-					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output)
-				}
+		if c.Role == "user" || c.Role == "model" || c.Role == "assistant" {
+			textContent := c.Content
+
+			// Add tool calls info
+			for _, tc := range c.ToolCalls {
+				argsStr, _ := json.Marshal(tc.Arguments)
+				textContent += fmt.Sprintf("\n[Tool Call]: %s(%s)\n", tc.Name, string(argsStr))
 			}
+
 			if textContent != "" {
 				prefix := "You: "
-				if c.Role == "model" {
+				if c.Role == "model" || c.Role == "assistant" {
 					prefix = "Mairu: "
 				}
 				lines = append(lines, prefix+textContent)
@@ -376,43 +351,25 @@ func (a *Agent) CompactContext() error {
 
 	var conversation string
 	for _, c := range history {
-		if c.Role == "user" || c.Role == "model" {
-			var textContent string
-			for _, p := range c.Parts {
-				if t, ok := p.(genai.Text); ok {
-					textContent += string(t)
-				}
-				if fc, ok := p.(genai.FunctionCall); ok {
-					argsStr, _ := json.Marshal(fc.Args)
-					textContent += fmt.Sprintf("\n[Tool Call]: %s(%s)\n", fc.Name, string(argsStr))
-				}
-				if fr, ok := p.(genai.FunctionResponse); ok {
-					respStr, _ := json.Marshal(fr.Response)
-					if len(respStr) > 2000 {
-						respStr = append(respStr[:2000], []byte("... [truncated for summary]")...)
-					}
-					textContent += fmt.Sprintf("\n[Tool Result]: %s = %s\n", fr.Name, string(respStr))
-				}
-				if execCode, ok := p.(genai.ExecutableCode); ok {
-					langStr := ""
-					if execCode.Language == genai.ExecutableCodePython {
-						langStr = "python"
-					}
-					textContent += fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code)
-				}
-				if execResult, ok := p.(genai.CodeExecutionResult); ok {
-					outcomeStr := "OK"
-					if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
-						outcomeStr = execResult.Outcome.String()
-					}
-					output := execResult.Output
-					if len(output) > 2000 {
-						output = output[:2000] + "... [truncated for summary]"
-					}
-					textContent += fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, output)
-				}
+		if c.Role == "user" || c.Role == "model" || c.Role == "assistant" {
+			textContent := c.Content
+
+			// Add tool calls info
+			for _, tc := range c.ToolCalls {
+				argsStr, _ := json.Marshal(tc.Arguments)
+				textContent += fmt.Sprintf("\n[Tool Call]: %s(%s)\n", tc.Name, string(argsStr))
 			}
-			conversation += fmt.Sprintf("[%s]: %s\n\n", c.Role, strings.TrimSpace(textContent))
+
+			// Add tool response indicator
+			if c.ToolCallID != "" {
+				textContent += fmt.Sprintf("\n[Tool Response for %s]\n", c.ToolCallID)
+			}
+
+			role := c.Role
+			if role == "assistant" {
+				role = "model"
+			}
+			conversation += fmt.Sprintf("[%s]: %s\n\n", role, strings.TrimSpace(textContent))
 		}
 	}
 
@@ -423,34 +380,29 @@ func (a *Agent) CompactContext() error {
 	})
 
 	// We use a fresh LLM instance to summarize it to avoid messing up current history
-	// Need to import context and llm if they aren't already imported
-	tempLLM, err := llm.NewGeminiProvider(context.Background(), a.apiKey)
+	// Use the agent's stored provider config
+	tempLLM, err := llm.NewProvider(a.providerCfg)
 	if err != nil {
 		return err
 	}
 	defer tempLLM.Close()
 
-	resp, err := tempLLM.ChatStream(context.Background(), prompt).Next()
-	if err != nil || len(resp.Candidates) == 0 {
+	resp, err := tempLLM.Chat(context.Background(), prompt)
+	if err != nil {
 		return err
 	}
 
-	var summary string
-	for _, p := range resp.Candidates[0].Content.Parts {
-		if t, ok := p.(genai.Text); ok {
-			summary += string(t)
-		}
-	}
+	summary := resp.Content
 
 	// Now replace the history with the summary
-	compactedHistory := []*genai.Content{
+	compactedHistory := []llm.Message{
 		{
-			Role:  "user",
-			Parts: []genai.Part{genai.Text("Here is the compacted history of our session so far:\n" + summary)},
+			Role:    "user",
+			Content: "Here is the compacted history of our session so far:\n" + summary,
 		},
 		{
-			Role:  "model",
-			Parts: []genai.Part{genai.Text("Understood. I have the context. What's next?")},
+			Role:    "assistant",
+			Content: "Understood. I have the context. What's next?",
 		},
 	}
 

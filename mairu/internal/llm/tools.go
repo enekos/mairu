@@ -269,13 +269,19 @@ func (g *GeminiProvider) SetupTools() {
 	}
 }
 
-func (g *GeminiProvider) RegisterDynamicTools(tools []*genai.FunctionDeclaration) {
+// RegisterDynamicTools implements the Provider interface
+func (g *GeminiProvider) RegisterDynamicTools(tools []Tool) {
 	if len(tools) == 0 {
 		return
 	}
+
+	// Convert to genai format and store
+	funcDecls := toolsToGenaiFunctionDeclarations(tools)
+	g.dynamicTools = append(g.dynamicTools, funcDecls...)
+
 	if len(g.model.Tools) == 0 {
-		g.model.Tools = []*genai.Tool{{FunctionDeclarations: tools}}
+		g.model.Tools = []*genai.Tool{{FunctionDeclarations: funcDecls}}
 		return
 	}
-	g.model.Tools[0].FunctionDeclarations = append(g.model.Tools[0].FunctionDeclarations, tools...)
+	g.model.Tools[0].FunctionDeclarations = append(g.model.Tools[0].FunctionDeclarations, funcDecls...)
 }

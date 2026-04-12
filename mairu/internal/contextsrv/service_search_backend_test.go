@@ -64,6 +64,9 @@ func (r *repoSearchStub) RecordRetrievals(ctx context.Context, ids []string) err
 func (r *repoSearchStub) IncrementFeedbackCount(ctx context.Context, id string) error {
 	return nil
 }
+func (r *repoSearchStub) InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error {
+	return nil
+}
 func (r *repoSearchStub) GetBashHistory(ctx context.Context, id string) (BashHistory, error) {
 	return BashHistory{}, nil
 }
@@ -90,7 +93,7 @@ func (b *backendStub) ClusterStats() map[string]any { return b.cluster }
 func TestSearchPrefersBackendWhenAvailable(t *testing.T) {
 	repo := &repoSearchStub{searchOut: map[string]any{"memories": []map[string]any{{"id": "repo"}}}}
 	backend := &backendStub{searchOut: map[string]any{"memories": []map[string]any{{"id": "meili"}}}}
-	svc := NewServiceWithSearch(repo, backend, nil, true)
+	svc := NewServiceWithSearch(repo, backend, nil, nil, true)
 
 	out, err := svc.Search(SearchOptions{Query: "auth"})
 	if err != nil {
@@ -108,7 +111,7 @@ func TestSearchPrefersBackendWhenAvailable(t *testing.T) {
 func TestSearchFallsBackToRepoOnBackendError(t *testing.T) {
 	repo := &repoSearchStub{searchOut: map[string]any{"memories": []map[string]any{{"id": "repo"}}}}
 	backend := &backendStub{searchErr: context.DeadlineExceeded}
-	svc := NewServiceWithSearch(repo, backend, nil, true)
+	svc := NewServiceWithSearch(repo, backend, nil, nil, true)
 
 	out, err := svc.Search(SearchOptions{Query: "auth"})
 	if err != nil {
@@ -126,7 +129,7 @@ func TestSearchFallsBackToRepoOnBackendError(t *testing.T) {
 func TestClusterStatsUsesBackendWhenAvailable(t *testing.T) {
 	repo := &repoSearchStub{}
 	backend := &backendStub{cluster: map[string]any{"ok": true, "service": "meili"}}
-	svc := NewServiceWithSearch(repo, backend, nil, true)
+	svc := NewServiceWithSearch(repo, backend, nil, nil, true)
 	out := svc.ClusterStats()
 	if out["service"] != "meili" {
 		t.Fatalf("expected backend cluster stats, got %#v", out)

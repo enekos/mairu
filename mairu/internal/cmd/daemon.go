@@ -12,13 +12,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// geminiMarkdownSummarizer wraps GeminiProvider to implement daemon.MarkdownSummarizer.
-type geminiMarkdownSummarizer struct {
-	provider *llm.GeminiProvider
+// llmMarkdownSummarizer wraps a Provider to implement daemon.MarkdownSummarizer.
+type llmMarkdownSummarizer struct {
+	provider llm.Provider
+	model    string
 }
 
-func (s *geminiMarkdownSummarizer) SummarizeMarkdown(ctx context.Context, filename, content string) (string, string, error) {
-	return llm.SummarizeMarkdownDoc(ctx, s.provider, "gemini-2.5-flash", filename, content)
+func (s *llmMarkdownSummarizer) SummarizeMarkdown(ctx context.Context, filename, content string) (string, string, error) {
+	model := s.model
+	if model == "" {
+		model = "gemini-2.5-flash"
+	}
+	return llm.SummarizeMarkdownDoc(ctx, s.provider, model, filename, content)
 }
 
 type remoteManager struct{}
@@ -60,11 +65,15 @@ func NewDaemonCmd() *cobra.Command {
 				return err
 			}
 			opts := daemon.Options{}
-			if apiKey := os.Getenv("GEMINI_API_KEY"); apiKey != "" {
-				if p, err := llm.NewGeminiProvider(cmd.Context(), apiKey); err == nil {
-					opts.MarkdownSummarizer = &geminiMarkdownSummarizer{provider: p}
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey != "" {
+				if p, err := llm.NewProvider(providerCfg); err == nil {
+					opts.MarkdownSummarizer = &llmMarkdownSummarizer{
+						provider: p,
+						model:    providerCfg.Model,
+					}
 				} else {
-					slog.Warn("failed to init Gemini for markdown summarization", "err", err)
+					slog.Warn("failed to init LLM for markdown summarization", "err", err)
 				}
 			}
 

@@ -1,13 +1,13 @@
 # mairu
 
-A dynamic context and memory storage system for coding agents. Provides native hybrid retrieval (vector + full-text + app-side re-ranking) backed by Meilisearch with Google Gemini embeddings. Exposes two interfaces: CLI and REST API (dashboard).
+A dynamic context and memory storage system for coding agents. Provides native hybrid retrieval (vector + full-text + app-side re-ranking) backed by Meilisearch with Ollama embeddings. Exposes two interfaces: CLI and REST API (dashboard).
 
 ## Tech Stack
 
 - **Runtime:** Go 1.25+
 - **Database:** Meilisearch 1.12+ (Docker)
 - **Search:** Native hybrid — vector cosine similarity + full-text + app-side re-ranking (importance, recency decay)
-- **Embeddings:** Google Gemini (`gemini-embedding-001`, 3072 dims)
+- **Embeddings:** Ollama (`nomic-embed-text`, 768 dims)
 - **Frontend:** Svelte 5 + Vite
 - **Testing:** Go testing (`go test`)
 - **Linting:** `golangci-lint` (fallback: `go vet`)
@@ -15,10 +15,10 @@ A dynamic context and memory storage system for coding agents. Provides native h
 ## Setup
 
 ```bash
-docker compose up -d    # start Meilisearch
+docker compose up -d    # start Meilisearch + Ollama
 bun install
 bun --cwd mairu/ui install
-cp .env.example .env    # fill in MEILI_URL, GEMINI_API_KEY
+cp .env.example .env    # fill in MEILI_URL, GEMINI_API_KEY, MAIRU_OLLAMA_URL
 make setup              # create Meilisearch indexes (destructive — drops and recreates)
 ```
 
@@ -26,7 +26,7 @@ make setup              # create Meilisearch indexes (destructive — drops and 
 
 | Command | Description |
 |---|---|
-| `docker compose up -d` | Start Meilisearch container |
+| `docker compose up -d` | Start Meilisearch + Ollama containers |
 | `docker compose down` | Stop Meilisearch container |
 | `make build` | Compile Go binary to `bin/mairu` |
 | `make test` | Run Go tests |
@@ -56,7 +56,7 @@ make setup              # create Meilisearch indexes (destructive — drops and 
 
 Meilisearch handles vector + full-text search natively; app-side re-ranking applies recency decay and importance boosting:
 
-1. **Vector search** — dense vector cosine similarity on Gemini embeddings
+1. **Vector search** — dense vector cosine similarity on Ollama embeddings
 2. **Full-text** — Meilisearch built-in keyword search
 3. **App-side re-ranking** — exponential recency decay + importance score boost
 4. Results from both retrievers are merged and re-ranked before returning
@@ -75,7 +75,7 @@ Weights (vector, keyword, recency, importance) are defined in `mairu/internal/co
 
 | Feature | Description | Controlled by |
 |---|---|---|
-| **Vector search** | Dense cosine similarity on Gemini embeddings | `weights.vector` |
+| **Vector search** | Dense cosine similarity on Ollama embeddings | `weights.vector` |
 | **Full-text** | Meilisearch keyword search | `weights.keyword` |
 | **Synonyms** | Custom synonym expansion (e.g., "k8s" → "kubernetes") | `SYNONYMS` env var |
 | **Importance boost** | App-side boost on importance (1-10) | `weights.importance` |
@@ -90,7 +90,7 @@ Weights (vector, keyword, recency, importance) are defined in `mairu/internal/co
 |---|---|
 | `mairu/internal/contextsrv/meili.go` | Meilisearch integration, hybrid retrieval orchestration |
 | `mairu/internal/contextsrv/service.go` | High-level API used by CLI |
-| `mairu/internal/llm/embedder.go` | Gemini embedding calls |
+| `mairu/internal/llm/ollama_embedder.go` | Ollama embedding calls |
 | `mairu/internal/contextsrv/search_rerank.go` | Hybrid score blending and reranking weights |
 | `mairu/internal/llm/router.go` | LLM-powered deduplication (CREATE / UPDATE / SKIP) |
 | `mairu/internal/llm/ingestor.go` | Free-form text → structured context nodes |
@@ -213,6 +213,25 @@ mairu node ls "contextfs://my-project/backend" -P my-project
 
 Agents should proactively search memories and context nodes when beginning a task, and store important discoveries or user preferences as they work.
 
+### 5. Bash History Auto-Logging (Built-in)
+When you execute bash commands through the mairu agent, they are **automatically logged** to the searchable history. This includes:
+- The command string
+- Exit code (success/failure)
+- Execution duration
+- Output (stdout/stderr)
+
+This happens transparently via the `HistoryLogger` interface in `mairu/internal/agent`. You can query this history anytime:
+
+```bash
+# Find similar commands that failed before
+mairu history search "docker build failed" -P my-project
+
+# See most frequently used commands
+mairu history stats -P my-project
+```
+
+No manual action is required - the agent handles this automatically when using the `bash` tool.
+
 ### AI-Optimized GNU Tools
 Agents are encouraged to use the `mairu` binary for token-dense, strictly parsable exploration:
 - `mairu map [dir] -d 2` -> Fast, `.gitignore` aware, token-counted directory tree
@@ -231,6 +250,21 @@ Agents can query the developer's bash history to understand previous commands, o
 - `mairu history search "test fail"` -> Semantically search past bash commands and their outputs.
 - `mairu history stats` -> Show the most frequently run bash commands.
 - `mairu history feedback <id> -r 10` -> Apply reinforcement learning feedback to a command execution.
+
+**Automatic Logging:** When using the mairu agent (via `mairu tui`, `mairu web`, or headless mode), all bash commands executed by the agent are **automatically stored** in mairu history through the `HistoryLogger` interface. This includes command, exit code, duration, and output - making your command history fully searchable for future sessions without any manual intervention.
+
+**Manual Logging (when NOT using mairu agent):**
+If you're operating outside the mairu agent context (e.g., as a standalone agent), you must manually preserve important commands:
+
+```bash
+# Store complex or important commands as memories
+mairu memory store "Command: go test ./... -race | Result: All passed | Purpose: Race condition verification" -c command -o agent -i 6 -P my-project
+
+# Store debugging commands that solved issues
+mairu memory store "Debug fix: lsof -i :8080 | kill -9 <pid> | Frees blocked port" -c debugging -o agent -i 8 -P my-project
+```
+
+Log commands manually when: they took time to figure out, solved a tricky problem, or will likely be reused. Use format: `Command: <cmd> | Result: <summary> | Purpose: <why>`
 
 **Code Analysis (`mairu analyze`)**
 - `mairu analyze diff` -> Analyzes blast radius of current git changes.

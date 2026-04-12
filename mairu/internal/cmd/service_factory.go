@@ -39,8 +39,8 @@ func (f *localServiceFactory) init() {
 		EnableProjector:   false, // CLI tools generally shouldn't run background loop
 		ProjectorBatch:    appCfg.Server.ProjectorBatch,
 		ModerationEnabled: appCfg.Server.ModerationEnabled,
+		OllamaURL:         appCfg.Embedding.OllamaURL,
 		EmbeddingModel:    appCfg.Embedding.Model,
-		EmbeddingDim:      appCfg.Embedding.Dimensions,
 	}
 
 	if d, err := time.ParseDuration(appCfg.Server.ReadTimeout); err == nil {

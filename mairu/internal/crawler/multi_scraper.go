@@ -9,12 +9,12 @@ import (
 
 // SmartScraperMultiGraph wraps a pipeline for extracting structured data from multiple URLs concurrently
 type SmartScraperMultiGraph struct {
-	provider    *llm.GeminiProvider
+	provider    llm.Provider
 	concurrency int
 }
 
 // NewSmartScraperMultiGraph initializes a graph for multi-URL scraping
-func NewSmartScraperMultiGraph(provider *llm.GeminiProvider, concurrency int) *SmartScraperMultiGraph {
+func NewSmartScraperMultiGraph(provider llm.Provider, concurrency int) *SmartScraperMultiGraph {
 	if concurrency <= 0 {
 		concurrency = 3 // default concurrency
 	}

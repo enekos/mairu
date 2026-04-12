@@ -18,11 +18,11 @@ type HistoryLogger interface {
 }
 
 type Agent struct {
-	llm        *llm.GeminiProvider
-	locator    SymbolLocator
-	root       string
-	currentDir string
-	apiKey     string
+	llm         llm.Provider
+	locator     SymbolLocator
+	root        string
+	currentDir  string
+	providerCfg llm.ProviderConfig
 
 	stuckDetector *StuckDetector
 	utcp          *UTCPManager
@@ -68,10 +68,11 @@ func normalizeConfig(cfg ...Config) Config {
 	return resolved
 }
 
-func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
+// New creates a new Agent with the specified LLM provider configuration
+func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Agent, error) {
 	resolved := normalizeConfig(cfg...)
 
-	llmProvider, err := llm.NewGeminiProvider(context.Background(), apiKey)
+	llmProvider, err := llm.NewProvider(providerCfg)
 	if err != nil {
 		return nil, err
 	}
@@ -92,7 +93,39 @@ func New(projectRoot string, apiKey string, cfg ...Config) (*Agent, error) {
 		locator:         resolved.SymbolLocator,
 		root:            projectRoot,
 		currentDir:      projectRoot,
-		apiKey:          apiKey,
+		providerCfg:     providerCfg,
+		stuckDetector:   NewStuckDetector(),
+		utcp:            utcpManager,
+		utcpProviders:   resolved.UTCPProviders,
+		Unattended:      resolved.Unattended,
+		council:         resolved.Council.withDefaults(),
+		historyLogger:   resolved.HistoryLogger,
+		interceptors:    resolved.Interceptors,
+		AgentSystemData: resolved.AgentSystemData,
+		approvalChan:    make(chan bool),
+	}, nil
+}
+
+// NewWithProvider creates a new Agent with an existing LLM provider (for testing/advanced use)
+func NewWithProvider(projectRoot string, provider llm.Provider, cfg ...Config) (*Agent, error) {
+	resolved := normalizeConfig(cfg...)
+
+	utcpManager, err := NewUTCPManager(resolved.UTCPProviders)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init UTCP manager: %w", err)
+	}
+
+	// Fetch dynamic tools
+	if len(resolved.UTCPProviders) > 0 {
+		utcpTools := utcpManager.Initialize(context.Background())
+		provider.RegisterDynamicTools(utcpTools)
+	}
+
+	return &Agent{
+		llm:             provider,
+		locator:         resolved.SymbolLocator,
+		root:            projectRoot,
+		currentDir:      projectRoot,
 		stuckDetector:   NewStuckDetector(),
 		utcp:            utcpManager,
 		utcpProviders:   resolved.UTCPProviders,

@@ -10,7 +10,7 @@ type fakeEmbedder struct{}
 func (f fakeEmbedder) GetEmbeddings(_ context.Context, texts []string) ([][]float32, error) {
 	out := make([][]float32, 0, len(texts))
 	for range texts {
-		out = append(out, make([]float32, 3072))
+		out = append(out, make([]float32, 768))
 	}
 	return out, nil
 }

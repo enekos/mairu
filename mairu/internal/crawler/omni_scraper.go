@@ -9,11 +9,11 @@ import (
 // OmniScraperGraph is a pipeline that merges data from multiple pages into a single cohesive response.
 // It fetches multiple URLs, extracts info using SmartScraper for each, and then uses a MergeAnswersNode.
 type OmniScraperGraph struct {
-	provider    *llm.GeminiProvider
+	provider    llm.Provider
 	concurrency int
 }
 
-func NewOmniScraperGraph(provider *llm.GeminiProvider, concurrency int) *OmniScraperGraph {
+func NewOmniScraperGraph(provider llm.Provider, concurrency int) *OmniScraperGraph {
 	if concurrency <= 0 {
 		concurrency = 3
 	}

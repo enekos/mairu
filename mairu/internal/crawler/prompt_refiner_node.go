@@ -12,7 +12,7 @@ import (
 // PromptRefinerNode uses the LLM to refine the user's scraping prompt,
 // expanding it to be more precise for the extraction phase.
 type PromptRefinerNode struct {
-	Provider *llm.GeminiProvider
+	Provider llm.Provider
 }
 
 func (n *PromptRefinerNode) Name() string { return "PromptRefinerNode" }

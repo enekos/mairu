@@ -76,6 +76,7 @@ func (r *SQLiteRepository) MarkOutboxFailed(ctx context.Context, id int64, retry
 
 type Embedder interface {
 	GetEmbedding(ctx context.Context, text string) ([]float32, error)
+	GetEmbeddingDimension() int
 }
 
 type Projector struct {

@@ -11,7 +11,7 @@ type ScriptCreatorGraph struct {
 }
 
 // NewScriptCreatorGraph initializes a graph that fetches HTML and generates a scraper script
-func NewScriptCreatorGraph(provider *llm.GeminiProvider) *ScriptCreatorGraph {
+func NewScriptCreatorGraph(provider llm.Provider) *ScriptCreatorGraph {
 	return &ScriptCreatorGraph{
 		graph: NewGraph(
 			&FetchNode{},

@@ -11,7 +11,7 @@ type SearchLinkGraph struct {
 }
 
 // NewSearchLinkGraph initializes a graph that fetches HTML and filters relevant links
-func NewSearchLinkGraph(provider *llm.GeminiProvider) *SearchLinkGraph {
+func NewSearchLinkGraph(provider llm.Provider) *SearchLinkGraph {
 	return &SearchLinkGraph{
 		graph: NewGraph(
 			&FetchNode{},

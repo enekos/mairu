@@ -86,7 +86,7 @@ func (s *stubStore) SearchBashHistoryByVector(embedding []float32, topK int, pro
 type stubEmbedder struct{}
 
 func (s stubEmbedder) GetEmbedding(text string) ([]float32, error) {
-	return make([]float32, 3072), nil
+	return make([]float32, 768), nil
 }
 
 type stubLLM struct {

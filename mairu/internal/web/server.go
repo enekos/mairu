@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"mairu/internal/agent"
+	"mairu/internal/llm"
 	"net/http"
 	"os"
 	"strings"
@@ -17,14 +18,14 @@ import (
 type Server struct {
 	mux            *http.ServeMux
 	projectRoot    string
-	apiKey         string
+	providerCfg    llm.ProviderConfig
 	contextHandler http.Handler
 	locator        agent.SymbolLocator
 	upgrader       websocket.Upgrader
 }
 
 // NewServer creates a new instance of the Server
-func NewServer(apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) (*Server, error) {
+func NewServer(providerCfg llm.ProviderConfig, contextHandler http.Handler, locator agent.SymbolLocator) (*Server, error) {
 	projectRoot, err := os.Getwd()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get working directory: %w", err)
@@ -33,7 +34,7 @@ func NewServer(apiKey string, contextHandler http.Handler, locator agent.SymbolL
 	s := &Server{
 		mux:            http.NewServeMux(),
 		projectRoot:    projectRoot,
-		apiKey:         apiKey,
+		providerCfg:    providerCfg,
 		contextHandler: contextHandler,
 		locator:        locator,
 		upgrader: websocket.Upgrader{
@@ -162,12 +163,12 @@ func (s *Server) handleChat() http.HandlerFunc {
 		}
 		defer ws.Close()
 
-		if s.apiKey == "" {
-			ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "GEMINI_API_KEY not set"})
+		if s.providerCfg.APIKey == "" {
+			ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "API key not set"})
 			return
 		}
 
-		ag, err := agent.New(s.projectRoot, s.apiKey)
+		ag, err := agent.New(s.projectRoot, s.providerCfg)
 		if err != nil {
 			slog.Error("failed to init agent", "error", err)
 			ws.WriteJSON(agent.AgentEvent{Type: "error", Content: "failed to initialize agent: " + err.Error()})
@@ -256,8 +257,8 @@ func (s *Server) handleStaticFiles() http.HandlerFunc {
 }
 
 // SetupRouter is kept for backwards compatibility and easy setup
-func SetupRouter(apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) (*http.ServeMux, error) {
-	s, err := NewServer(apiKey, contextHandler, locator)
+func SetupRouter(providerCfg llm.ProviderConfig, contextHandler http.Handler, locator agent.SymbolLocator) (*http.ServeMux, error) {
+	s, err := NewServer(providerCfg, contextHandler, locator)
 	if err != nil {
 		return nil, err
 	}
@@ -265,8 +266,8 @@ func SetupRouter(apiKey string, contextHandler http.Handler, locator agent.Symbo
 }
 
 // StartServer starts the HTTP server on the given port
-func StartServer(port int, apiKey string, contextHandler http.Handler, locator agent.SymbolLocator) error {
-	s, err := NewServer(apiKey, contextHandler, locator)
+func StartServer(port int, providerCfg llm.ProviderConfig, contextHandler http.Handler, locator agent.SymbolLocator) error {
+	s, err := NewServer(providerCfg, contextHandler, locator)
 	if err != nil {
 		return err
 	}

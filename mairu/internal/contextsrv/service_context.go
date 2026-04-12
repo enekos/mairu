@@ -11,10 +11,6 @@ import (
 	"mairu/internal/llm"
 )
 
-type fallbackEmbedder interface {
-	GetEmbedding(ctx context.Context, text string) ([]float32, error)
-}
-
 func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, error) {
 	if strings.TrimSpace(input.URI) == "" || strings.TrimSpace(input.Name) == "" || strings.TrimSpace(input.Abstract) == "" {
 		return ContextNode{}, fmt.Errorf("uri, name, and abstract are required")
@@ -118,9 +114,9 @@ func (s *AppService) CreateContextNode(input ContextCreateInput) (ContextNode, e
 				}
 
 				payload["_vectors"] = map[string]any{"default": nil}
-				if emb, ok := s.llmClient.(fallbackEmbedder); ok {
+				if s.embedder != nil {
 					textToEmbed := out.Name + "\n" + out.Abstract + "\n" + out.Content
-					vec, err := emb.GetEmbedding(context.Background(), textToEmbed)
+					vec, err := s.embedder.GetEmbedding(context.Background(), textToEmbed)
 					if err == nil && len(vec) > 0 {
 						payload["_vectors"] = map[string]any{"default": vec}
 					}

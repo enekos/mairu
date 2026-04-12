@@ -1,7 +1,6 @@
 package desktop
 
 import (
-	"context"
 	"log/slog"
 	"os"
 
@@ -60,14 +59,25 @@ func (a *App) getOrCreateAgent(session string) (*agent.Agent, error) {
 		return nil, err
 	}
 
-	llmProvider, err := llm.NewGeminiProvider(context.Background(), a.cfg.API.GeminiAPIKey)
-	if err != nil {
-		return nil, err
+	providerCfg := llm.ProviderConfig{
+		Type:   llm.ProviderType(a.cfg.LLM.Provider),
+		APIKey: a.cfg.API.GeminiAPIKey,
+		Model:  a.cfg.LLM.Model,
+	}
+	if providerCfg.Type == "" {
+		providerCfg.Type = llm.ProviderGemini
+	}
+	if providerCfg.Type == llm.ProviderKimi {
+		providerCfg.APIKey = a.cfg.API.KimiAPIKey
 	}
 
-	indexer := contextsrv.NewMeiliIndexer(a.meili.URL(), a.meili.APIKey(), llmProvider)
+	embedder := llm.NewOllamaEmbedder(a.cfg.Embedding.Model)
+	if a.cfg.Embedding.OllamaURL != "" {
+		embedder.BaseURL = a.cfg.Embedding.OllamaURL
+	}
+	indexer := contextsrv.NewMeiliIndexer(a.meili.URL(), a.meili.APIKey(), embedder)
 
-	ag, err := agent.New(root, a.cfg.API.GeminiAPIKey, agent.Config{
+	ag, err := agent.New(root, providerCfg, agent.Config{
 		SymbolLocator: indexer,
 	})
 	if err != nil {

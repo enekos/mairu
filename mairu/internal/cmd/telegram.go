@@ -90,9 +90,13 @@ func NewTelegramCmd() *cobra.Command {
 				os.Exit(1)
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				slog.Error("GEMINI_API_KEY environment variable is required")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				providerName := providerCfg.Type
+				if providerName == "" {
+					providerName = "gemini"
+				}
+				slog.Error(fmt.Sprintf("%s API key not found. Please set the appropriate API key environment variable.", providerName))
 				os.Exit(1)
 			}
 
@@ -165,7 +169,7 @@ func NewTelegramCmd() *cobra.Command {
 				}
 				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+				ag, err := agent.New(projectRoot, providerCfg, agent.Config{
 					SymbolLocator: GetLocalApp().SymbolLocator(),
 				})
 				if err != nil {
@@ -187,7 +191,7 @@ func NewTelegramCmd() *cobra.Command {
 				}
 				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+				ag, err := agent.New(projectRoot, providerCfg, agent.Config{
 					SymbolLocator: GetLocalApp().SymbolLocator(),
 				})
 				if err != nil {
@@ -208,7 +212,7 @@ func NewTelegramCmd() *cobra.Command {
 				}
 				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+				ag, err := agent.New(projectRoot, providerCfg, agent.Config{
 					SymbolLocator: GetLocalApp().SymbolLocator(),
 				})
 				if err != nil {
@@ -237,7 +241,7 @@ func NewTelegramCmd() *cobra.Command {
 				}
 				sessionName := fmt.Sprintf("tg-%d-%s", c.Chat().ID, sessionBase)
 
-				ag, err := agent.New(projectRoot, apiKey, agent.Config{
+				ag, err := agent.New(projectRoot, providerCfg, agent.Config{
 					SymbolLocator: GetLocalApp().SymbolLocator(),
 				})
 				if err != nil {

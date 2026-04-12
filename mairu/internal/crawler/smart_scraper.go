@@ -11,7 +11,7 @@ type SmartScraperGraph struct {
 }
 
 // NewSmartScraperGraph initializes a graph that fetches, parses, and extracts data
-func NewSmartScraperGraph(provider *llm.GeminiProvider) *SmartScraperGraph {
+func NewSmartScraperGraph(provider llm.Provider) *SmartScraperGraph {
 	return &SmartScraperGraph{
 		graph: NewGraph(
 			&FetchNode{},
@@ -22,13 +22,14 @@ func NewSmartScraperGraph(provider *llm.GeminiProvider) *SmartScraperGraph {
 }
 
 // NewRAGSmartScraperGraph initializes a graph that uses RAG for very large documents
-func NewRAGSmartScraperGraph(provider *llm.GeminiProvider, chunkSize, topK int) *SmartScraperGraph {
+func NewRAGSmartScraperGraph(provider llm.Provider, embedder llm.Embedder, chunkSize, topK int) *SmartScraperGraph {
 	return &SmartScraperGraph{
 		graph: NewGraph(
 			&FetchNode{},
 			&ParseNode{},
 			&RAGExtractNode{
 				Provider:  provider,
+				Embedder:  embedder,
 				ChunkSize: chunkSize,
 				TopK:      topK,
 			},
@@ -37,7 +38,7 @@ func NewRAGSmartScraperGraph(provider *llm.GeminiProvider, chunkSize, topK int) 
 }
 
 // NewRefinedSmartScraperGraph initializes a graph that fetches, parses, refines the prompt, and extracts data
-func NewRefinedSmartScraperGraph(provider *llm.GeminiProvider) *SmartScraperGraph {
+func NewRefinedSmartScraperGraph(provider llm.Provider) *SmartScraperGraph {
 	return &SmartScraperGraph{
 		graph: NewGraph(
 			&FetchNode{},

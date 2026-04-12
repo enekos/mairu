@@ -107,6 +107,7 @@ type NodeRepository interface {
 
 // BashHistoryRepository covers bash history persistence.
 type BashHistoryRepository interface {
+	InsertBashHistory(ctx context.Context, project string, command string, exitCode int, durationMs int, output string) error
 	GetBashHistory(ctx context.Context, id string) (BashHistory, error)
 	UpdateBashHistory(ctx context.Context, h BashHistory) error
 	IncrementBashHistoryFeedbackCount(ctx context.Context, id string) error
@@ -130,6 +131,7 @@ type AppService struct {
 	repo              Repository
 	searchBackend     SearchBackend
 	llmClient         LLMClient
+	embedder          Embedder
 	moderationEnabled bool
 }
 
@@ -145,8 +147,8 @@ type SearchBackend interface {
 }
 
 // NewServiceWithSearch creates an AppService with both a repository and search backend.
-func NewServiceWithSearch(repo Repository, backend SearchBackend, llmClient LLMClient, moderationEnabled bool) *AppService {
-	return &AppService{repo: repo, searchBackend: backend, llmClient: llmClient, moderationEnabled: moderationEnabled}
+func NewServiceWithSearch(repo Repository, backend SearchBackend, llmClient LLMClient, embedder Embedder, moderationEnabled bool) *AppService {
+	return &AppService{repo: repo, searchBackend: backend, llmClient: llmClient, embedder: embedder, moderationEnabled: moderationEnabled}
 }
 
 // Health returns basic service health status.

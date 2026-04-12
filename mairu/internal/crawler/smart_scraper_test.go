@@ -14,7 +14,7 @@ func TestSmartScraperInitialization(t *testing.T) {
 		t.Errorf("Expected 3 nodes, got %d", len(graph.graph.Nodes))
 	}
 
-	ragGraph := NewRAGSmartScraperGraph(nil, 1000, 3)
+	ragGraph := NewRAGSmartScraperGraph(nil, nil, 1000, 3)
 	if ragGraph == nil {
 		t.Fatal("NewRAGSmartScraperGraph returned nil")
 	}

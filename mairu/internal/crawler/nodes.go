@@ -108,7 +108,7 @@ func (n *ParseNode) Execute(ctx context.Context, state State) (State, error) {
 
 // ExtractNode uses an LLM to extract structured data based on a prompt
 type ExtractNode struct {
-	Provider *llm.GeminiProvider
+	Provider llm.Provider
 }
 
 func (n *ExtractNode) Name() string { return "ExtractNode" }

@@ -161,8 +161,8 @@ func (a *App) Startup(ctx context.Context) {
 		MeiliAPIKey:       a.meili.APIKey(),
 		GeminiAPIKey:      cfg.API.GeminiAPIKey,
 		ModerationEnabled: cfg.Server.ModerationEnabled,
+		OllamaURL:         cfg.Embedding.OllamaURL,
 		EmbeddingModel:    cfg.Embedding.Model,
-		EmbeddingDim:      cfg.Embedding.Dimensions,
 	}
 
 	ctxApp, err := contextsrv.NewApp(svcCfg)

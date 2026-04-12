@@ -47,8 +47,8 @@ func NewScrapeWebCmd() *cobra.Command {
 				return RunNodeStore(input.Project, input.URI, input.Name, input.Abstract, parent, input.Overview, input.Content)
 			}
 
-			apiKey := GetAPIKey()
-			res, err := crawler.ScrapeAndIngest(cmd.Context(), opts, storeFn, apiKey)
+			providerCfg := GetLLMProviderConfig()
+			res, err := crawler.ScrapeAndIngest(cmd.Context(), opts, storeFn, providerCfg.APIKey)
 			if err != nil {
 				return err
 			}
@@ -83,12 +83,12 @@ func NewSmartScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for smart-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for smart-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
@@ -142,12 +142,12 @@ func NewSearchScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for search-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for search-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
@@ -196,12 +196,12 @@ func NewMultiScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for multi-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for multi-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
@@ -251,12 +251,12 @@ func NewScriptScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for script-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for script-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
@@ -307,12 +307,12 @@ func NewDepthScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for depth-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for depth-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}
@@ -363,12 +363,12 @@ func NewOmniScrapeCmd() *cobra.Command {
 				return fmt.Errorf("prompt is required")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				return fmt.Errorf("gemini api key required for omni-scrape")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				return fmt.Errorf("LLM API key required for omni-scrape")
 			}
 
-			provider, err := llm.NewGeminiProvider(cmd.Context(), apiKey)
+			provider, err := llm.NewProvider(providerCfg)
 			if err != nil {
 				return fmt.Errorf("failed to init LLM: %w", err)
 			}

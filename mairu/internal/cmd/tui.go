@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -16,14 +17,18 @@ func NewTuiCmd() *cobra.Command {
 		Use:   "tui",
 		Short: "Start the Mairu interactive terminal session",
 		Run: func(cmd *cobra.Command, args []string) {
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				slog.Error("Gemini API key not found. Please run 'mairu setup' or set GEMINI_API_KEY environment variable.")
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				providerName := providerCfg.Type
+				if providerName == "" {
+					providerName = "gemini"
+				}
+				slog.Error(fmt.Sprintf("%s API key not found. Please run 'mairu setup' or set the appropriate API key environment variable.", providerName))
 				os.Exit(1)
 			}
 
 			cwd, _ := os.Getwd()
-			a, err := agent.New(cwd, apiKey, GetAgentConfig())
+			a, err := agent.New(cwd, providerCfg, GetAgentConfig())
 			if err != nil {
 				slog.Error("Failed to initialize agent", "error", err)
 				os.Exit(1)

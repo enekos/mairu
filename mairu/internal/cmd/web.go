@@ -26,14 +26,14 @@ func NewWebCmd() *cobra.Command {
 				port, _ = cmd.Flags().GetInt("port")
 			}
 
-			apiKey := GetAPIKey()
-			if apiKey == "" {
-				fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api.gemini_api_key in config", "Gemini API key not found"))
+			providerCfg := GetLLMProviderConfig()
+			if providerCfg.APIKey == "" {
+				fmt.Fprintln(os.Stderr, NewCLIError(nil, "Run 'mairu setup' or set api key in config", "API key not found"))
 				os.Exit(1)
 			}
 
 			slog.Info("Starting Mairu web interface", "port", port)
-			if err := web.StartServer(port, apiKey, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
+			if err := web.StartServer(port, providerCfg, getLocalHandler(), GetLocalApp().SymbolLocator()); err != nil {
 				slog.Error("Error starting web server", "error", err)
 			}
 		},

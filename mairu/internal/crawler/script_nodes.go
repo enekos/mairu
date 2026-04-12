@@ -47,7 +47,7 @@ func (n *MinifyHTMLNode) Execute(ctx context.Context, state State) (State, error
 
 // GenerateScriptNode asks the LLM to generate a Go script using goquery
 type GenerateScriptNode struct {
-	Provider *llm.GeminiProvider
+	Provider llm.Provider
 }
 
 func (n *GenerateScriptNode) Name() string { return "GenerateScriptNode" }

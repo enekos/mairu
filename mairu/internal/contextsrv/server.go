@@ -43,6 +43,7 @@ func NewHandler(svc Service, authToken string) *Handler {
 	mux.HandleFunc("POST /api/memories/feedback", authMiddleware(h.applyMemoryFeedback))
 
 	// Bash History
+	mux.HandleFunc("POST /api/bash/history", authMiddleware(h.createBashHistory))
 	mux.HandleFunc("POST /api/bash/feedback", authMiddleware(h.applyBashHistoryFeedback))
 
 	// Skills

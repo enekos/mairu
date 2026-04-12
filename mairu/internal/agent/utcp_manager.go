@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
 	lru "github.com/hashicorp/golang-lru/v2"
 	"github.com/universal-tool-calling-protocol/go-utcp/src/providers/http"
 	"github.com/universal-tool-calling-protocol/go-utcp/src/tools"
 	transports "github.com/universal-tool-calling-protocol/go-utcp/src/transports/http"
+	"mairu/internal/llm"
 )
 
 type UTCPManager struct {
@@ -46,12 +46,13 @@ func NewUTCPManager(providersList []string) (*UTCPManager, error) {
 	return manager, nil
 }
 
-func (m *UTCPManager) Initialize(ctx context.Context) []*genai.FunctionDeclaration {
+// Initialize fetches tools from all configured UTCP providers and converts them to llm.Tool format
+func (m *UTCPManager) Initialize(ctx context.Context) []llm.Tool {
 	if len(m.providers) == 0 {
 		return nil
 	}
 
-	var allDeclarations []*genai.FunctionDeclaration
+	var allTools []llm.Tool
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 
@@ -61,12 +62,12 @@ func (m *UTCPManager) Initialize(ctx context.Context) []*genai.FunctionDeclarati
 			defer wg.Done()
 
 			if cachedTools, ok := m.schemaCache.Get(url); ok {
-				var decs []*genai.FunctionDeclaration
+				var tools []llm.Tool
 				for _, t := range cachedTools {
-					decs = append(decs, m.convertToGenaiDeclaration(t))
+					tools = append(tools, m.convertToLLMTool(t))
 				}
 				mu.Lock()
-				allDeclarations = append(allDeclarations, decs...)
+				allTools = append(allTools, tools...)
 				mu.Unlock()
 				return
 			}
@@ -89,7 +90,7 @@ func (m *UTCPManager) Initialize(ctx context.Context) []*genai.FunctionDeclarati
 
 			m.schemaCache.Add(url, tools)
 
-			var decs []*genai.FunctionDeclaration
+			var providerTools []llm.Tool
 			for _, t := range tools {
 				// We also store the target provider info for this specific tool
 				// Assumes UTCP server uses POST /tools/{name}/call for invocations by standard
@@ -98,94 +99,81 @@ func (m *UTCPManager) Initialize(ctx context.Context) []*genai.FunctionDeclarati
 					HTTPMethod: "POST",
 					Headers:    map[string]string{"Content-Type": "application/json"},
 				}
-				// Format URL properly if the base URL already ends with /tools or something
-				// Wait, the standard says "URL: base_url". The example used `baseURL + "/tools"` for discovery
-				// Let's assume the provided URL is the exact discovery endpoint (e.g. `http://localhost:8080/tools`)
-				// Then the call endpoint is `http://localhost:8080/tools/{name}/call`
 				m.providerCache.Add(t.Name, callProvider)
-
-				decs = append(decs, m.convertToGenaiDeclaration(t))
+				providerTools = append(providerTools, m.convertToLLMTool(t))
 			}
 
 			mu.Lock()
-			allDeclarations = append(allDeclarations, decs...)
+			allTools = append(allTools, providerTools...)
 			mu.Unlock()
 		}(providerURL)
 	}
 
 	wg.Wait()
-	return allDeclarations
+	return allTools
 }
 
-func (m *UTCPManager) ExecuteTool(ctx context.Context, name string, args map[string]interface{}) (interface{}, error) {
-	provider, ok := m.providerCache.Get(name)
+// ExecuteTool invokes a tool via UTCP protocol
+func (m *UTCPManager) ExecuteTool(ctx context.Context, toolName string, args map[string]interface{}) (interface{}, error) {
+	provider, ok := m.providerCache.Get(toolName)
 	if !ok {
-		return nil, fmt.Errorf("UTCP tool '%s' not found or provider unknown", name)
+		return nil, fmt.Errorf("tool %s not found in UTCP cache", toolName)
 	}
 
-	result, err := m.transport.CallTool(ctx, name, args, provider, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call UTCP tool '%s': %w", name, err)
-	}
-
-	return result, nil
+	return m.transport.CallTool(ctx, toolName, args, provider, nil)
 }
 
+// IsUTCPTool checks if a tool name is a UTCP tool
 func (m *UTCPManager) IsUTCPTool(name string) bool {
 	return m.providerCache.Contains(name)
 }
 
-func (m *UTCPManager) convertToGenaiDeclaration(t tools.Tool) *genai.FunctionDeclaration {
-	decl := &genai.FunctionDeclaration{
+// convertToLLMTool converts a UTCP tool to llm.Tool format
+func (m *UTCPManager) convertToLLMTool(t tools.Tool) llm.Tool {
+	return llm.Tool{
 		Name:        t.Name,
 		Description: t.Description,
+		Parameters:  m.convertSchemaToLLM(t.Inputs),
 	}
-
-	// Inputs in UTCP model is ToolInputOutputSchema, let's map it via JSON serialization
-	decl.Parameters = m.convertSchema(t.Inputs)
-
-	return decl
 }
 
-func (m *UTCPManager) convertSchema(schema tools.ToolInputOutputSchema) *genai.Schema {
-	genSchema := &genai.Schema{
-		Type: m.mapType(schema.Type),
+func (m *UTCPManager) convertSchemaToLLM(schema tools.ToolInputOutputSchema) *llm.JSONSchema {
+	llmSchema := &llm.JSONSchema{
+		Type:        m.mapTypeToLLM(schema.Type),
+		Description: schema.Description,
+		Required:    schema.Required,
 	}
 
 	if schema.Properties != nil {
-		genSchema.Properties = make(map[string]*genai.Schema)
+		llmSchema.Properties = make(map[string]*llm.JSONSchema)
 		for k, v := range schema.Properties {
 			if propMap, ok := v.(map[string]interface{}); ok {
-				genSchema.Properties[k] = m.convertMapSchema(propMap)
+				llmSchema.Properties[k] = m.convertMapSchemaToLLM(propMap)
 			}
 		}
 	}
 
-	if len(schema.Required) > 0 {
-		genSchema.Required = schema.Required
-	}
-
-	if schema.Description != "" {
-		genSchema.Description = schema.Description
-	}
-
-	return genSchema
+	return llmSchema
 }
 
-func (m *UTCPManager) convertMapSchema(schema map[string]interface{}) *genai.Schema {
-	genSchema := &genai.Schema{
-		Type: genai.TypeObject,
+func (m *UTCPManager) convertMapSchemaToLLM(schema map[string]interface{}) *llm.JSONSchema {
+	llmSchema := &llm.JSONSchema{
+		Type: llm.TypeObject,
 	}
 
 	if t, ok := schema["type"].(string); ok {
-		genSchema.Type = m.mapType(t)
+		llmSchema.Type = m.mapTypeToLLM(t)
+	}
+
+	if desc, ok := schema["description"].(string); ok {
+		llmSchema.Description = desc
 	}
 
 	if props, ok := schema["properties"].(map[string]interface{}); ok {
-		genSchema.Properties = make(map[string]*genai.Schema)
+		llmSchema.Properties = make(map[string]*llm.JSONSchema)
 		for k, v := range props {
 			if propMap, ok := v.(map[string]interface{}); ok {
-				genSchema.Properties[k] = m.convertMapSchema(propMap)
+				llmSchema.Properties[k] = m.convertMapSchemaToLLM(propMap)
 			}
 		}
 	}
@@ -193,33 +181,31 @@ func (m *UTCPManager) convertMapSchema(schema map[string]interface{}) *genai.Sch
 	if req, ok := schema["required"].([]interface{}); ok {
 		for _, r := range req {
 			if rStr, ok := r.(string); ok {
-				genSchema.Required = append(genSchema.Required, rStr)
+				llmSchema.Required = append(llmSchema.Required, rStr)
 			}
 		}
 	} else if reqStr, ok := schema["required"].([]string); ok {
-		genSchema.Required = reqStr
+		llmSchema.Required = reqStr
 	}
 
-	if desc, ok := schema["description"].(string); ok {
-		genSchema.Description = desc
-	}
-
-	return genSchema
+	return llmSchema
 }
 
-func (m *UTCPManager) mapType(t string) genai.Type {
+func (m *UTCPManager) mapTypeToLLM(t string) llm.JSONSchemaType {
 	switch t {
 	case "string":
-		return genai.TypeString
-	case "number", "integer":
-		return genai.TypeNumber
+		return llm.TypeString
+	case "number":
+		return llm.TypeNumber
+	case "integer":
+		return llm.TypeInteger
 	case "boolean":
-		return genai.TypeBoolean
+		return llm.TypeBoolean
 	case "array":
-		return genai.TypeArray
+		return llm.TypeArray
 	case "object":
-		return genai.TypeObject
+		return llm.TypeObject
 	default:
-		return genai.TypeString
+		return llm.TypeString
 	}
 }

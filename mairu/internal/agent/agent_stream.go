@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
-	"google.golang.org/api/iterator"
 	"mairu/internal/llm"
 	"mairu/internal/prompts"
 )
@@ -100,9 +98,17 @@ func (a *Agent) processLoopStream(input string, outChan chan<- AgentEvent) {
 		a.cancel = cancel
 		a.mu.Unlock()
 
-		iter := a.llm.ChatStream(ctx, input)
+		iter, err := a.llm.ChatStream(ctx, input)
+		if err != nil {
+			a.mu.Lock()
+			a.cancel = nil
+			a.mu.Unlock()
+			cancel()
+			outChan <- AgentEvent{Type: "error", Content: fmt.Sprintf("Failed to start chat stream: %v", err)}
+			return
+		}
 		a.emitLog(outChan, "LLM ChatStream established (attempt %d/%d)", attempt, maxStreamAttempts)
-		err := a.handleIterator(ctx, iter, outChan)
+		err = a.handleIterator(ctx, iter, outChan)
 
 		a.mu.Lock()
 		a.cancel = nil
@@ -128,76 +134,55 @@ func (a *Agent) processLoopStream(input string, outChan chan<- AgentEvent) {
 	}
 }
 
-func (a *Agent) handleIterator(ctx context.Context, iter *genai.GenerateContentResponseIterator, outChan chan<- AgentEvent) error {
-	var functionCalls []genai.FunctionCall
+func (a *Agent) handleIterator(ctx context.Context, iter llm.ChatStreamIterator, outChan chan<- AgentEvent) error {
+	var toolCalls []llm.ToolCall
+
 	for {
-		resp, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
+		chunk, err := iter.Next()
 		if err != nil {
+			if err.Error() == "EOF" || err.Error() == "stream done" {
+				break
+			}
 			return err
 		}
 
-		if len(resp.Candidates) == 0 {
-			continue
+		// Handle content
+		if chunk.Content != "" {
+			outChan <- AgentEvent{Type: "text", Content: chunk.Content}
 		}
 
-		if resp.UsageMetadata != nil {
-			a.emitLog(outChan, "Token Usage: prompt=%d, candidates=%d, total=%d", resp.UsageMetadata.PromptTokenCount, resp.UsageMetadata.CandidatesTokenCount, resp.UsageMetadata.TotalTokenCount)
+		// Accumulate tool calls
+		if len(chunk.ToolCalls) > 0 {
+			toolCalls = append(toolCalls, chunk.ToolCalls...)
 		}
 
-		for _, part := range resp.Candidates[0].Content.Parts {
-			if funcCall, ok := part.(genai.FunctionCall); ok {
-				functionCalls = append(functionCalls, funcCall)
-			}
-			if text, ok := part.(genai.Text); ok {
-				outChan <- AgentEvent{Type: "text", Content: string(text)}
-			}
-			if execCode, ok := part.(genai.ExecutableCode); ok {
-				langStr := ""
-				if execCode.Language == genai.ExecutableCodePython {
-					langStr = "python"
-				}
-				outChan <- AgentEvent{
-					Type:    "text",
-					Content: fmt.Sprintf("\n\n```%s\n%s\n```\n", langStr, execCode.Code),
-				}
-			}
-			if execResult, ok := part.(genai.CodeExecutionResult); ok {
-				outcomeStr := "OK"
-				if execResult.Outcome != genai.CodeExecutionResultOutcomeOK {
-					outcomeStr = execResult.Outcome.String()
-				}
-				outChan <- AgentEvent{
-					Type:    "text",
-					Content: fmt.Sprintf("\n> Execution Outcome: %s\n> Output:\n```\n%s\n```\n", outcomeStr, execResult.Output),
-				}
-			}
+		// Check if stream is done
+		if chunk.FinishReason == "stop" || chunk.FinishReason == "length" {
+			break
 		}
 	}
 
-	if len(functionCalls) > 0 {
+	if len(toolCalls) > 0 {
 		var wg sync.WaitGroup
-		results := make([]llm.FunctionResponsePayload, len(functionCalls))
+		results := make([]llm.FunctionResponsePayload, len(toolCalls))
 
-		for i, funcCall := range functionCalls {
+		for i, tc := range toolCalls {
 			wg.Add(1)
-			go func(idx int, fc genai.FunctionCall) {
+			go func(idx int, call llm.ToolCall) {
 				defer wg.Done()
-				a.emitLog(outChan, "Executing tool call: %s", fc.Name)
-				res := a.executeToolCall(ctx, fc, outChan)
+				a.emitLog(outChan, "Executing tool call: %s", call.Name)
+				res := a.executeToolCall(ctx, call, outChan)
 				results[idx] = llm.FunctionResponsePayload{
-					Name:     fc.Name,
+					Name:     call.Name,
 					Response: res,
 				}
-				a.emitLog(outChan, "Tool call %s completed", fc.Name)
-			}(i, funcCall)
+				a.emitLog(outChan, "Tool call %s completed", call.Name)
+			}(i, tc)
 		}
 		wg.Wait()
 
-		for _, fc := range functionCalls {
-			a.stuckDetector.Record(NewToolSignature(fc.Name, fc.Args))
+		for _, tc := range toolCalls {
+			a.stuckDetector.Record(NewToolSignature(tc.Name, tc.Arguments))
 		}
 
 		switch verdict := a.stuckDetector.Check(); verdict {

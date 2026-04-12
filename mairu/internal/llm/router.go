@@ -5,13 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/google/generative-ai-go/genai"
 	"mairu/internal/prompts"
 )
-
-type LLMClient interface {
-	GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error
-}
 
 type RouterAction struct {
 	Action        string `json:"action"`
@@ -26,9 +21,14 @@ type RouterCandidate struct {
 	Score   float64
 }
 
+// RouterLLMClient is the minimal interface needed for router decisions
+type RouterLLMClient interface {
+	GenerateJSON(ctx context.Context, system, user string, schema *JSONSchema, out any) error
+}
+
 const similarityGate = 0.75
 
-func DecideMemoryAction(ctx context.Context, client LLMClient, newContent string, candidates []RouterCandidate) (RouterAction, error) {
+func DecideMemoryAction(ctx context.Context, client RouterLLMClient, newContent string, candidates []RouterCandidate) (RouterAction, error) {
 	if client == nil {
 		return RouterAction{Action: "create"}, nil
 	}
@@ -62,23 +62,23 @@ func DecideMemoryAction(ctx context.Context, client LLMClient, newContent string
 	})
 
 	var decision RouterAction
-	schema := &genai.Schema{
-		Type: genai.TypeObject,
-		Properties: map[string]*genai.Schema{
+	schema := &JSONSchema{
+		Type: TypeObject,
+		Properties: map[string]*JSONSchema{
 			"action": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "One of: create, update, skip",
 			},
 			"targetId": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "ID of the target memory if updating",
 			},
 			"mergedContent": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "The new merged content if updating",
 			},
 			"reason": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "Reasoning for the action",
 			},
 		},
@@ -99,7 +99,7 @@ func DecideMemoryAction(ctx context.Context, client LLMClient, newContent string
 	return RouterAction{Action: "create"}, nil
 }
 
-func DecideContextAction(ctx context.Context, client LLMClient, uri, name, abstract string, candidates []RouterCandidate) (RouterAction, error) {
+func DecideContextAction(ctx context.Context, client RouterLLMClient, uri, name, abstract string, candidates []RouterCandidate) (RouterAction, error) {
 	if client == nil {
 		return RouterAction{Action: "create"}, nil
 	}
@@ -137,23 +137,23 @@ func DecideContextAction(ctx context.Context, client LLMClient, uri, name, abstr
 	})
 
 	var decision RouterAction
-	schema := &genai.Schema{
-		Type: genai.TypeObject,
-		Properties: map[string]*genai.Schema{
+	schema := &JSONSchema{
+		Type: TypeObject,
+		Properties: map[string]*JSONSchema{
 			"action": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "One of: create, update, skip",
 			},
 			"targetId": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "ID of the target memory if updating",
 			},
 			"mergedContent": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "The new merged content if updating",
 			},
 			"reason": {
-				Type:        genai.TypeString,
+				Type:        TypeString,
 				Description: "Reasoning for the action",
 			},
 		},

@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func TestGeminiCacheSmartLogic(t *testing.T) {
@@ -50,6 +52,9 @@ func TestGeminiCacheIntegration(t *testing.T) {
 	hugePrompt := sb.String()
 
 	cacheName, err := provider.CacheContext(ctx, hugePrompt, 15*time.Minute)
+	if status.Code(err) == codes.PermissionDenied {
+		t.Skip("Skipping Gemini cache integration test: API key is invalid or leaked")
+	}
 	assert.NoError(t, err)
 	assert.NotEmpty(t, cacheName)
 

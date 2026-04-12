@@ -13,7 +13,8 @@ import (
 // RAGExtractNode uses embeddings to find the most relevant chunks of a large document
 // before asking the LLM to extract data, reducing token usage and improving accuracy.
 type RAGExtractNode struct {
-	Provider    *llm.GeminiProvider
+	Provider    llm.Provider
+	Embedder    llm.Embedder
 	ChunkSize   int
 	TopK        int
 	Concurrency int
@@ -76,7 +77,10 @@ func (n *RAGExtractNode) Execute(ctx context.Context, state State) (State, error
 	}
 
 	// 1. Embed Prompt
-	promptEmb, err := n.Provider.GetEmbedding(ctx, userPrompt)
+	if n.Embedder == nil {
+		return state, fmt.Errorf("RAGExtractNode: missing Embedder")
+	}
+	promptEmb, err := n.Embedder.GetEmbedding(ctx, userPrompt)
 	if err != nil {
 		return state, fmt.Errorf("RAGExtractNode: failed to embed prompt: %w", err)
 	}
@@ -101,7 +105,7 @@ func (n *RAGExtractNode) Execute(ctx context.Context, state State) (State, error
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			emb, err := n.Provider.GetEmbedding(ctx, chunk)
+			emb, err := n.Embedder.GetEmbedding(ctx, chunk)
 			if err != nil {
 				errMu.Lock()
 				if firstErr == nil {

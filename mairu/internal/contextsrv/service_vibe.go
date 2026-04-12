@@ -3,14 +3,14 @@ package contextsrv
 import (
 	"context"
 	"fmt"
+	"mairu/internal/llm"
 	"mairu/internal/prompts"
 	"strings"
-
-	"github.com/google/generative-ai-go/genai"
 )
 
+// LLMClient defines the interface for LLM operations used by the context service
 type LLMClient interface {
-	GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error
+	llm.RouterLLMClient
 	GenerateContent(ctx context.Context, model, prompt string) (string, error)
 }
 

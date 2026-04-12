@@ -69,8 +69,8 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Server.Port != 8788 {
 		t.Errorf("Server.Port = %d, want 8788", cfg.Server.Port)
 	}
-	if cfg.Embedding.Model != "gemini-embedding-001" {
-		t.Errorf("Embedding.Model = %q, want gemini-embedding-001", cfg.Embedding.Model)
+	if cfg.Embedding.Model != "nomic-embed-text" {
+		t.Errorf("Embedding.Model = %q, want nomic-embed-text", cfg.Embedding.Model)
 	}
 	if cfg.Output.Format != "table" {
 		t.Errorf("Output.Format = %q, want table", cfg.Output.Format)

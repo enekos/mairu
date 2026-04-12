@@ -11,19 +11,17 @@ import (
 	"google.golang.org/api/option"
 )
 
-type Provider interface {
-	Chat(ctx context.Context, prompt string) (*genai.GenerateContentResponse, error)
-	SetupTools()
-}
+// Ensure GeminiProvider implements Provider interface
+var _ Provider = (*GeminiProvider)(nil)
 
+// GeminiProvider implements the Provider interface for Google Gemini
 type GeminiProvider struct {
-	client         *genai.Client
-	model          *genai.GenerativeModel
-	session        *genai.ChatSession
-	isNew          bool
-	modelName      string
-	EmbeddingModel string
-	EmbeddingDim   int
+	client       *genai.Client
+	model        *genai.GenerativeModel
+	session      *genai.ChatSession
+	isNew        bool
+	modelName    string
+	dynamicTools []*genai.FunctionDeclaration
 }
 
 func applySafetySettings(model *genai.GenerativeModel) {
@@ -47,13 +45,25 @@ func applySafetySettings(model *genai.GenerativeModel) {
 	}
 }
 
+// NewGeminiProvider creates a Gemini provider with just an API key (legacy signature)
 func NewGeminiProvider(ctx context.Context, apiKey string) (*GeminiProvider, error) {
-	client, err := genai.NewClient(ctx, option.WithAPIKey(apiKey))
+	return NewGeminiProviderFromConfig(ctx, ProviderConfig{
+		Type:   ProviderGemini,
+		APIKey: apiKey,
+	})
+}
+
+// NewGeminiProviderFromConfig creates a Gemini provider from a ProviderConfig
+func NewGeminiProviderFromConfig(ctx context.Context, cfg ProviderConfig) (*GeminiProvider, error) {
+	client, err := genai.NewClient(ctx, option.WithAPIKey(cfg.APIKey))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gemini client: %w", err)
 	}
 
-	modelName := "gemini-3.1-flash-lite-preview"
+	modelName := cfg.Model
+	if modelName == "" {
+		modelName = "gemini-3.1-flash-lite-preview"
+	}
 	model := client.GenerativeModel(modelName)
 	applySafetySettings(model)
 	session := model.StartChat()
@@ -96,18 +106,20 @@ func (g *GeminiProvider) SetModel(modelName string) {
 	g.model = newModel
 	g.session = newSession
 	g.SetupTools()
+	// Re-register dynamic tools
+	if len(g.dynamicTools) > 0 {
+		g.model.Tools[0].FunctionDeclarations = append(g.model.Tools[0].FunctionDeclarations, g.dynamicTools...)
+	}
 }
 
 func (g *GeminiProvider) IsNewSession() bool {
 	return g.isNew
 }
 
+// CacheContext implements CachingProvider interface
 func (g *GeminiProvider) CacheContext(ctx context.Context, systemPrompt string, ttl time.Duration) (string, error) {
-	// Be smart: Caching small prompts is slower and less cost-effective.
-	// Gemini cache pricing and performance is optimized for > 32k tokens.
-	// We use a rough heuristic: ~100,000 characters is ~25k tokens.
 	if len(systemPrompt) < 100000 {
-		return "", nil // Skip caching, fallback to normal requests
+		return "", nil
 	}
 
 	modelID := g.modelName
@@ -131,7 +143,7 @@ func (g *GeminiProvider) CacheContext(ctx context.Context, systemPrompt string, 
 
 func (g *GeminiProvider) SetCachedContent(ctx context.Context, name string) error {
 	if name == "" {
-		return nil // No cache to set
+		return nil
 	}
 	cc, err := g.client.GetCachedContent(ctx, name)
 	if err != nil {
@@ -153,37 +165,80 @@ func (g *GeminiProvider) DeleteCachedContent(ctx context.Context, name string) e
 	return g.client.DeleteCachedContent(ctx, name)
 }
 
-func (g *GeminiProvider) GetHistory() []*genai.Content {
-	return g.session.History
+func (g *GeminiProvider) GetHistory() []Message {
+	return genaiContentToMessages(g.session.History)
 }
 
-func (g *GeminiProvider) SetHistory(history []*genai.Content) {
-	g.session.History = history
+func (g *GeminiProvider) SetHistory(history []Message) {
+	g.session.History = messagesToGenaiContent(history)
 	g.isNew = false
 }
 
-func (g *GeminiProvider) ChatStream(ctx context.Context, prompt string) *genai.GenerateContentResponseIterator {
+// Chat implements the Provider interface
+func (g *GeminiProvider) Chat(ctx context.Context, prompt string) (*ChatResponse, error) {
 	g.isNew = false
-	return g.session.SendMessageStream(ctx, genai.Text(prompt))
+	resp, err := g.session.SendMessage(ctx, genai.Text(prompt))
+	if err != nil {
+		return nil, err
+	}
+	return g.parseResponse(resp)
 }
 
-func (g *GeminiProvider) SendFunctionResponseStream(ctx context.Context, name string, result map[string]any) *genai.GenerateContentResponseIterator {
-	return g.session.SendMessageStream(ctx, genai.FunctionResponse{
+func (g *GeminiProvider) parseResponse(resp *genai.GenerateContentResponse) (*ChatResponse, error) {
+	if len(resp.Candidates) == 0 || resp.Candidates[0].Content == nil {
+		return &ChatResponse{FinishReason: "stop"}, nil
+	}
+
+	result := &ChatResponse{}
+	candidate := resp.Candidates[0]
+
+	for _, part := range candidate.Content.Parts {
+		switch p := part.(type) {
+		case genai.Text:
+			result.Content += string(p)
+		case genai.FunctionCall:
+			result.ToolCalls = append(result.ToolCalls, ToolCall{
+				ID:        p.Name,
+				Name:      p.Name,
+				Arguments: p.Args,
+			})
+		}
+	}
+
+	switch candidate.FinishReason {
+	case genai.FinishReasonStop:
+		result.FinishReason = "stop"
+	case genai.FinishReasonMaxTokens:
+		result.FinishReason = "length"
+	case genai.FinishReasonSafety:
+		result.FinishReason = "safety"
+	case genai.FinishReasonRecitation:
+		result.FinishReason = "recitation"
+	default:
+		result.FinishReason = "stop"
+	}
+
+	return result, nil
+}
+
+// ChatStream implements the Provider interface
+func (g *GeminiProvider) ChatStream(ctx context.Context, prompt string) (ChatStreamIterator, error) {
+	g.isNew = false
+	iter := g.session.SendMessageStream(ctx, genai.Text(prompt))
+	return newGeminiStreamIterator(iter), nil
+}
+
+// SendFunctionResponseStream implements the Provider interface
+func (g *GeminiProvider) SendFunctionResponseStream(ctx context.Context, name string, result map[string]any) ChatStreamIterator {
+	iter := g.session.SendMessageStream(ctx, genai.FunctionResponse{
 		Name:     name,
 		Response: result,
 	})
+	return newGeminiStreamIterator(iter)
 }
 
-func (g *GeminiProvider) Close() error {
-	return g.client.Close()
-}
-
-type FunctionResponsePayload struct {
-	Name     string
-	Response map[string]any
-}
-
-func (g *GeminiProvider) SendFunctionResponsesStream(ctx context.Context, responses []FunctionResponsePayload) *genai.GenerateContentResponseIterator {
+// SendFunctionResponsesStream implements the Provider interface
+func (g *GeminiProvider) SendFunctionResponsesStream(ctx context.Context, responses []FunctionResponsePayload) ChatStreamIterator {
 	var parts []genai.Part
 	for _, r := range responses {
 		parts = append(parts, genai.FunctionResponse{
@@ -191,20 +246,29 @@ func (g *GeminiProvider) SendFunctionResponsesStream(ctx context.Context, respon
 			Response: r.Response,
 		})
 	}
-	return g.session.SendMessageStream(ctx, parts...)
+	iter := g.session.SendMessageStream(ctx, parts...)
+	return newGeminiStreamIterator(iter)
 }
 
-func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, schema *genai.Schema, out any) error {
+func (g *GeminiProvider) Close() error {
+	return g.client.Close()
+}
+
+// GenerateJSON implements the Provider interface
+func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, schema *JSONSchema, out any) error {
 	model := g.client.GenerativeModel(g.modelName)
 	applySafetySettings(model)
 	model.ResponseMIMEType = "application/json"
 
+	var genaiSchema *genai.Schema
 	if schema == nil && out != nil {
-		schema = GenerateSchema(out)
+		genaiSchema = GenerateSchema(out)
+	} else if schema != nil {
+		genaiSchema = FromJSONSchema(schema)
 	}
 
-	if schema != nil {
-		model.ResponseSchema = schema
+	if genaiSchema != nil {
+		model.ResponseSchema = genaiSchema
 	}
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(system)},
@@ -226,6 +290,7 @@ func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, 
 	return fmt.Errorf("unexpected part type")
 }
 
+// GenerateContent implements the Provider interface
 func (g *GeminiProvider) GenerateContent(ctx context.Context, modelName, prompt string) (string, error) {
 	model := g.client.GenerativeModel(modelName)
 	applySafetySettings(model)

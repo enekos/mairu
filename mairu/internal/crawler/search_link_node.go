@@ -13,7 +13,7 @@ import (
 // SearchLinkNode extracts all links from a webpage and uses the LLM to filter
 // and return only the ones relevant to the user prompt.
 type SearchLinkNode struct {
-	Provider *llm.GeminiProvider
+	Provider llm.Provider
 }
 
 func (n *SearchLinkNode) Name() string { return "SearchLinkNode" }

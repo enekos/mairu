@@ -20,6 +20,12 @@ type Config struct {
 	Enricher  EnricherConfig  `mapstructure:"enricher"`
 	Security  SecurityConfig  `mapstructure:"security"`
 	Tools     ToolsConfig     `mapstructure:"tools"`
+	LLM       LLMConfig       `mapstructure:"llm"`
+}
+
+type LLMConfig struct {
+	Provider string `mapstructure:"provider"`
+	Model    string `mapstructure:"model"`
 }
 
 type ToolsConfig struct {
@@ -48,6 +54,7 @@ type ChangeVelocityConfig struct {
 
 type APIConfig struct {
 	GeminiAPIKey string `mapstructure:"gemini_api_key"`
+	KimiAPIKey   string `mapstructure:"kimi_api_key"`
 	MeiliURL     string `mapstructure:"meili_url"`
 	MeiliAPIKey  string `mapstructure:"meili_api_key"`
 }
@@ -99,6 +106,7 @@ type EmbeddingConfig struct {
 	Model      string `mapstructure:"model"`
 	Dimensions int    `mapstructure:"dimensions"`
 	CacheSize  int    `mapstructure:"cache_size"`
+	OllamaURL  string `mapstructure:"ollama_url"`
 }
 
 type OutputConfig struct {
@@ -162,10 +170,15 @@ func UserConfigPath() string {
 }
 
 func setDefaults(v *viper.Viper) {
+	// LLM Provider
+	v.SetDefault("llm.provider", "gemini")
+	v.SetDefault("llm.model", "")
+
 	// API
 	v.SetDefault("api.meili_url", "http://localhost:7700")
 	v.SetDefault("api.meili_api_key", "contextfs-dev-key")
 	v.SetDefault("api.gemini_api_key", "")
+	v.SetDefault("api.kimi_api_key", "")
 
 	// Search weights
 	v.SetDefault("search.memories.vector", 0.6)
@@ -205,9 +218,10 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.moderation_enabled", false)
 
 	// Embedding
-	v.SetDefault("embedding.model", "gemini-embedding-001")
-	v.SetDefault("embedding.dimensions", 3072)
+	v.SetDefault("embedding.model", "nomic-embed-text")
+	v.SetDefault("embedding.dimensions", 768)
 	v.SetDefault("embedding.cache_size", 256)
+	v.SetDefault("embedding.ollama_url", "http://localhost:11434")
 
 	// Output
 	v.SetDefault("output.format", "table")
@@ -234,10 +248,12 @@ func bindLegacyEnv(v *viper.Viper) {
 	// don't have to change their .env files or CI pipelines.
 	legacy := map[string]string{
 		"GEMINI_API_KEY":            "api.gemini_api_key",
+		"KIMI_API_KEY":              "api.kimi_api_key",
 		"MEILI_URL":                 "api.meili_url",
 		"MEILI_API_KEY":             "api.meili_api_key",
 		"EMBEDDING_MODEL":           "embedding.model",
 		"EMBEDDING_DIM":             "embedding.dimensions",
+		"MAIRU_OLLAMA_URL":          "embedding.ollama_url",
 		"CONTEXT_SERVER_SQLITE_DSN": "server.sqlite_dsn",
 		"CONTEXT_AUTH_TOKEN":        "server.auth_token",
 		"CONTEXT_ENABLE_MODERATION": "server.moderation_enabled",

@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mairu/internal/llm"
 )
 
 func TestPingRoute(t *testing.T) {
-	r, err := SetupRouter("", nil, nil)
+	r, err := SetupRouter(llm.ProviderConfig{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}
@@ -33,7 +35,7 @@ func TestPingRoute(t *testing.T) {
 }
 
 func TestSessionNameFromQuery(t *testing.T) {
-	r, err := SetupRouter("", nil, nil)
+	r, err := SetupRouter(llm.ProviderConfig{}, nil, nil)
 	if err != nil {
 		t.Fatalf("failed to setup router: %v", err)
 	}

@@ -12,8 +12,8 @@ import (
 )
 
 // embeddingCacheSize is the number of query embeddings kept in the LRU cache.
-// Each entry holds a float32 slice (~12 KB for 3072-dim models), so 256
-// entries cost at most ~3 MB.
+// Each entry holds a float32 slice (~3 KB for 768-dim models), so 256
+// entries cost at most ~0.75 MB.
 const embeddingCacheSize = 256
 
 // embeddingCacher is the minimal interface MeiliIndexer needs from the LRU
@@ -54,6 +54,23 @@ func (m *MeiliIndexer) EnsureIndexes() error {
 		task, err = m.client.Index(idx).UpdateFilterableAttributes(&filterable)
 		if err != nil {
 			return fmt.Errorf("update filterable attributes for %q: %w", idx, err)
+		}
+		if task != nil {
+			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
+		}
+
+		dim := 768
+		if m.embedder != nil {
+			dim = m.embedder.GetEmbeddingDimension()
+		}
+		task, err = m.client.Index(idx).UpdateEmbedders(map[string]meilisearch.Embedder{
+			"default": {
+				Source:     meilisearch.UserProvidedEmbedderSource,
+				Dimensions: dim,
+			},
+		})
+		if err != nil {
+			return fmt.Errorf("update embedders for %q: %w", idx, err)
 		}
 		if task != nil {
 			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)

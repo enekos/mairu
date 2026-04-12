@@ -11,6 +11,7 @@ import (
 
 	"mairu/internal/contextsrv"
 	"mairu/internal/eval"
+	"mairu/internal/llm"
 )
 
 var (
@@ -55,13 +56,14 @@ func NewEvalCmd() *cobra.Command {
 				return fmt.Errorf("failed to connect to db: %w", err)
 			}
 
-			meili := contextsrv.NewMeiliIndexer(meiliURL, meiliKey, nil)
-			svc := contextsrv.NewServiceWithSearch(repo, meili, nil, false)
+			embedder := llm.NewOllamaEmbedder(os.Getenv("EMBEDDING_MODEL"))
+			meili := contextsrv.NewMeiliIndexer(meiliURL, meiliKey, embedder)
+			svc := contextsrv.NewServiceWithSearch(repo, meili, nil, embedder, false)
 
 			_ = eval.SeedFixtures(ctx, svc, dataset.Fixtures)
 
 			// Run projector once to sync fixtures to Meilisearch
-			projector := contextsrv.NewProjector(repo, meili, nil)
+			projector := contextsrv.NewProjector(repo, meili, embedder)
 			_, _ = projector.RunOnce(ctx, 100)
 
 			defer eval.CleanupFixtures(ctx, svc, dataset.Fixtures)

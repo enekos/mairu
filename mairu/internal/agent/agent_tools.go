@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/generative-ai-go/genai"
 	"mairu/internal/crawler"
+	"mairu/internal/llm"
 	"mairu/internal/prompts"
 )
 
@@ -34,13 +34,13 @@ func (a *Agent) searchBySymbolName(symName string, outChan chan<- AgentEvent) ma
 	return map[string]any{"content": content}
 }
 
-func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall, outChan chan<- AgentEvent) map[string]any {
-	a.emitLog(outChan, "Tool args for %s: %v", funcCall.Name, funcCall.Args)
+func (a *Agent) executeToolCall(ctx context.Context, funcCall llm.ToolCall, outChan chan<- AgentEvent) map[string]any {
+	a.emitLog(outChan, "Tool args for %s: %v", funcCall.Name, funcCall.Arguments)
 	outChan <- AgentEvent{
 		Type:     "tool_call",
 		Content:  fmt.Sprintf("🔧 Tool Call: %s", funcCall.Name),
 		ToolName: funcCall.Name,
-		ToolArgs: funcCall.Args,
+		ToolArgs: funcCall.Arguments,
 	}
 	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔧 Tool Call: %s", funcCall.Name)}
 
@@ -51,7 +51,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 	}
 	for _, interceptor := range a.interceptors {
 		var err error
-		funcCall.Args, err = interceptor.PreExecute(toolCtx, funcCall.Name, funcCall.Args)
+		funcCall.Arguments, err = interceptor.PreExecute(toolCtx, funcCall.Name, funcCall.Arguments)
 		if err != nil {
 			var approvalErr *ErrRequiresApproval
 			if errors.As(err, &approvalErr) {
@@ -92,7 +92,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 
 	if a.utcp != nil && a.utcp.IsUTCPTool(funcCall.Name) {
 		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔌 Executing UTCP Tool: %s", funcCall.Name)}
-		res, err := a.utcp.ExecuteTool(ctx, funcCall.Name, funcCall.Args)
+		res, err := a.utcp.ExecuteTool(ctx, funcCall.Name, funcCall.Arguments)
 		if err != nil {
 			result = map[string]any{"error": err.Error()}
 		} else {
@@ -101,15 +101,15 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 	} else {
 		switch funcCall.Name {
 		case "review_work":
-			summary, _ := funcCall.Args["summary"].(string)
-			critique, _ := funcCall.Args["critique"].(string)
+			summary, _ := funcCall.Arguments["summary"].(string)
+			critique, _ := funcCall.Arguments["critique"].(string)
 			outChan <- AgentEvent{Type: "status", Content: "🧠 Reviewing work and self-critiquing..."}
 			result = map[string]any{"status": "review acknowledged. Proceed to finish or fix issues.", "summary": summary, "critique": critique}
 
 		case "replace_block":
-			filePath, _ := funcCall.Args["file_path"].(string)
-			oldCode, _ := funcCall.Args["old_code"].(string)
-			newCode, _ := funcCall.Args["new_code"].(string)
+			filePath, _ := funcCall.Arguments["file_path"].(string)
+			oldCode, _ := funcCall.Arguments["old_code"].(string)
+			newCode, _ := funcCall.Arguments["new_code"].(string)
 
 			diffStr, err := a.ReplaceBlock(filePath, oldCode, newCode)
 
@@ -136,10 +136,10 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "multi_edit":
-			filePath, _ := funcCall.Args["file_path"].(string)
-			startLineFloat, _ := funcCall.Args["start_line"].(float64)
-			endLineFloat, _ := funcCall.Args["end_line"].(float64)
-			content, _ := funcCall.Args["content"].(string)
+			filePath, _ := funcCall.Arguments["file_path"].(string)
+			startLineFloat, _ := funcCall.Arguments["start_line"].(float64)
+			endLineFloat, _ := funcCall.Arguments["end_line"].(float64)
+			content, _ := funcCall.Arguments["content"].(string)
 
 			diffStr, err := a.MultiEdit(filePath, []EditBlock{{
 				StartLine: uint32(startLineFloat),
@@ -158,8 +158,8 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "bash":
-			command, _ := funcCall.Args["command"].(string)
-			timeoutMsFloat, ok := funcCall.Args["timeout_ms"].(float64)
+			command, _ := funcCall.Arguments["command"].(string)
+			timeoutMsFloat, ok := funcCall.Arguments["timeout_ms"].(float64)
 			var timeout int
 			if ok {
 				timeout = int(timeoutMsFloat)
@@ -189,9 +189,9 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "read_file":
-			filePath, _ := funcCall.Args["file_path"].(string)
-			offsetFloat, _ := funcCall.Args["offset"].(float64)
-			limitFloat, _ := funcCall.Args["limit"].(float64)
+			filePath, _ := funcCall.Arguments["file_path"].(string)
+			offsetFloat, _ := funcCall.Arguments["offset"].(float64)
+			limitFloat, _ := funcCall.Arguments["limit"].(float64)
 
 			offset := int(offsetFloat)
 			if offset <= 0 {
@@ -211,8 +211,8 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "write_file":
-			filePath, _ := funcCall.Args["file_path"].(string)
-			content, _ := funcCall.Args["content"].(string)
+			filePath, _ := funcCall.Arguments["file_path"].(string)
+			content, _ := funcCall.Arguments["content"].(string)
 
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("💾 Writing file: %s", filePath)}
 			diffStr, err := a.WriteFile(filePath, content)
@@ -238,7 +238,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "find_files":
-			pattern, _ := funcCall.Args["pattern"].(string)
+			pattern, _ := funcCall.Arguments["pattern"].(string)
 
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔍 Finding files: %s", pattern)}
 			files, err := a.FindFiles(pattern)
@@ -249,8 +249,8 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "search_codebase":
-			query, _ := funcCall.Args["query"].(string)
-			symName, _ := funcCall.Args["symbol_name"].(string)
+			query, _ := funcCall.Arguments["query"].(string)
+			symName, _ := funcCall.Arguments["symbol_name"].(string)
 
 			if strings.TrimSpace(symName) != "" {
 				outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔎 Searching symbol: %s", symName)}
@@ -272,10 +272,10 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "delegate_task":
-			task, _ := funcCall.Args["task_description"].(string)
+			task, _ := funcCall.Arguments["task_description"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🤖 Delegating task: %s", task)}
 
-			subAgent, err := New(a.root, a.apiKey, a.childConfig())
+			subAgent, err := New(a.root, a.providerCfg, a.childConfig())
 			if err != nil {
 				result = map[string]any{"error": "failed to spawn sub-agent: " + err.Error()}
 			} else {
@@ -310,7 +310,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "fetch_url":
-			urlToFetch, _ := funcCall.Args["url"].(string)
+			urlToFetch, _ := funcCall.Arguments["url"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🌐 Fetching URL: %s", urlToFetch)}
 
 			content, err := a.FetchURL(urlToFetch)
@@ -321,8 +321,8 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "scrape_url":
-			urlToScrape, _ := funcCall.Args["url"].(string)
-			prompt, _ := funcCall.Args["prompt"].(string)
+			urlToScrape, _ := funcCall.Arguments["url"].(string)
+			prompt, _ := funcCall.Arguments["prompt"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🕸️ Scraping URL: %s", urlToScrape)}
 
 			graph := crawler.NewSmartScraperGraph(a.llm)
@@ -334,8 +334,8 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "search_web":
-			query, _ := funcCall.Args["query"].(string)
-			prompt, _ := funcCall.Args["prompt"].(string)
+			query, _ := funcCall.Arguments["query"].(string)
+			prompt, _ := funcCall.Arguments["prompt"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔍 Searching Web: %s", query)}
 
 			graph := crawler.NewSearchScraperGraph(a.llm)
@@ -347,7 +347,7 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "delete_file":
-			pathToDelete, _ := funcCall.Args["path"].(string)
+			pathToDelete, _ := funcCall.Arguments["path"].(string)
 			outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🗑️ Deleting: %s", pathToDelete)}
 			err := os.RemoveAll(pathToDelete)
 			if err != nil {
@@ -357,9 +357,9 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall genai.FunctionCall
 			}
 
 		case "browser_context":
-			command, _ := funcCall.Args["command"].(string)
-			query, _ := funcCall.Args["query"].(string)
-			limitF, ok := funcCall.Args["limit"].(float64)
+			command, _ := funcCall.Arguments["command"].(string)
+			query, _ := funcCall.Arguments["query"].(string)
+			limitF, ok := funcCall.Arguments["limit"].(float64)
 			limit := 5
 			if ok {
 				limit = int(limitF)

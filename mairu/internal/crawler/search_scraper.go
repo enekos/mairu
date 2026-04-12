@@ -8,11 +8,11 @@ import (
 
 // SearchScraperGraph wraps a pipeline that searches DDG, fetches the top results, and extracts data
 type SearchScraperGraph struct {
-	provider *llm.GeminiProvider
+	provider llm.Provider
 }
 
 // NewSearchScraperGraph initializes a graph for search-based scraping
-func NewSearchScraperGraph(provider *llm.GeminiProvider) *SearchScraperGraph {
+func NewSearchScraperGraph(provider llm.Provider) *SearchScraperGraph {
 	return &SearchScraperGraph{
 		provider: provider,
 	}

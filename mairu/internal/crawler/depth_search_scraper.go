@@ -11,12 +11,12 @@ import (
 // DepthSearchScraperGraph fetches a seed URL, extracts relevant links up to maxDepth,
 // and then extracts data from all relevant discovered pages concurrently.
 type DepthSearchScraperGraph struct {
-	provider    *llm.GeminiProvider
+	provider    llm.Provider
 	maxDepth    int
 	concurrency int
 }
 
-func NewDepthSearchScraperGraph(provider *llm.GeminiProvider, maxDepth, concurrency int) *DepthSearchScraperGraph {
+func NewDepthSearchScraperGraph(provider llm.Provider, maxDepth, concurrency int) *DepthSearchScraperGraph {
 	if maxDepth < 0 {
 		maxDepth = 0
 	}

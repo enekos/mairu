@@ -11,7 +11,7 @@ import (
 
 // MergeAnswersNode merges extracted data from multiple sources into a single coherent JSON object.
 type MergeAnswersNode struct {
-	Provider *llm.GeminiProvider
+	Provider llm.Provider
 }
 
 func (n *MergeAnswersNode) Name() string { return "MergeAnswersNode" }

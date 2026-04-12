@@ -101,8 +101,8 @@ func (s *AppService) CreateMemory(input MemoryCreateInput) (Memory, error) {
 					"created_at": out.CreatedAt.Unix(),
 				}
 				payload["_vectors"] = map[string]any{"default": nil}
-				if emb, ok := s.llmClient.(fallbackEmbedder); ok {
-					vec, err := emb.GetEmbedding(context.Background(), out.Content)
+				if s.embedder != nil {
+					vec, err := s.embedder.GetEmbedding(context.Background(), out.Content)
 					if err == nil && len(vec) > 0 {
 						payload["_vectors"] = map[string]any{"default": vec}
 					}

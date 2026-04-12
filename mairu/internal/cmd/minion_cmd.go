@@ -100,9 +100,13 @@ func fetchGitHubContext(entityType, number string) (string, error) {
 }
 
 func runMinion(userPrompt string) {
-	apiKey := GetAPIKey()
-	if apiKey == "" {
-		slog.Error("Gemini API key not found. Please run 'mairu setup' or set GEMINI_API_KEY environment variable.")
+	providerCfg := GetLLMProviderConfig()
+	if providerCfg.APIKey == "" {
+		providerName := providerCfg.Type
+		if providerName == "" {
+			providerName = "gemini"
+		}
+		slog.Error(fmt.Sprintf("%s API key not found. Please run 'mairu setup' or set the appropriate API key environment variable.", providerName))
 		os.Exit(1)
 	}
 
@@ -110,7 +114,7 @@ func runMinion(userPrompt string) {
 	cfg := GetAgentConfig()
 	cfg.Unattended = true
 	cfg.Council.Enabled = minionCouncil
-	a, err := agent.New(cwd, apiKey, cfg)
+	a, err := agent.New(cwd, providerCfg, cfg)
 	if err != nil {
 		slog.Error("Failed to initialize agent", "error", err)
 		os.Exit(1)
@@ -172,7 +176,7 @@ func runMinion(userPrompt string) {
 	}
 
 	fmt.Printf("\n🔎 Launching PR reviewer council for PR #%s\n", reviewPR)
-	reviewOutput, err := runPRReviewerCouncil(cwd, apiKey, reviewPR)
+	reviewOutput, err := runPRReviewerCouncil(cwd, reviewPR)
 	if err != nil {
 		fmt.Printf("⚠️ PR reviewer council failed: %v\n", err)
 		return
@@ -192,7 +196,7 @@ type prReviewerResult struct {
 	err     error
 }
 
-func runPRReviewerCouncil(cwd, apiKey, prNumber string) (string, error) {
+func runPRReviewerCouncil(cwd, prNumber string) (string, error) {
 	prData, err := fetchGitHubContext("pr", prNumber)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch PR context: %w", err)
@@ -219,7 +223,7 @@ func runPRReviewerCouncil(cwd, apiKey, prNumber string) (string, error) {
 		wg.Add(1)
 		go func(r prReviewerRole) {
 			defer wg.Done()
-			out, reviewErr := runSinglePRReviewer(cwd, apiKey, prNumber, prData, r)
+			out, reviewErr := runSinglePRReviewer(cwd, prNumber, prData, r)
 			resultsCh <- prReviewerResult{
 				role:    r.Name,
 				content: out,
@@ -241,15 +245,20 @@ func runPRReviewerCouncil(cwd, apiKey, prNumber string) (string, error) {
 		findings[res.role] = strings.TrimSpace(res.content)
 	}
 
-	return runProductLeadSynthesis(cwd, apiKey, prNumber, findings)
+	return runProductLeadSynthesis(cwd, prNumber, findings)
 }
 
-func runSinglePRReviewer(cwd, apiKey, prNumber, prContext string, role prReviewerRole) (string, error) {
+func runSinglePRReviewer(cwd string, prNumber, prContext string, role prReviewerRole) (string, error) {
+	providerCfg := GetLLMProviderConfig()
+	if providerCfg.APIKey == "" {
+		return "", fmt.Errorf("API key not found")
+	}
+
 	cfg := GetAgentConfig()
 	cfg.Unattended = true
 	cfg.Council.Enabled = false
 
-	a, err := agent.New(cwd, apiKey, cfg)
+	a, err := agent.New(cwd, providerCfg, cfg)
 	if err != nil {
 		return "", err
 	}
@@ -286,12 +295,17 @@ func runSinglePRReviewer(cwd, apiKey, prNumber, prContext string, role prReviewe
 	return strings.TrimSpace(b.String()), nil
 }
 
-func runProductLeadSynthesis(cwd, apiKey, prNumber string, findings map[string]string) (string, error) {
+func runProductLeadSynthesis(cwd string, prNumber string, findings map[string]string) (string, error) {
+	providerCfg := GetLLMProviderConfig()
+	if providerCfg.APIKey == "" {
+		return "", fmt.Errorf("API key not found")
+	}
+
 	cfg := GetAgentConfig()
 	cfg.Unattended = true
 	cfg.Council.Enabled = false
 
-	a, err := agent.New(cwd, apiKey, cfg)
+	a, err := agent.New(cwd, providerCfg, cfg)
 	if err != nil {
 		return "", err
 	}

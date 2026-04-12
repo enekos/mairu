@@ -17,14 +17,17 @@ type Config struct {
 	MeiliURL          string
 	MeiliAPIKey       string
 	GeminiAPIKey      string
+	KimiAPIKey        string
+	LLMProvider       string // "gemini" or "kimi"
+	LLMModel          string
 	AuthToken         string
 	EnableProjector   bool
 	ProjectorEvery    time.Duration
 	ProjectorBatch    int
 	ReadTimeout       time.Duration
 	ModerationEnabled bool
+	OllamaURL         string
 	EmbeddingModel    string
-	EmbeddingDim      int
 }
 
 // App represents the Context Server application instance.
@@ -59,22 +62,38 @@ func NewApp(cfg Config) (*App, error) {
 		}
 	}
 
-	var geminiClient *llm.GeminiProvider
-	if cfg.GeminiAPIKey != "" {
-		client, err := llm.NewGeminiProvider(context.Background(), cfg.GeminiAPIKey)
+	// Initialize LLM provider
+	var llmProvider llm.Provider
+	providerCfg := llm.ProviderConfig{
+		Type:   llm.ProviderType(cfg.LLMProvider),
+		APIKey: cfg.GeminiAPIKey,
+		Model:  cfg.LLMModel,
+	}
+	if providerCfg.Type == "" {
+		providerCfg.Type = llm.ProviderGemini
+	}
+	if providerCfg.Type == llm.ProviderKimi {
+		providerCfg.APIKey = cfg.KimiAPIKey
+	}
+
+	if providerCfg.APIKey != "" {
+		client, err := llm.NewProvider(providerCfg)
 		if err == nil {
-			client.EmbeddingModel = cfg.EmbeddingModel
-			client.EmbeddingDim = cfg.EmbeddingDim
-			geminiClient = client
+			llmProvider = client
 		}
 	}
 
-	indexer := NewMeiliIndexer(cfg.MeiliURL, cfg.MeiliAPIKey, geminiClient)
+	embedder := llm.NewOllamaEmbedder(cfg.EmbeddingModel)
+	if cfg.OllamaURL != "" {
+		embedder.BaseURL = cfg.OllamaURL
+	}
+
+	indexer := NewMeiliIndexer(cfg.MeiliURL, cfg.MeiliAPIKey, embedder)
 	_ = indexer.EnsureIndexes()
 
 	var llmClient LLMClient
-	if geminiClient != nil {
-		llmClient = geminiClient
+	if llmProvider != nil {
+		llmClient = llmProvider
 	}
 
 	var repoIntf Repository
@@ -82,7 +101,7 @@ func NewApp(cfg Config) (*App, error) {
 		repoIntf = repo
 	}
 
-	svc := NewServiceWithSearch(repoIntf, indexer, llmClient, cfg.ModerationEnabled)
+	svc := NewServiceWithSearch(repoIntf, indexer, llmClient, embedder, cfg.ModerationEnabled)
 	handler := NewHandler(svc, cfg.AuthToken)
 	srv := &http.Server{
 		Addr:              fmt.Sprintf(":%d", cfg.Port),
@@ -92,7 +111,7 @@ func NewApp(cfg Config) (*App, error) {
 
 	var projector *Projector
 	if repo != nil {
-		projector = NewProjector(repo, indexer, geminiClient)
+		projector = NewProjector(repo, indexer, embedder)
 	}
 
 	return &App{
