@@ -28,7 +28,7 @@ func getSymbolBounds(lines []string, file string, symbol string) (int, int, erro
 	}
 
 	ext := strings.ToLower(filepath.Ext(file))
-	endIdx := foundIdx
+	var endIdx int
 	if ext == ".py" || ext == ".yaml" || ext == ".yml" {
 		endIdx = extractByIndent(lines, foundIdx)
 	} else {
