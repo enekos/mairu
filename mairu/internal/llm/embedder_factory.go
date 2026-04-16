@@ -36,8 +36,12 @@ func NewEmbedder(cfg config.EmbeddingConfig) (Embedder, error) {
 		slog.Warn("embedding provider 'ollama' is deprecated; using openai-compatible endpoint", "base_url", baseURL)
 		return NewOpenAIEmbedder(cfg.Model, baseURL, cfg.APIKey), nil
 	case "":
-		// Default to openai when not specified.
-		return NewOpenAIEmbedder(cfg.Model, cfg.BaseURL, cfg.APIKey), nil
+		// Default to fastembed when not specified.
+		emb, err := NewFastEmbedder(cfg.Model, cfg.Dimensions)
+		if err != nil {
+			return nil, fmt.Errorf("fastembed init failed (ensure ONNX Runtime is installed: https://onnxruntime.ai): %w", err)
+		}
+		return emb, nil
 	default:
 		return nil, fmt.Errorf("unknown embedding provider: %s", cfg.Provider)
 	}

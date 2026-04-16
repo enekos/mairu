@@ -30,7 +30,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contributor workflow and quality ga
 - Go 1.25+
 - Docker (optional if using local Meilisearch fallback)
 - Gemini API key (for chat)
-- Ollama running locally (or via Docker) for embeddings (`nomic-embed-text`)
+- ONNX Runtime (optional, for fastembed local embeddings)
 
 ## Quickstart
 
@@ -94,9 +94,9 @@ port = 8788
 sqlite_dsn = "file:mairu.db?cache=shared&mode=rwc"
 
 [embedding]
-model = "nomic-embed-text"
-dimensions = 768
-ollama_url = "http://localhost:11434"
+provider = "fastembed"
+model = "fast-all-MiniLM-L6-v2"
+dimensions = 384
 
 [output]
 format = "table"
@@ -177,9 +177,9 @@ See `mairu config list` for the complete list of settings.
 MEILI_URL=http://localhost:7700
 MEILI_API_KEY=contextfs-dev-key
 GEMINI_API_KEY=your_gemini_api_key
-MAIRU_OLLAMA_URL=http://localhost:11434
-EMBEDDING_MODEL=nomic-embed-text
-EMBEDDING_DIM=768
+EMBEDDING_PROVIDER=fastembed
+EMBEDDING_MODEL=fast-all-MiniLM-L6-v2
+EMBEDDING_DIM=384
 ```
 
 ## License

@@ -34,48 +34,6 @@ type dataExplorerModel struct {
 	height     int
 }
 
-func newDataExplorerModel(contextItems, memoryItems, skillItems []list.Item) dataExplorerModel {
-	tabs := []string{"Context Nodes", "Memories", "Skills"}
-	lists := make([]list.Model, 3)
-
-	l0 := list.New(contextItems, list.NewDefaultDelegate(), 0, 0)
-	l0.Title = "Context Graph Explorer"
-	l0.SetShowStatusBar(true)
-	l0.SetFilteringEnabled(true)
-	l0.DisableQuitKeybindings()
-	lists[0] = l0
-
-	l1 := list.New(memoryItems, list.NewDefaultDelegate(), 0, 0)
-	l1.Title = "Memories"
-	l1.SetShowStatusBar(true)
-	l1.SetFilteringEnabled(true)
-	l1.DisableQuitKeybindings()
-	lists[1] = l1
-
-	l2 := list.New(skillItems, list.NewDefaultDelegate(), 0, 0)
-	l2.Title = "Skills"
-	l2.SetShowStatusBar(true)
-	l2.SetFilteringEnabled(true)
-	l2.DisableQuitKeybindings()
-	lists[2] = l2
-
-	vp := viewport.New(0, 0)
-	r, _ := glamour.NewTermRenderer(
-		glamour.WithStandardStyle("dark"),
-		glamour.WithWordWrap(80),
-	)
-
-	m := dataExplorerModel{
-		tabs:       tabs,
-		activeTab:  tabContextNodes,
-		lists:      lists,
-		viewport:   vp,
-		mdRenderer: r,
-	}
-	m.updateViewportContent()
-	return m
-}
-
 func (m *dataExplorerModel) SetSize(width, height int) {
 	m.width = width
 	m.height = height

@@ -229,11 +229,11 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.moderation_enabled", false)
 
 	// Embedding
-	v.SetDefault("embedding.provider", "openai")
-	v.SetDefault("embedding.model", "nomic-embed-text")
-	v.SetDefault("embedding.dimensions", 768)
+	v.SetDefault("embedding.provider", "fastembed")
+	v.SetDefault("embedding.model", "fast-all-MiniLM-L6-v2")
+	v.SetDefault("embedding.dimensions", 384)
 	v.SetDefault("embedding.cache_size", 256)
-	v.SetDefault("embedding.base_url", "http://localhost:11434/v1")
+	v.SetDefault("embedding.base_url", "")
 
 	// Output
 	v.SetDefault("output.format", "table")

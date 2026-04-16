@@ -27,16 +27,16 @@ func TestNewEmbedder_OpenAI(t *testing.T) {
 	}
 }
 
-func TestNewEmbedder_EmptyProviderDefaultsToOpenAI(t *testing.T) {
+func TestNewEmbedder_EmptyProviderDefaultsToFastEmbed(t *testing.T) {
 	emb, err := NewEmbedder(config.EmbeddingConfig{
-		Model:   "nomic-embed-text",
-		BaseURL: "http://localhost:11434/v1",
+		Model: "fast-all-MiniLM-L6-v2",
 	})
 	if err != nil {
-		t.Fatalf("NewEmbedder(empty) error: %v", err)
+		// fastembed requires ONNX Runtime to be installed; skip if it's missing.
+		t.Skipf("NewEmbedder(empty) skipped: %v", err)
 	}
-	if _, ok := emb.(*OpenAIEmbedder); !ok {
-		t.Fatalf("expected *OpenAIEmbedder for empty provider, got %T", emb)
+	if _, ok := emb.(*FastEmbedder); !ok {
+		t.Fatalf("expected *FastEmbedder for empty provider, got %T", emb)
 	}
 }
 

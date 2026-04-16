@@ -116,6 +116,8 @@ func TestDoContextRequestReturnsErrorOnNon2xx(t *testing.T) {
 	}))
 	defer srv.Close()
 
+	t.Setenv("MAIRU_CONTEXT_SERVER_URL", srv.URL)
+
 	req, err := http.NewRequest(http.MethodGet, srv.URL+"/api/search", nil)
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)

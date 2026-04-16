@@ -11,7 +11,6 @@ type graphListItem struct {
 	uri     string
 	content string
 	depth   int
-	isLast  bool
 	prefix  string
 	node    *NodeItem
 }
@@ -45,72 +44,6 @@ type NodeItem struct {
 	Content  string      `json:"content"`
 	Parent   *string     `json:"parent_uri"`
 	Children []*NodeItem `json:"-"`
-}
-
-func buildGraphItems(nodes []NodeItem) []graphListItem {
-	nodeMap := make(map[string]*NodeItem)
-	var roots []*NodeItem
-
-	for i := range nodes {
-		nodeMap[nodes[i].URI] = &nodes[i]
-	}
-
-	for i := range nodes {
-		n := &nodes[i]
-		if n.Parent != nil && *n.Parent != "" {
-			if parent, ok := nodeMap[*n.Parent]; ok {
-				parent.Children = append(parent.Children, n)
-			} else {
-				roots = append(roots, n)
-			}
-		} else {
-			roots = append(roots, n)
-		}
-	}
-
-	var items []graphListItem
-
-	var traverse func(node *NodeItem, depth int, prefix string, isLast bool)
-	traverse = func(node *NodeItem, depth int, prefix string, isLast bool) {
-		currentPrefix := prefix
-		nextPrefix := prefix
-
-		if depth > 0 {
-			if isLast {
-				currentPrefix += "└── "
-				nextPrefix += "    "
-			} else {
-				currentPrefix += "├── "
-				nextPrefix += "│   "
-			}
-		}
-
-		title := fmt.Sprintf("[%s] %s", node.Project, node.Name)
-		if node.Name == "" {
-			title = fmt.Sprintf("[%s] %s", node.Project, node.URI)
-		}
-
-		items = append(items, graphListItem{
-			title:   title,
-			desc:    node.Abstract,
-			uri:     node.URI,
-			content: node.Content,
-			depth:   depth,
-			isLast:  isLast,
-			prefix:  currentPrefix,
-			node:    node,
-		})
-
-		for i, child := range node.Children {
-			traverse(child, depth+1, nextPrefix, i == len(node.Children)-1)
-		}
-	}
-
-	for i, root := range roots {
-		traverse(root, 0, "", i == len(roots)-1)
-	}
-
-	return items
 }
 
 type memoryListItem struct {

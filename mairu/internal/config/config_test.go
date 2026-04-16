@@ -69,14 +69,17 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.Server.Port != 8788 {
 		t.Errorf("Server.Port = %d, want 8788", cfg.Server.Port)
 	}
-	if cfg.Embedding.Model != "nomic-embed-text" {
-		t.Errorf("Embedding.Model = %q, want nomic-embed-text", cfg.Embedding.Model)
+	if cfg.Embedding.Model != "fast-all-MiniLM-L6-v2" {
+		t.Errorf("Embedding.Model = %q, want fast-all-MiniLM-L6-v2", cfg.Embedding.Model)
 	}
-	if cfg.Embedding.Provider != "openai" {
-		t.Errorf("Embedding.Provider = %q, want openai", cfg.Embedding.Provider)
+	if cfg.Embedding.Provider != "fastembed" {
+		t.Errorf("Embedding.Provider = %q, want fastembed", cfg.Embedding.Provider)
 	}
-	if cfg.Embedding.BaseURL != "http://localhost:11434/v1" {
-		t.Errorf("Embedding.BaseURL = %q, want http://localhost:11434/v1", cfg.Embedding.BaseURL)
+	if cfg.Embedding.Dimensions != 384 {
+		t.Errorf("Embedding.Dimensions = %d, want 384", cfg.Embedding.Dimensions)
+	}
+	if cfg.Embedding.BaseURL != "" {
+		t.Errorf("Embedding.BaseURL = %q, want empty", cfg.Embedding.BaseURL)
 	}
 	if cfg.Output.Format != "table" {
 		t.Errorf("Output.Format = %q, want table", cfg.Output.Format)

@@ -57,10 +57,14 @@ func NewEvalCmd() *cobra.Command {
 				return fmt.Errorf("failed to connect to db: %w", err)
 			}
 
+			baseURL := os.Getenv("MAIRU_EMBEDDING_BASE_URL")
+			if baseURL == "" {
+				baseURL = os.Getenv("MAIRU_OLLAMA_URL")
+			}
 			embedder, err := llm.NewEmbedder(config.EmbeddingConfig{
 				Provider: os.Getenv("EMBEDDING_PROVIDER"),
 				Model:    os.Getenv("EMBEDDING_MODEL"),
-				BaseURL:  os.Getenv("MAIRU_OLLAMA_URL"),
+				BaseURL:  baseURL,
 			})
 			if err != nil {
 				return fmt.Errorf("failed to create embedder: %w", err)

@@ -63,7 +63,7 @@ lint_go() {
   fi
 
   echo "golangci-lint not found, falling back to go vet."
-  echo "Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+  echo "Install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest"
   (cd "${MAIRU_DIR}" && go vet ./...)
 }
 
