@@ -3,7 +3,7 @@
 AI-optimized file skeleton (JSON)
 
 ```
-mairu outline <file> [flags]
+mairu outline <file>... [flags]
 ```
 
 ### Options

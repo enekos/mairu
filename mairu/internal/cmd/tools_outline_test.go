@@ -89,3 +89,45 @@ func TestOutlineExportsFilter(t *testing.T) {
 		}
 	}
 }
+
+func TestOutlineMultipleFiles(t *testing.T) {
+	tmpFile1, _ := os.CreateTemp("", "testoutline*.go")
+	tmpFile2, _ := os.CreateTemp("", "testoutline*.go")
+	defer os.Remove(tmpFile1.Name())
+	defer os.Remove(tmpFile2.Name())
+
+	tmpFile1.WriteString("package main\n\nfunc One() {}\n")
+	tmpFile1.Close()
+	tmpFile2.WriteString("package main\n\nfunc Two() {}\n")
+	tmpFile2.Close()
+
+	oldStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	cmd := NewOutlineCmd()
+	outlineExports = false
+	outlineTree = false
+	outputFormat = "json"
+	_ = cmd.RunE(cmd, []string{tmpFile1.Name(), tmpFile2.Name()})
+
+	w.Close()
+	os.Stdout = oldStdout
+
+	var buf bytes.Buffer
+	buf.ReadFrom(r)
+
+	var raw []map[string]interface{}
+	json.Unmarshal(buf.Bytes(), &raw)
+
+	if len(raw) != 2 {
+		t.Fatalf("expected 2 results, got: %d", len(raw))
+	}
+
+	for _, result := range raw {
+		syms, ok := result["symbols"].([]interface{})
+		if !ok || len(syms) < 1 {
+			t.Errorf("expected at least 1 symbol per file")
+		}
+	}
+}
