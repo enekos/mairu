@@ -158,11 +158,12 @@ If it does not, reply strictly with the word "FAIL", followed by a brief reason 
 	}
 
 	var judgeCost float64
+	// Kimi pricing approx
 	switch e.JudgeModel {
-	case "gemini-1.5-pro", "gemini-1.5-pro-latest":
-		judgeCost = float64(judgeUsage.PromptTokens)*3.50/1000000.0 + float64(judgeUsage.CompletionTokens)*10.50/1000000.0
-	case "gemini-1.5-flash", "gemini-1.5-flash-latest":
-		judgeCost = float64(judgeUsage.PromptTokens)*0.075/1000000.0 + float64(judgeUsage.CompletionTokens)*0.30/1000000.0
+	case "kimi-k2-0711-preview":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.50/1000000.0 + float64(judgeUsage.CompletionTokens)*2.00/1000000.0
+	case "kimi-latest":
+		judgeCost = float64(judgeUsage.PromptTokens)*0.50/1000000.0 + float64(judgeUsage.CompletionTokens)*2.00/1000000.0
 	default:
 		judgeCost = float64(judgeUsage.TotalTokens) * 0.1 / 1000000.0
 	}

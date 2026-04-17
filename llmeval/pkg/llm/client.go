@@ -18,7 +18,7 @@ type Client struct {
 
 func NewClient(baseURL, apiKey string) *Client {
 	if baseURL == "" {
-		baseURL = "https://generativelanguage.googleapis.com/v1beta"
+		baseURL = "https://api.moonshot.cn/v1"
 	}
 	return &Client{
 		BaseURL: baseURL,
@@ -29,29 +29,29 @@ func NewClient(baseURL, apiKey string) *Client {
 	}
 }
 
-type Part struct {
-	Text string `json:"text"`
+type ChatMessage struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
 }
 
-type Content struct {
-	Role  string `json:"role,omitempty"`
-	Parts []Part `json:"parts"`
+type ChatCompletionRequest struct {
+	Model       string        `json:"model"`
+	Messages    []ChatMessage `json:"messages"`
+	Temperature float32       `json:"temperature"`
 }
 
-type GenerationConfig struct {
-	Temperature float32 `json:"temperature"`
-}
-
-type GenerateContentRequest struct {
-	SystemInstruction *Content         `json:"systemInstruction,omitempty"`
-	Contents          []Content        `json:"contents"`
-	GenerationConfig  GenerationConfig `json:"generationConfig"`
-}
-
-type UsageMetadata struct {
-	PromptTokenCount     int `json:"promptTokenCount"`
-	CandidatesTokenCount int `json:"candidatesTokenCount"`
-	TotalTokenCount      int `json:"totalTokenCount"`
+type ChatCompletionResponse struct {
+	Choices []struct {
+		Message ChatMessage `json:"message"`
+	} `json:"choices"`
+	Usage struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+	Error *struct {
+		Message string `json:"message"`
+	} `json:"error,omitempty"`
 }
 
 type Usage struct {
@@ -60,31 +60,17 @@ type Usage struct {
 	TotalTokens      int
 }
 
-type GenerateContentResponse struct {
-	Candidates []struct {
-		Content Content `json:"content"`
-	} `json:"candidates"`
-	UsageMetadata UsageMetadata `json:"usageMetadata"`
-	Error         *struct {
-		Message string `json:"message"`
-	} `json:"error,omitempty"`
-}
-
 func (c *Client) Generate(ctx context.Context, model, systemPrompt, prompt string, temperature float32) (string, Usage, error) {
-	reqBody := GenerateContentRequest{
-		Contents: []Content{
-			{Role: "user", Parts: []Part{{Text: prompt}}},
-		},
-		GenerationConfig: GenerationConfig{
-			Temperature: temperature,
-		},
-	}
-
+	messages := []ChatMessage{}
 	if systemPrompt != "" {
-		reqBody.SystemInstruction = &Content{
-			Role:  "user", // System instructions don't need a specific role or it's implicitly system based on the field
-			Parts: []Part{{Text: systemPrompt}},
-		}
+		messages = append(messages, ChatMessage{Role: "system", Content: systemPrompt})
+	}
+	messages = append(messages, ChatMessage{Role: "user", Content: prompt})
+
+	reqBody := ChatCompletionRequest{
+		Model:       model,
+		Messages:    messages,
+		Temperature: temperature,
 	}
 
 	jsonData, err := json.Marshal(reqBody)
@@ -92,10 +78,10 @@ func (c *Client) Generate(ctx context.Context, model, systemPrompt, prompt strin
 		return "", Usage{}, err
 	}
 
-	var chatResp GenerateContentResponse
+	var chatResp ChatCompletionResponse
 	var lastErr error
 
-	url := fmt.Sprintf("%s/models/%s:generateContent?key=%s", c.BaseURL, model, c.APIKey)
+	url := fmt.Sprintf("%s/chat/completions", c.BaseURL)
 
 	for attempt := 1; attempt <= 3; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonData))
@@ -104,6 +90,7 @@ func (c *Client) Generate(ctx context.Context, model, systemPrompt, prompt strin
 		}
 
 		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+c.APIKey)
 
 		resp, err := c.HTTPClient.Do(req)
 		if err != nil {
@@ -133,18 +120,17 @@ func (c *Client) Generate(ctx context.Context, model, systemPrompt, prompt strin
 			return "", Usage{}, fmt.Errorf("API error: %s", chatResp.Error.Message)
 		}
 
-		if len(chatResp.Candidates) == 0 || len(chatResp.Candidates[0].Content.Parts) == 0 {
-			// This might happen if it was blocked by safety settings
+		if len(chatResp.Choices) == 0 {
 			return "", Usage{}, fmt.Errorf("no choices returned in response: %s", string(bodyBytes))
 		}
 
 		usage := Usage{
-			PromptTokens:     chatResp.UsageMetadata.PromptTokenCount,
-			CompletionTokens: chatResp.UsageMetadata.CandidatesTokenCount,
-			TotalTokens:      chatResp.UsageMetadata.TotalTokenCount,
+			PromptTokens:     chatResp.Usage.PromptTokens,
+			CompletionTokens: chatResp.Usage.CompletionTokens,
+			TotalTokens:      chatResp.Usage.TotalTokens,
 		}
 
-		return chatResp.Candidates[0].Content.Parts[0].Text, usage, nil
+		return chatResp.Choices[0].Message.Content, usage, nil
 	}
 
 	return "", Usage{}, fmt.Errorf("failed after 3 attempts, last error: %w", lastErr)

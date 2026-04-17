@@ -100,14 +100,12 @@ func (r *Runner) runSingle(ctx context.Context, tc TestCase) TestResult {
 	duration := time.Since(start)
 
 	var cost float64
-	// Gemini pricing approx
+	// Kimi pricing approx
 	switch r.TestModel {
-	case "gemini-1.5-pro", "gemini-1.5-pro-latest":
-		cost = float64(usage.PromptTokens)*3.50/1000000.0 + float64(usage.CompletionTokens)*10.50/1000000.0
-	case "gemini-1.5-flash", "gemini-1.5-flash-latest":
-		cost = float64(usage.PromptTokens)*0.075/1000000.0 + float64(usage.CompletionTokens)*0.30/1000000.0
-	case "gemini-2.5-flash":
-		cost = float64(usage.PromptTokens)*0.075/1000000.0 + float64(usage.CompletionTokens)*0.30/1000000.0
+	case "kimi-k2-0711-preview":
+		cost = float64(usage.PromptTokens)*0.50/1000000.0 + float64(usage.CompletionTokens)*2.00/1000000.0
+	case "kimi-latest":
+		cost = float64(usage.PromptTokens)*0.50/1000000.0 + float64(usage.CompletionTokens)*2.00/1000000.0
 	default:
 		cost = float64(usage.TotalTokens) * 0.1 / 1000000.0
 	}

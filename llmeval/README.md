@@ -1,12 +1,12 @@
 # llmeval
 
-A fast, lightweight, and concurrent CLI tool designed to evaluate Large Language Model (LLM) performance, specifically tailored for Gemini APIs but adaptable. It evaluates models across an array of structured and unstructured scenarios.
+A fast, lightweight, and concurrent CLI tool designed to evaluate Large Language Model (LLM) performance, specifically tailored for Kimi (Moonshot AI) APIs but adaptable. It evaluates models across an array of structured and unstructured scenarios.
 
 ## Features
 
-- **Google Gemini Native:** Directly uses the Google Gemini REST API.
+- **Kimi Native:** Directly uses the Kimi (Moonshot AI) OpenAI-compatible REST API.
 - **Concurrent Evaluations:** Tests are run in parallel, maximizing throughput.
-- **Multiple Evaluator Types:** Check for exact match, regex match, JSON schema validity, JSON path assertions, or delegate to an LLM Judge (`gemini-1.5-pro` by default).
+- **Multiple Evaluator Types:** Check for exact match, regex match, JSON schema validity, JSON path assertions, or delegate to an LLM Judge (`kimi-k2-0711-preview` by default).
 - **Prompt Templating:** Use parameterized templates to cleanly decouple data from instruction prompts.
 - **Cost & Telemetry:** Approximates costs based on usage metadata directly extracted from API calls.
 
@@ -23,10 +23,10 @@ go mod tidy
 go build -o llmeval ./cmd/llmeval
 ```
 
-Set your Gemini API Key:
+Set your Kimi API Key:
 
 ```bash
-export GEMINI_API_KEY="your-api-key-here"
+export KIMI_API_KEY="your-api-key-here"
 ```
 
 ## Running Evaluations
@@ -34,17 +34,17 @@ export GEMINI_API_KEY="your-api-key-here"
 You can run an evaluation against a JSON dataset:
 
 ```bash
-./llmeval --dataset sample_dataset.json --model gemini-1.5-flash --concurrency 4
+./llmeval --dataset sample_dataset.json --model kimi-k2-0711-preview --concurrency 4
 ```
 
 ### CLI Flags
 
 - `--dataset`: **(Required)** Path to the JSON dataset file containing the test cases.
-- `--model`: Model to evaluate (default: `gemini-1.5-flash`).
-- `--judge-model`: Model to use for `llm_judge` evaluations (default: `gemini-1.5-pro`).
+- `--model`: Model to evaluate (default: `kimi-k2-0711-preview`).
+- `--judge-model`: Model to use for `llm_judge` evaluations (default: `kimi-k2-0711-preview`).
 - `--concurrency`: Number of parallel evaluations (default: `4`).
-- `--base-url`: Base URL for the Gemini API (optional).
-- `--api-key`: Your Gemini API Key (defaults to `GEMINI_API_KEY` env var).
+- `--base-url`: Base URL for the Kimi API (optional).
+- `--api-key`: Your Kimi API Key (defaults to `KIMI_API_KEY` env var).
 - `--format`: Output format, accepts `text`, `json`, or `csv` (default: `text`).
 - `--output-file`: File to write results to (defaults to stdout if empty).
 

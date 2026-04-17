@@ -17,11 +17,11 @@ import (
 
 func main() {
 	datasetPath := flag.String("dataset", "", "Path to the JSON dataset file")
-	model := flag.String("model", "gemini-2.5-flash", "Model to evaluate")
-	judgeModel := flag.String("judge-model", "gemini-2.5-pro", "Model to use for llm_judge evaluations")
+	model := flag.String("model", "kimi-k2-0711-preview", "Model to evaluate")
+	judgeModel := flag.String("judge-model", "kimi-k2-0711-preview", "Model to use for llm_judge evaluations")
 	concurrency := flag.Int("concurrency", 4, "Number of parallel evaluations")
-	baseURL := flag.String("base-url", "", "Gemini API Base URL (optional)")
-	apiKey := flag.String("api-key", os.Getenv("GEMINI_API_KEY"), "API Key (defaults to GEMINI_API_KEY env var)")
+	baseURL := flag.String("base-url", "", "Kimi API Base URL (optional)")
+	apiKey := flag.String("api-key", os.Getenv("KIMI_API_KEY"), "API Key (defaults to KIMI_API_KEY env var)")
 	outputFormat := flag.String("format", "text", "Output format: text, json, csv")
 	outputFile := flag.String("output-file", "", "File to write results to (defaults to stdout if empty)")
 
