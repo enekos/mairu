@@ -29,7 +29,7 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contributor workflow and quality ga
 - Bun 1+ (for dashboard UI)
 - Go 1.25+
 - Docker (optional if using local Meilisearch fallback)
-- Gemini API key (for chat)
+- Kimi API key 
 - ONNX Runtime (optional, for fastembed local embeddings)
 
 ## Quickstart
@@ -44,8 +44,8 @@ Then initialize the configuration and set your API key:
 
 ```bash
 make mairu-build
-./mairu/bin/mairu setup
-./mairu/bin/mairu init --defaults
+mairu setup
+mairu init --defaults
 ```
 
 Start the services:
@@ -67,10 +67,10 @@ Mairu uses a five-tier TOML configuration cascade:
 
 Manage your config using the CLI:
 ```bash
-./mairu/bin/mairu config list
-./mairu/bin/mairu config set api.gemini_api_key "your-key"
-./mairu/bin/mairu init            # interactive project setup
-./mairu/bin/mairu doctor          # check system health
+mairu config list
+mairu config set api.kimi_api_key "your-key"
+mairu init            # interactive project setup
+mairu doctor          # check system health
 ```
 
 ### Sample `config.toml`
@@ -146,105 +146,92 @@ make mairu-build
 
 ### Configuration & Health
 ```bash
-./mairu/bin/mairu config list
-./mairu/bin/mairu doctor
-./mairu/bin/mairu init            # interactive project setup
-./mairu/bin/mairu setup           # setup configuration
+mairu config list
+mairu doctor
+mairu init            # interactive project setup
+mairu setup           # setup configuration
 ```
 
 ### Context Server APIs
 ```bash
-./mairu/bin/mairu memory search "auth token" -P my-project -k 5
-./mairu/bin/mairu node search "authentication architecture" -P my-project -k 5
-./mairu/bin/mairu skill list -P my-project
-./mairu/bin/mairu sync            # force sync search_outbox to Meilisearch
+mairu memory search "auth token" -P my-project -k 5
+mairu node search "authentication architecture" -P my-project -k 5
+mairu skill list -P my-project
+mairu sync            # force sync search_outbox to Meilisearch
 ```
 
 ### Vibe Commands (LLM Powered)
 ```bash
-./mairu/bin/mairu vibe query "how does auth work?" -P my-project
-./mairu/bin/mairu vibe mutation "remember we use gRPC internally" -P my-project
+mairu vibe query "how does auth work?" -P my-project
+mairu vibe mutation "remember we use gRPC internally" -P my-project
 ```
 
 ### AI-Optimized Dev Tools
 ```bash
-./mairu/bin/mairu scan "func main" ./src -e .go -n 10              # semantic search with token budget
-./mairu/bin/mairu outline main.go --tree --full                      # file skeleton / AST outline
-./mairu/bin/mairu peek main.go -l 10-20 -s MyStruct                 # peek file lines or symbols
-./mairu/bin/mairu map ./src -d 3 --sort size                        # token-aware directory tree
-./mairu/bin/mairu code search "auth middleware" -P my-project       # semantic code search via daemon
-./mairu/bin/mairu impact contextfs://node/my-project/auth.go -P my-project   # blast radius analysis
-./mairu/bin/mairu info ./src -e .go --top 10                        # repository stats
-./mairu/bin/mairu sys                                               # system health snapshot
-./mairu/bin/mairu env .env --reveal                                 # safe environment reader
-./mairu/bin/mairu proc ports                                        # list active ports & processes
-./mairu/bin/mairu proc top                                          # highest CPU/memory processes
-./mairu/bin/mairu dev kill-port 3000                                # kill process on port
-./mairu/bin/mairu distill go test ./...                             # run command, capture errors
-./mairu/bin/mairu splice main.go -t oldFunc -r new.go               # AST-aware symbol replacement
+mairu scan "func main" ./src -e .go -n 10              # semantic search with token budget
+mairu outline main.go --tree --full                      # file skeleton / AST outline
+mairu peek main.go -l 10-20 -s MyStruct                 # peek file lines or symbols
+mairu map ./src -d 3 --sort size                        # token-aware directory tree
+mairu code search "auth middleware" -P my-project       # semantic code search via daemon
+mairu impact contextfs://node/my-project/auth.go -P my-project   # blast radius analysis
+mairu info ./src -e .go --top 10                        # repository stats
+mairu sys                                               # system health snapshot
+mairu env .env --reveal                                 # safe environment reader
+mairu proc ports                                        # list active ports & processes
+mairu proc top                                          # highest CPU/memory processes
+mairu dev kill-port 3000                                # kill process on port
+mairu distill go test ./...                             # run command, capture errors
+mairu splice main.go -t oldFunc -r new.go               # AST-aware symbol replacement
 ```
 
 ### Daemon, Ingest, Scraper & History
 ```bash
-./mairu/bin/mairu daemon ./src -P my-project                                        # scan directory and extract AST to context nodes
-./mairu/bin/mairu ingest design.md --base-uri "contextfs://design" -P my-project -y # parse markdown via LLM and persist
-./mairu/bin/mairu scrape web https://example.com -P my-project                       # scrape one URL into context
-./mairu/bin/mairu scrape depth https://example.com -d 2 -P my-project                # crawl and summarize web content
-./mairu/bin/mairu scrape search "latest go release"                                 # search web and extract structured data
-./mairu/bin/mairu history search "test fail"                                        # semantically search bash command history
+mairu daemon ./src -P my-project                                        # scan directory and extract AST to context nodes
+mairu ingest design.md --base-uri "contextfs://design" -P my-project -y # parse markdown via LLM and persist
+mairu scrape web https://example.com -P my-project                       # scrape one URL into context
+mairu scrape depth https://example.com -d 2 -P my-project                # crawl and summarize web content
+mairu scrape search "latest go release"                                 # search web and extract structured data
+mairu history search "test fail"                                        # semantically search bash command history
 ```
 
 ### Git & Docker Helpers
 ```bash
-./mairu/bin/mairu git summary                                       # token-dense git status summary
-./mairu/bin/mairu git ingest -P my-project                          # ingest git history into context nodes
-./mairu/bin/mairu docker ps                                         # token-friendly container list
-./mairu/bin/mairu docker logs <container>                           # token-budgeted container logs
-./mairu/bin/mairu docker stats                                      # container resource snapshot
+mairu git summary                                       # token-dense git status summary
+mairu git ingest -P my-project                          # ingest git history into context nodes
+mairu docker ps                                         # token-friendly container list
+mairu docker logs <container>                           # token-budgeted container logs
+mairu docker stats                                      # container resource snapshot
 ```
 
 ### Integrations
 ```bash
-./mairu/bin/mairu github sync-issues -P my-project                  # sync GitHub issues/PRs into context
-./mairu/bin/mairu linear sync-issues -P my-project                  # sync Linear issues into context
+mairu github sync-issues -P my-project                  # sync GitHub issues/PRs into context
+mairu linear sync-issues -P my-project                  # sync Linear issues into context
 ```
 
 ### Analysis & Graph
 ```bash
-./mairu/bin/mairu analyze diff                                      # analyze git diff blast radius
-./mairu/bin/mairu analyze graph -P my-project                       # analyze AST graph for skills/flows
-./mairu/bin/mairu eval:retrieval                                    # run retrieval evaluation suite
+mairu analyze diff                                      # analyze git diff blast radius
+mairu analyze graph -P my-project                       # analyze AST graph for skills/flows
+mairu eval:retrieval                                    # run retrieval evaluation suite
 ```
 
 ### Server Modes & Interfaces
 ```bash
-./mairu/bin/mairu tui                                               # interactive terminal UI
-./mairu/bin/mairu web -p 8080                                       # Mairu web interface
-./mairu/bin/mairu context-server -p 8788                            # centralized context server
-./mairu/bin/mairu utcp -p 8081                                      # UTCP server over HTTP
-./mairu/bin/mairu mcp                                               # start MCP server on stdio
-./mairu/bin/mairu telegram                                          # start Telegram bot interface
+mairu tui                                               # interactive terminal UI
+mairu web -p 8080                                       # Mairu web interface
+mairu context-server -p 8788                            # centralized context server
+mairu utcp -p 8081                                      # UTCP server over HTTP
+mairu mcp                                               # start MCP server on stdio
+mairu telegram                                          # start Telegram bot interface
 ```
 
 ### Minion Mode (Unattended Automation)
 ```bash
-./mairu/bin/mairu minion "fix lint errors" --max-retries 2          # one-shot unattended execution
-./mairu/bin/mairu minion --github-issue 42 --council                # resolve a GitHub issue autonomously
+mairu minion "fix lint errors" --max-retries 2          # one-shot unattended execution
+mairu minion --github-issue 42 --council                # resolve a GitHub issue autonomously
 ```
 
-## Environment Variables (Legacy Support)
-
-Mairu supports older environment variables, but `.mairu.toml` or `~/.config/mairu/config.toml` is preferred.
-See `mairu config list` for the complete list of settings.
-
-```env
-MEILI_URL=http://localhost:7700
-MEILI_API_KEY=contextfs-dev-key
-GEMINI_API_KEY=your_gemini_api_key
-EMBEDDING_PROVIDER=fastembed
-EMBEDDING_MODEL=fast-all-MiniLM-L6-v2
-EMBEDDING_DIM=384
-```
 
 ## License
 
