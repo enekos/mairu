@@ -250,6 +250,7 @@ Agents can query the developer's bash history to understand previous commands, o
 - `mairu history search "test fail"` -> Semantically search past bash commands and their outputs.
 - `mairu history stats` -> Show the most frequently run bash commands.
 - `mairu history feedback <id> -r 10` -> Apply reinforcement learning feedback to a command execution.
+- `mairu history import --from ~/.zsh_history --project my-project` -> Backfill shell history (zsh or bash) into the searchable store. Every entry is run through the `internal/redact` pipeline before persistence — Layer 1 (known-token regex), Layer 2 (arg/flag heuristics), Layer 3 (entropy), Layer 4 (credential-handling tool denylist), Layer 5 (damage cap). Entries whose damage cap triggers are dropped entirely. Dedup is by sha256 of the redacted command within a single import run. Supports `--dry-run` for preview and `--format zsh|bash` to override filename-based detection.
 
 **Automatic Logging:** When using the mairu agent (via `mairu tui`, `mairu web`, or headless mode), all bash commands executed by the agent are **automatically stored** in mairu history through the `HistoryLogger` interface. This includes command, exit code, duration, and output - making your command history fully searchable for future sessions without any manual intervention.
 
