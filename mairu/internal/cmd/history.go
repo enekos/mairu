@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/cobra"
 	"mairu/internal/contextsrv"
+	"mairu/internal/history"
+	"mairu/internal/redact"
 )
 
 func NewHistoryCmd() *cobra.Command {
@@ -106,6 +108,68 @@ func NewHistoryCmd() *cobra.Command {
 		},
 	}
 
-	cmd.AddCommand(searchCmd, statsCmd, feedbackCmd)
+	cmd.AddCommand(searchCmd, statsCmd, feedbackCmd, newHistoryImportCmd())
 	return cmd
+}
+
+func newHistoryImportCmd() *cobra.Command {
+	importCmd := &cobra.Command{
+		Use:   "import",
+		Short: "Backfill bash history from a shell history file (~/.zsh_history, ~/.bash_history)",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			from, _ := cmd.Flags().GetString("from")
+			project, _ := cmd.Flags().GetString("project")
+			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			formatFlag, _ := cmd.Flags().GetString("format")
+
+			if from == "" {
+				return fmt.Errorf("--from is required")
+			}
+			if project == "" {
+				return fmt.Errorf("--project is required")
+			}
+
+			var format history.Format
+			switch formatFlag {
+			case "":
+				format = history.DetectFormat(from)
+			case "zsh":
+				format = history.FormatZsh
+			case "bash":
+				format = history.FormatBash
+			default:
+				return fmt.Errorf("unknown --format %q (want zsh or bash)", formatFlag)
+			}
+
+			f, err := os.Open(from)
+			if err != nil {
+				return fmt.Errorf("open history file: %w", err)
+			}
+			defer f.Close()
+
+			app := GetLocalApp()
+			repo := app.Repo()
+			if repo == nil {
+				return fmt.Errorf("repository is not initialized")
+			}
+
+			res, err := history.Import(context.Background(), f, format, repo, redact.New(), project, dryRun)
+			if err != nil {
+				return err
+			}
+
+			summary := fmt.Sprintf("parsed=%d redacted=%d dropped=%d dup=%d stored=%d",
+				res.Parsed, res.Redacted, res.Dropped, res.DuplicateSkipped, res.Stored)
+			if dryRun {
+				summary += " (dry-run)"
+			}
+			fmt.Println(summary)
+			return nil
+		},
+	}
+	importCmd.Flags().String("from", "", "Path to shell history file (required)")
+	importCmd.Flags().StringP("project", "P", "", "Project name to associate entries with (required)")
+	importCmd.Flags().Bool("dry-run", false, "Parse and redact but do not write to the repository")
+	importCmd.Flags().String("format", "", "Force format: zsh or bash (default: detect from filename)")
+	return importCmd
 }
