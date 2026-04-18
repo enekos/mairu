@@ -174,6 +174,7 @@ func init() {
 		NewAnalyzeCmd(),
 		NewIngestCmd(),
 		NewIngestdCmd(),
+		NewCaptureCmd(),
 		NewShellCmd(),
 		NewImpactCmd(),
 		NewGithubCmd(),
