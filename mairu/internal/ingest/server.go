@@ -122,12 +122,24 @@ func (s *Server) processRecord(ctx context.Context, rec Record) {
 		project = ResolveProject(rec.Cwd)
 	}
 
-	result := s.redactor.Redact(rec.Command, redact.KindCommand)
-	if result.Dropped {
-		slog.Debug("ingest: dropped record after redaction", "cwd", rec.Cwd)
+	cmdResult := s.redactor.Redact(rec.Command, redact.KindCommand)
+	if cmdResult.Dropped {
+		slog.Debug("ingest: dropped record after command redaction", "cwd", rec.Cwd)
 		return
 	}
-	if err := s.repo.InsertBashHistory(ctx, project, result.Redacted, rec.ExitCode, rec.DurationMs, ""); err != nil {
+
+	// Output is optional — only opt-in capture paths populate it. When
+	// present, redact it as free text. If the damage cap hollows it out
+	// (the redactor sets result.Redacted to "[REDACTED:damage_cap]" when
+	// Dropped), store that marker instead of the original — preserving the
+	// command's searchability while erasing the unsafe payload.
+	output := ""
+	if rec.Output != "" {
+		outResult := s.redactor.Redact(rec.Output, redact.KindText)
+		output = outResult.Redacted
+	}
+
+	if err := s.repo.InsertBashHistory(ctx, project, cmdResult.Redacted, rec.ExitCode, rec.DurationMs, output); err != nil {
 		slog.Error("ingest: insert failed", "err", err, "project", project)
 	}
 }

@@ -17,6 +17,7 @@ func TestEncodeDecodeRoundtrip(t *testing.T) {
 		Cwd:        "/home/user/project",
 		Timestamp:  ts,
 		Project:    "my-project",
+		Output:     "ok      mairu/internal/foo       0.123s\n",
 	}
 
 	var buf bytes.Buffer
@@ -46,6 +47,9 @@ func TestEncodeDecodeRoundtrip(t *testing.T) {
 	}
 	if got.Project != want.Project {
 		t.Errorf("Project: got %q, want %q", got.Project, want.Project)
+	}
+	if got.Output != want.Output {
+		t.Errorf("Output: got %q, want %q", got.Output, want.Output)
 	}
 }
 

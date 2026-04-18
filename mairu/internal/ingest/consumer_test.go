@@ -24,12 +24,13 @@ type insertCall struct {
 	command string
 	exit    int
 	dur     int
+	output  string
 }
 
-func (f *fakeRepo) InsertBashHistory(_ context.Context, project, command string, exit, dur int, _ string) error {
+func (f *fakeRepo) InsertBashHistory(_ context.Context, project, command string, exit, dur int, output string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.calls = append(f.calls, insertCall{project, command, exit, dur})
+	f.calls = append(f.calls, insertCall{project, command, exit, dur, output})
 	return nil
 }
 
@@ -145,6 +146,90 @@ func TestProcessRecord_InfersProjectFromCwd(t *testing.T) {
 	}
 	if repo.calls[0].project != "inferred" {
 		t.Errorf("project = %q, want %q", repo.calls[0].project, "inferred")
+	}
+}
+
+// TestProcessRecord_StoresRedactedOutput verifies that Output, when present,
+// is redacted before persistence while keeping enough benign context that
+// the damage cap does not trigger.
+func TestProcessRecord_StoresRedactedOutput(t *testing.T) {
+	repo := &fakeRepo{}
+	srv := newConsumerServer(repo)
+
+	out := `Deploying api-service to production cluster us-east-1
+Running pre-flight checks against staging environment
+Error: authentication failed talking to the registry service
+Tried token: ghp_1234567890abcdefghijklmnopqrstuvwxyz
+Retrying after 5 seconds with backoff policy exponential
+Retry count: 3; giving up after max attempts reached
+`
+	srv.processRecord(context.Background(), Record{
+		Command:    "make deploy",
+		ExitCode:   1,
+		DurationMs: 42,
+		Project:    "demo",
+		Output:     out,
+	})
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.calls) != 1 {
+		t.Fatalf("expected 1 repo call, got %d", len(repo.calls))
+	}
+	got := repo.calls[0].output
+	if strings.Contains(got, "ghp_1234567890") {
+		t.Errorf("PAT leaked into persisted output: %q", got)
+	}
+	if !strings.Contains(got, "authentication failed") {
+		t.Errorf("benign context was stripped; got %q", got)
+	}
+}
+
+// TestProcessRecord_OutputDamageCapReplacesBody verifies that when output
+// is >50% secrets the whole output is replaced with the damage-cap
+// placeholder — the command is still stored, just not the hollow payload.
+func TestProcessRecord_OutputDamageCapReplacesBody(t *testing.T) {
+	repo := &fakeRepo{}
+	srv := newConsumerServer(repo)
+
+	// Short output where the PAT dominates — Layer 5 fires.
+	srv.processRecord(context.Background(), Record{
+		Command: "make deploy",
+		Project: "demo",
+		Output:  "tok=ghp_1234567890abcdefghijklmnopqrstuvwxyz\n",
+	})
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.calls) != 1 {
+		t.Fatalf("expected 1 repo call, got %d", len(repo.calls))
+	}
+	if repo.calls[0].output != "[REDACTED:damage_cap]" {
+		t.Errorf("output = %q; want damage-cap placeholder", repo.calls[0].output)
+	}
+	if repo.calls[0].command != "make deploy" {
+		t.Errorf("command unexpectedly modified: %q", repo.calls[0].command)
+	}
+}
+
+// TestProcessRecord_EmptyOutputPassesThrough ensures Records with no Output
+// field are not incorrectly annotated.
+func TestProcessRecord_EmptyOutputPassesThrough(t *testing.T) {
+	repo := &fakeRepo{}
+	srv := newConsumerServer(repo)
+
+	srv.processRecord(context.Background(), Record{
+		Command: "echo hi",
+		Project: "demo",
+	})
+
+	repo.mu.Lock()
+	defer repo.mu.Unlock()
+	if len(repo.calls) != 1 {
+		t.Fatalf("expected 1 repo call, got %d", len(repo.calls))
+	}
+	if repo.calls[0].output != "" {
+		t.Errorf("empty Output should stay empty; got %q", repo.calls[0].output)
 	}
 }
 
