@@ -60,3 +60,48 @@ func containsAny(s string, needles []string) bool {
 	}
 	return false
 }
+
+// applyDamageCap returns the final body and whether the cap triggered. The
+// ratio is (total bytes inside [REDACTED:...] placeholders) / (total bytes
+// of input). When the ratio exceeds r.damageCapRatio, the record is too
+// hollowed-out to have retrieval value and is collapsed to a minimal
+// placeholder — keeping the first token for commands so "which tool was
+// invoked" is still searchable.
+func (r *Redactor) applyDamageCap(input string, kind Kind) (string, bool) {
+	if input == "" {
+		return input, false
+	}
+	redactedBytes := countRedactedBytes(input)
+	if float64(redactedBytes)/float64(len(input)) <= r.damageCapRatio {
+		return input, false
+	}
+	if kind == KindCommand {
+		fields := strings.Fields(input)
+		if len(fields) == 0 {
+			return "[REDACTED:damage_cap]", true
+		}
+		return fields[0] + " [REDACTED:damage_cap]", true
+	}
+	return "[REDACTED:damage_cap]", true
+}
+
+// countRedactedBytes sums the lengths of every "[REDACTED:...]" span in s.
+func countRedactedBytes(s string) int {
+	const open = "[REDACTED:"
+	total := 0
+	i := 0
+	for i < len(s) {
+		j := strings.Index(s[i:], open)
+		if j < 0 {
+			return total
+		}
+		start := i + j
+		end := strings.Index(s[start:], "]")
+		if end < 0 {
+			return total
+		}
+		total += end + 1
+		i = start + end + 1
+	}
+	return total
+}

@@ -182,7 +182,7 @@ func TestLayer2RedactsSpaceSeparatedPasswordFlag(t *testing.T) {
 }
 
 func TestLayer2RedactsInlineEnvPrefix(t *testing.T) {
-	in := `API_KEY=leakme_12345 ./deploy.sh`
+	in := `API_KEY=leakme_12345 ./deploy.sh production us-east-1 release rollout staging`
 	got := New().Redact(in, KindCommand)
 	if contains(got.Redacted, "leakme_12345") {
 		t.Errorf("inline env value leaked: %q", got.Redacted)
@@ -280,5 +280,38 @@ func TestLayer4DoesNotApplyToKindText(t *testing.T) {
 	got := New().Redact(in, KindText)
 	if got.Redacted != in {
 		t.Errorf("text input was treated as command: %q", got.Redacted)
+	}
+}
+
+func TestLayer5DamageCapTriggersOnCommand(t *testing.T) {
+	in := `curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhYmMifQ.sig" https://user:hunter2supersecret@api.example.com/path?token=ghp_1234567890abcdefghijklmnopqrstuvwxyz`
+	got := New().Redact(in, KindCommand)
+	if !got.Dropped {
+		t.Errorf("expected Dropped=true; got Redacted=%q", got.Redacted)
+	}
+	if got.Redacted != "curl [REDACTED:damage_cap]" {
+		t.Errorf("Redacted = %q; want 'curl [REDACTED:damage_cap]'", got.Redacted)
+	}
+}
+
+func TestLayer5DamageCapTriggersOnText(t *testing.T) {
+	in := "ghp_1234567890abcdefghijklmnopqrstuvwxyz ghp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+	got := New().Redact(in, KindText)
+	if !got.Dropped {
+		t.Errorf("expected Dropped=true; got Redacted=%q", got.Redacted)
+	}
+	if got.Redacted != "[REDACTED:damage_cap]" {
+		t.Errorf("Redacted = %q; want '[REDACTED:damage_cap]'", got.Redacted)
+	}
+}
+
+func TestLayer5DoesNotTriggerOnSingleRedaction(t *testing.T) {
+	in := "the deployment uses stripe secret key sk_live_4eC39HqLyjWDarjtT1zdp7dcABCDEFGH as documented in internal ops runbook chapter four"
+	got := New().Redact(in, KindText)
+	if got.Dropped {
+		t.Errorf("unexpected Dropped; got %q", got.Redacted)
+	}
+	if !contains(got.Redacted, "deployment uses stripe") {
+		t.Errorf("benign context was dropped: %q", got.Redacted)
 	}
 }

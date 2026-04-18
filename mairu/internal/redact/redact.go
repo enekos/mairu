@@ -113,9 +113,16 @@ func (r *Redactor) Redact(input string, kind Kind) (res Result) {
 	current = l4Cleaned
 	findings = append(findings, l4Findings...)
 
+	capped, dropped := r.applyDamageCap(current, kind)
+	current = capped
+	if dropped {
+		findings = append(findings, Finding{Layer: LayerDamageCap, Kind: "damage_cap"})
+	}
+
 	return Result{
 		Redacted:      current,
 		Findings:      findings,
 		EmbeddingSafe: embeddingSafe,
+		Dropped:       dropped,
 	}
 }
