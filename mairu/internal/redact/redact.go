@@ -109,6 +109,10 @@ func (r *Redactor) Redact(input string, kind Kind) (res Result) {
 	current = l3Cleaned
 	findings = append(findings, l3Findings...)
 
+	l4Cleaned, l4Findings := r.scanCommandDenylist(current, kind)
+	current = l4Cleaned
+	findings = append(findings, l4Findings...)
+
 	return Result{
 		Redacted:      current,
 		Findings:      findings,

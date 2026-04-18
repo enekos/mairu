@@ -239,3 +239,46 @@ func TestLayer3RespectsMinLength(t *testing.T) {
 		t.Errorf("short high-entropy token was redacted by Layer 3 (should require length >= minEntropyLen): %q", got.Redacted)
 	}
 }
+
+func TestLayer4RedactsVaultCommand(t *testing.T) {
+	in := "vault kv get -format=json secret/stripe/prod"
+	got := New().Redact(in, KindCommand)
+	if contains(got.Redacted, "secret/stripe/prod") {
+		t.Errorf("vault arg leaked: %q", got.Redacted)
+	}
+	if !contains(got.Redacted, "vault") {
+		t.Errorf("program name should be preserved: %q", got.Redacted)
+	}
+}
+
+func TestLayer4RedactsGPGDecrypt(t *testing.T) {
+	in := "gpg --decrypt --output plaintext.txt ciphertext.gpg"
+	got := New().Redact(in, KindCommand)
+	if contains(got.Redacted, "plaintext.txt") || contains(got.Redacted, "ciphertext.gpg") {
+		t.Errorf("gpg decrypt args leaked: %q", got.Redacted)
+	}
+}
+
+func TestLayer4RedactsAWSConfigure(t *testing.T) {
+	in := "aws configure --profile prod"
+	got := New().Redact(in, KindCommand)
+	if contains(got.Redacted, "--profile prod") {
+		t.Errorf("aws configure args leaked: %q", got.Redacted)
+	}
+}
+
+func TestLayer4PreservesBenignAWSCommand(t *testing.T) {
+	in := "aws s3 ls s3://public-bucket/"
+	got := New().Redact(in, KindCommand)
+	if got.Redacted != in {
+		t.Errorf("benign aws command was redacted: %q", got.Redacted)
+	}
+}
+
+func TestLayer4DoesNotApplyToKindText(t *testing.T) {
+	in := "the vault kv get example from docs shows how to read secrets"
+	got := New().Redact(in, KindText)
+	if got.Redacted != in {
+		t.Errorf("text input was treated as command: %q", got.Redacted)
+	}
+}
