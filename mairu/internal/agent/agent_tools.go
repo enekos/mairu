@@ -17,14 +17,14 @@ func (a *Agent) searchBySymbolName(symName string, outChan chan<- AgentEvent) ma
 		return map[string]any{"error": fmt.Sprintf("symbol '%s' not found", symName)}
 	}
 
+	outChan <- AgentEvent{
+		Type:    "status",
+		Content: fmt.Sprintf("📄 Reading symbol from %s", locations[0].FilePath),
+	}
+
 	content, err := a.SurgicalRead(locations[0])
 	if err != nil {
 		return map[string]any{"error": err.Error()}
-	}
-
-	outChan <- AgentEvent{
-		Type:    "status",
-		Content: fmt.Sprintf("📄 Read %d lines from %s", locations[0].EndRow-locations[0].StartRow+1, locations[0].FilePath),
 	}
 	return map[string]any{"content": content}
 }
@@ -37,8 +37,6 @@ func (a *Agent) executeToolCall(ctx context.Context, funcCall llm.ToolCall, outC
 		ToolName: funcCall.Name,
 		ToolArgs: funcCall.Arguments,
 	}
-	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🔧 Tool Call: %s", funcCall.Name)}
-
 	toolCtx := ToolContext{
 		Context: ctx,
 		Agent:   a,
