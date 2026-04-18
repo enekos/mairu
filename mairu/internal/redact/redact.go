@@ -43,6 +43,7 @@ type Redactor struct {
 	entropyThreshold float64
 	damageCapRatio   float64
 	minEntropyLen    int
+	testPanic        bool // test-only: forces Redact to panic to exercise recovery
 }
 
 type Option func(*Redactor)
@@ -90,6 +91,9 @@ func (r *Redactor) Redact(input string, kind Kind) (res Result) {
 			}
 		}
 	}()
+	if r.testPanic {
+		panic("forced panic for test")
+	}
 	current := input
 	var findings []Finding
 	embeddingSafe := true

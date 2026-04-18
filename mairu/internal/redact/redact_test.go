@@ -315,3 +315,18 @@ func TestLayer5DoesNotTriggerOnSingleRedaction(t *testing.T) {
 		t.Errorf("benign context was dropped: %q", got.Redacted)
 	}
 }
+
+func TestRedactRecoversFromPanic(t *testing.T) {
+	r := New()
+	r.testPanic = true
+	got := r.Redact("anything", KindText)
+	if !got.Dropped {
+		t.Error("expected Dropped=true after panic")
+	}
+	if got.EmbeddingSafe {
+		t.Error("expected EmbeddingSafe=false after panic")
+	}
+	if got.Redacted != "[REDACTED:panic]" {
+		t.Errorf("Redacted = %q; want [REDACTED:panic]", got.Redacted)
+	}
+}
