@@ -77,6 +77,7 @@ func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Ag
 	if err != nil {
 		return nil, err
 	}
+	llmProvider.SetTools(builtinToolSchemas())
 
 	utcpManager, err := NewUTCPManager(resolved.UTCPProviders)
 	if err != nil {
@@ -110,6 +111,7 @@ func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Ag
 // NewWithProvider creates a new Agent with an existing LLM provider (for testing/advanced use)
 func NewWithProvider(projectRoot string, provider llm.Provider, cfg ...Config) (*Agent, error) {
 	resolved := normalizeConfig(cfg...)
+	provider.SetTools(builtinToolSchemas())
 
 	utcpManager, err := NewUTCPManager(resolved.UTCPProviders)
 	if err != nil {

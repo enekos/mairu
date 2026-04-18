@@ -310,16 +310,13 @@ func TestEndToEnd_PlannerSubsetsToolsForComplexPrompt(t *testing.T) {
 		t.Fatalf("expected text and done events, got %+v", events)
 	}
 
-	if len(mock.setToolsCalls) == 0 {
-		t.Fatalf("expected SetTools to be called by planner")
+	// SetTools is called once during construction (builtin injection) + subset + restore = at least 3.
+	if len(mock.setToolsCalls) < 3 {
+		t.Fatalf("expected at least 3 SetTools calls (construction + subset + restore), got %d", len(mock.setToolsCalls))
 	}
 
-	// The last SetTools call should be the restore to full tools; the prior one is the subset.
-	if len(mock.setToolsCalls) < 2 {
-		t.Fatalf("expected at least 2 SetTools calls (subset + restore), got %d", len(mock.setToolsCalls))
-	}
-
-	subset := mock.setToolsCalls[0]
+	// The planner subset is the second-to-last call; the last is the restore.
+	subset := mock.setToolsCalls[len(mock.setToolsCalls)-2]
 	if len(subset) != 2 {
 		t.Fatalf("expected planner to subset to 2 tools, got %d: %+v", len(subset), subset)
 	}
