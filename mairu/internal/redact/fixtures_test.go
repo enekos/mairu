@@ -67,3 +67,35 @@ func TestBenignFixturesArePreserved(t *testing.T) {
 		})
 	}
 }
+
+// layer1Kinds is the set of secret fixture kinds that represent Layer-1
+// token patterns. Any hit in this set MUST set EmbeddingSafe=false — that's
+// the single property most likely to regress silently, because a layer
+// re-shuffle could redact correctly while forgetting to flip the flag, at
+// which point we'd ship secrets to a remote embedder post-redaction.
+var layer1Kinds = map[string]bool{
+	"github_pat":          true,
+	"github_fine_grained": true,
+	"aws_access_key":      true,
+	"stripe_live":         true,
+	"slack_bot_token":     true,
+	"google_api_key":      true,
+	"jwt":                 true,
+	"uri_credentials":     true,
+	"pem_key":             true,
+}
+
+func TestLayer1FixturesSetEmbeddingUnsafe(t *testing.T) {
+	r := New()
+	for _, f := range loadFixtures(t, "secrets.yaml") {
+		if !layer1Kinds[f.Kind] {
+			continue
+		}
+		t.Run(f.Kind, func(t *testing.T) {
+			got := r.Redact(f.Input, toKind(f.InputKind))
+			if got.EmbeddingSafe {
+				t.Fatalf("Layer-1 fixture did not flip EmbeddingSafe\n  kind:  %s\n  input: %q", f.Kind, f.Input)
+			}
+		})
+	}
+}
