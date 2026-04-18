@@ -36,18 +36,57 @@ func TestShellInitZsh_PrintsExpectedHooks(t *testing.T) {
 	}
 }
 
-func TestShellInitBash_NotImplemented(t *testing.T) {
+func TestShellInitBash_PrintsExpectedHooks(t *testing.T) {
+	if !strings.Contains(bashHookSnippet, "trap '__mairu_bash_preexec' DEBUG") {
+		t.Error("bash snippet missing DEBUG trap")
+	}
+	if !strings.Contains(bashHookSnippet, `PROMPT_COMMAND="__mairu_bash_precmd;`) {
+		t.Error("bash snippet missing PROMPT_COMMAND wiring")
+	}
+	if !strings.Contains(bashHookSnippet, "MAIRU_NO_HOOK") {
+		t.Error("bash snippet missing MAIRU_NO_HOOK escape hatch")
+	}
+	if !strings.Contains(bashHookSnippet, "mairu ingest record") {
+		t.Error("bash snippet does not invoke `mairu ingest record`")
+	}
+	if !strings.Contains(bashHookSnippet, "disown $!") {
+		t.Error("bash snippet does not detach the client (missing disown)")
+	}
+
 	cmd := NewShellCmd()
+	cmd.SetArgs([]string{"init", "bash"})
 	var buf bytes.Buffer
 	cmd.SetOut(&buf)
 	cmd.SetErr(&buf)
-	cmd.SetArgs([]string{"init", "bash"})
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatal("expected error for bash (not implemented)")
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
 	}
-	if !strings.Contains(err.Error(), "not implemented") {
-		t.Errorf("unexpected error: %v", err)
+}
+
+func TestShellInitFish_PrintsExpectedHooks(t *testing.T) {
+	if !strings.Contains(fishHookSnippet, "--on-event fish_preexec") {
+		t.Error("fish snippet missing fish_preexec handler")
+	}
+	if !strings.Contains(fishHookSnippet, "--on-event fish_postexec") {
+		t.Error("fish snippet missing fish_postexec handler")
+	}
+	if !strings.Contains(fishHookSnippet, "MAIRU_NO_HOOK") {
+		t.Error("fish snippet missing MAIRU_NO_HOOK escape hatch")
+	}
+	if !strings.Contains(fishHookSnippet, "$CMD_DURATION") {
+		t.Error("fish snippet does not use CMD_DURATION built-in")
+	}
+	if !strings.Contains(fishHookSnippet, "mairu ingest record") {
+		t.Error("fish snippet does not invoke `mairu ingest record`")
+	}
+
+	cmd := NewShellCmd()
+	cmd.SetArgs([]string{"init", "fish"})
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
 	}
 }
 
