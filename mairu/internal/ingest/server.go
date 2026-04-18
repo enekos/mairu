@@ -9,6 +9,8 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"mairu/internal/redact"
 )
 
 // BashRepo is the persistence interface for bash history records.
@@ -17,17 +19,11 @@ type BashRepo interface {
 	InsertBashHistory(ctx context.Context, project, command string, exitCode, durationMs int, output string) error
 }
 
-// redactorIface is a placeholder that lets Task 4 inject *redact.Redactor
-// without this package importing it directly.
-type redactorIface interface {
-	// Intentionally empty; Task 4 will add method(s) here.
-}
-
 // Server listens on a Unix socket and dispatches ingest records.
 type Server struct {
 	path     string
 	repo     BashRepo
-	redactor redactorIface
+	redactor *redact.Redactor
 
 	// testHook, if non-nil, replaces the default processRecord path.
 	// It is unexported so only tests within this package can set it.
@@ -37,7 +33,7 @@ type Server struct {
 }
 
 // NewServer constructs a Server that will listen at path.
-func NewServer(path string, repo BashRepo, redactor redactorIface) *Server {
+func NewServer(path string, repo BashRepo, redactor *redact.Redactor) *Server {
 	return &Server{path: path, repo: repo, redactor: redactor}
 }
 
@@ -115,11 +111,23 @@ func (s *Server) handleConn(ctx context.Context, conn net.Conn) {
 }
 
 // processRecord dispatches rec. If testHook is set it takes priority;
-// otherwise this is a no-op until Task 4 wires the real pipeline.
+// otherwise redacts the command and persists it via repo.
 func (s *Server) processRecord(ctx context.Context, rec Record) {
 	if s.testHook != nil {
 		s.testHook(ctx, rec)
 		return
 	}
-	// Task 4 will call s.redactor + s.repo here.
+	project := rec.Project
+	if project == "" {
+		project = ResolveProject(rec.Cwd)
+	}
+
+	result := s.redactor.Redact(rec.Command, redact.KindCommand)
+	if result.Dropped {
+		slog.Debug("ingest: dropped record after redaction", "cwd", rec.Cwd)
+		return
+	}
+	if err := s.repo.InsertBashHistory(ctx, project, result.Redacted, rec.ExitCode, rec.DurationMs, ""); err != nil {
+		slog.Error("ingest: insert failed", "err", err, "project", project)
+	}
 }
