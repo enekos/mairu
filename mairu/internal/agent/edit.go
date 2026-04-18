@@ -195,5 +195,16 @@ func (t *multiEditTool) Execute(ctx context.Context, args map[string]any, a *Age
 	if diffStr != "" {
 		outChan <- AgentEvent{Type: "diff", Content: fmt.Sprintf("```diff\n%s\n```", diffStr)}
 	}
-	return map[string]any{"status": "success"}, nil
+
+	verifOut, verifErr := a.runAutoVerification(ctx, filePath, outChan)
+	if verifErr != nil {
+		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Auto-verification failed for %s", filePath)}
+		return map[string]any{
+			"status":  "edit applied but auto-verification failed",
+			"error":   verifErr.Error(),
+			"output":  verifOut,
+			"message": "The edit was applied, but the project failed to build/lint. Please review the output and fix the errors immediately.",
+		}, nil
+	}
+	return map[string]any{"status": "success", "verification": "passed"}, nil
 }

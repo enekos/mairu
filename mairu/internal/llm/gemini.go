@@ -105,6 +105,7 @@ func (g *GeminiProvider) SetModel(modelName string) {
 	g.modelName = modelName
 	g.model = newModel
 	g.session = newSession
+	// baseTools is populated by SetTools, called at construction time by agent.New.
 	if len(g.baseTools) > 0 || len(g.dynamicTools) > 0 {
 		allTools := append(append([]*genai.FunctionDeclaration(nil), g.baseTools...), g.dynamicTools...)
 		g.model.Tools = []*genai.Tool{{FunctionDeclarations: allTools}}
