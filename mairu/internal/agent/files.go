@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"mairu/internal/llm"
 )
 
 // ReadFile reads the content of a file, adding line numbers and supporting offset/limit.
@@ -123,4 +125,113 @@ func (a *Agent) FindFiles(pattern string) (string, error) {
 // SearchCodebase runs a fast concurrent semantic search in Go.
 func (a *Agent) SearchCodebase(query string) (string, error) {
 	return a.fallbackSearch(query)
+}
+
+type readFileTool struct{}
+
+func (t *readFileTool) Definition() llm.Tool {
+	return llm.Tool{
+		Name:        "read_file",
+		Description: "Read the contents of a file. Supports reading specific sections using offset and limit. Output is truncated to 2000 lines by default. Use offset/limit for large files.",
+		Parameters: &llm.JSONSchema{
+			Type: llm.TypeObject,
+			Properties: map[string]*llm.JSONSchema{
+				"file_path": {Type: llm.TypeString, Description: "The relative path to the file."},
+				"offset":    {Type: llm.TypeInteger, Description: "The line number to start reading from (1-indexed). Defaults to 1."},
+				"limit":     {Type: llm.TypeInteger, Description: "Maximum number of lines to read. Defaults to 2000."},
+			},
+			Required: []string{"file_path"},
+		},
+	}
+}
+
+func (t *readFileTool) Execute(ctx context.Context, args map[string]any, a *Agent, outChan chan<- AgentEvent) (map[string]any, error) {
+	filePath, _ := args["file_path"].(string)
+	offsetFloat, _ := args["offset"].(float64)
+	limitFloat, _ := args["limit"].(float64)
+
+	offset := int(offsetFloat)
+	if offset <= 0 {
+		offset = 1
+	}
+	limit := int(limitFloat)
+	if limit <= 0 {
+		limit = 2000
+	}
+
+	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("📄 Reading file: %s (offset: %d, limit: %d)", filePath, offset, limit)}
+	content, err := a.ReadFile(filePath, offset, limit)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"content": content}, nil
+}
+
+type writeFileTool struct{}
+
+func (t *writeFileTool) Definition() llm.Tool {
+	return llm.Tool{
+		Name:        "write_file",
+		Description: "Write content to a file, overwriting it completely. If editing an existing file, prefer multi_edit.",
+		Parameters: &llm.JSONSchema{
+			Type: llm.TypeObject,
+			Properties: map[string]*llm.JSONSchema{
+				"file_path": {Type: llm.TypeString, Description: "The relative path to the file."},
+				"content":   {Type: llm.TypeString, Description: "The entire new content of the file."},
+			},
+			Required: []string{"file_path", "content"},
+		},
+	}
+}
+
+func (t *writeFileTool) Execute(ctx context.Context, args map[string]any, a *Agent, outChan chan<- AgentEvent) (map[string]any, error) {
+	filePath, _ := args["file_path"].(string)
+	content, _ := args["content"].(string)
+
+	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("💾 Writing file: %s", filePath)}
+	diffStr, err := a.WriteFile(filePath, content)
+	if err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+
+	if diffStr != "" {
+		outChan <- AgentEvent{Type: "diff", Content: fmt.Sprintf("```diff\n%s\n```", diffStr)}
+	}
+
+	verifOut, verifErr := a.runAutoVerification(ctx, filePath, outChan)
+	if verifErr != nil {
+		outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("⚠️ Auto-verification failed for %s", filePath)}
+		return map[string]any{
+			"status":  "file written but auto-verification failed",
+			"error":   verifErr.Error(),
+			"output":  verifOut,
+			"message": "The file was written, but the project failed to build/lint. Please review the output and fix the errors immediately.",
+		}, nil
+	}
+	return map[string]any{"status": "success", "verification": "passed"}, nil
+}
+
+type deleteFileTool struct{}
+
+func (t *deleteFileTool) Definition() llm.Tool {
+	return llm.Tool{
+		Name:        "delete_file",
+		Description: "Delete a file or directory.",
+		Parameters: &llm.JSONSchema{
+			Type: llm.TypeObject,
+			Properties: map[string]*llm.JSONSchema{
+				"path": {Type: llm.TypeString, Description: "The relative path to the file or directory."},
+			},
+			Required: []string{"path"},
+		},
+	}
+}
+
+func (t *deleteFileTool) Execute(ctx context.Context, args map[string]any, a *Agent, outChan chan<- AgentEvent) (map[string]any, error) {
+	pathToDelete, _ := args["path"].(string)
+	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🗑️ Deleting: %s", pathToDelete)}
+	if err := os.RemoveAll(pathToDelete); err != nil {
+		return map[string]any{"error": err.Error()}, nil
+	}
+	return map[string]any{"status": "success"}, nil
 }
