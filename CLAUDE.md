@@ -259,7 +259,18 @@ Run `mairu ingestd run &` once per session (or under launchd/systemd), then add 
 - **bash (`~/.bashrc`):** `eval "$(mairu shell init bash)"` — uses a `DEBUG` trap plus `PROMPT_COMMAND`. Requires bash 5.0+ for `$EPOCHREALTIME`; older bash silently reports `duration_ms=0`.
 - **fish (`~/.config/fish/config.fish`):** `mairu shell init fish | source` — uses `fish_preexec` / `fish_postexec` event handlers and the built-in `$CMD_DURATION` (already in milliseconds).
 
-Every command you run is captured by the hook, sent non-blockingly over a Unix socket (`$MAIRU_INGEST_SOCK`, default `~/.mairu/ingest.sock`), redacted through `internal/redact`, and stored in the same searchable bash-history as imports and agent-logged commands. Metadata only — command + exit code + duration + cwd — no stdout/stderr capture yet. Set `MAIRU_NO_HOOK=1` to suspend capture without editing your rc file. If the daemon isn't running, the client fails silently — the shell prompt never blocks or errors.
+Every command you run is captured by the hook, sent non-blockingly over a Unix socket (`$MAIRU_INGEST_SOCK`, default `~/.mairu/ingest.sock`), redacted through `internal/redact`, and stored in the same searchable bash-history as imports and agent-logged commands. Metadata only — command + exit code + duration + cwd. Set `MAIRU_NO_HOOK=1` to suspend capture without editing your rc file. If the daemon isn't running, the client fails silently — the shell prompt never blocks or errors.
+
+**Opt-in output capture (per-command):**
+For the commands where you *do* want the stdout/stderr remembered (build logs, test failures, deployment traces), prefix them with `mairu capture`:
+
+```bash
+mairu capture -- make deploy
+mairu capture --max-output 16384 -- npm test
+mairu capture --project my-project -- go test ./...
+```
+
+The command runs exactly as if you'd typed it directly — stdout/stderr stream live to your terminal, stdin is wired through, the exit code is propagated. In parallel, a buffered copy of the combined output (default cap: 64 KiB) is sent to ingestd alongside command metadata and run through `internal/redact.KindText` before persistence. If the output is >50% redacted (damage cap), the stored output is replaced with `[REDACTED:damage_cap]` but the command row is kept — so you can search for `"make deploy"` and see that it ran even when the payload was too hollow to keep. `mairu capture` is opt-in per-command precisely because command output is the highest-leakage surface in shell history; it is deliberately NOT wired into the always-on shell hook. Interactive TTY commands (`vim`, `htop`, `less`) don't currently work under `mairu capture` — run them directly.
 
 **Automatic Logging:** When using the mairu agent (via `mairu tui`, `mairu web`, or headless mode), all bash commands executed by the agent are **automatically stored** in mairu history through the `HistoryLogger` interface. This includes command, exit code, duration, and output - making your command history fully searchable for future sessions without any manual intervention.
 
