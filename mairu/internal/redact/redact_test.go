@@ -199,3 +199,43 @@ func TestLayer2DoesNotTouchNonSensitiveFlags(t *testing.T) {
 		t.Errorf("non-sensitive flags were modified: %q", got.Redacted)
 	}
 }
+
+func TestLayer3RedactsHighEntropyBase64(t *testing.T) {
+	in := "secret blob: Zk9Qb1hVazRWdnM5RjE3bUNOZ2hLcw=="
+	got := New().Redact(in, KindText)
+	if contains(got.Redacted, "Zk9Qb1hVazRWdnM5RjE3bUNOZ2hLcw") {
+		t.Errorf("high-entropy blob leaked: %q", got.Redacted)
+	}
+}
+
+func TestLayer3AllowsFullGitSHA(t *testing.T) {
+	in := "commit c0f9f3f7952529deadbeefc0ffee123456789abc landed in master"
+	got := New().Redact(in, KindText)
+	if !contains(got.Redacted, "c0f9f3f7952529deadbeefc0ffee123456789abc") {
+		t.Errorf("full git SHA was wrongly redacted: %q", got.Redacted)
+	}
+}
+
+func TestLayer3AllowsUUID(t *testing.T) {
+	in := "request_id=550e8400-e29b-41d4-a716-446655440000"
+	got := New().Redact(in, KindText)
+	if !contains(got.Redacted, "550e8400-e29b-41d4-a716-446655440000") {
+		t.Errorf("UUID was wrongly redacted: %q", got.Redacted)
+	}
+}
+
+func TestLayer3LeavesLowEntropyAlone(t *testing.T) {
+	in := "deploying version 1.2.3 to production cluster us-east-1"
+	got := New().Redact(in, KindText)
+	if got.Redacted != in {
+		t.Errorf("low-entropy text was modified: %q", got.Redacted)
+	}
+}
+
+func TestLayer3RespectsMinLength(t *testing.T) {
+	in := "token=A7x9K2mQp4Zr"
+	got := New().Redact(in, KindText)
+	if !contains(got.Redacted, "A7x9K2mQp4Zr") {
+		t.Errorf("short high-entropy token was redacted by Layer 3 (should require length >= minEntropyLen): %q", got.Redacted)
+	}
+}

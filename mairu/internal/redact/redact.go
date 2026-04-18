@@ -105,6 +105,10 @@ func (r *Redactor) Redact(input string, kind Kind) (res Result) {
 	current = l2Cleaned
 	findings = append(findings, l2Findings...)
 
+	l3Cleaned, l3Findings := r.scanEntropy(current)
+	current = l3Cleaned
+	findings = append(findings, l3Findings...)
+
 	return Result{
 		Redacted:      current,
 		Findings:      findings,
