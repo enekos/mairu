@@ -19,6 +19,15 @@ var builtinTools = []BuiltinTool{
 	&browserContextTool{},
 }
 
+var builtinToolsByName map[string]BuiltinTool
+
+func init() {
+	builtinToolsByName = make(map[string]BuiltinTool, len(builtinTools))
+	for _, bt := range builtinTools {
+		builtinToolsByName[bt.Definition().Name] = bt
+	}
+}
+
 func builtinToolSchemas() []llm.Tool {
 	schemas := make([]llm.Tool, len(builtinTools))
 	for i, bt := range builtinTools {
@@ -28,10 +37,5 @@ func builtinToolSchemas() []llm.Tool {
 }
 
 func findBuiltinTool(name string) BuiltinTool {
-	for _, bt := range builtinTools {
-		if bt.Definition().Name == name {
-			return bt
-		}
-	}
-	return nil
+	return builtinToolsByName[name]
 }
