@@ -16,12 +16,14 @@ pub struct SessionManager {
 
 impl SessionManager {
     pub fn new(session_id: String) -> Self {
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        Self::new_at(session_id, 0)
+    }
+
+    /// Construct with an explicit `started_at` timestamp (seconds).
+    /// Use this from wasm contexts where `SystemTime::now()` is unsupported.
+    pub fn new_at(session_id: String, started_at: u64) -> Self {
         Self {
-            session: BrowserSession::new(session_id, now),
+            session: BrowserSession::new(session_id, started_at),
             index: TfIdfIndex::new(),
             synced_hashes: std::collections::HashSet::new(),
         }

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Basic Fixture</title>
+</head>
+<body>
+  <h1 id="hello">Hello</h1>
+  <button id="btn">Click</button>
+  <input id="in" type="text" />
+  <script>
+    document.getElementById('btn').addEventListener('click', () => {
+      document.getElementById('hello').textContent = 'Clicked';
+    });
+  </script>
+</body>
+</html>

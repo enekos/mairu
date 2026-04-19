@@ -1,0 +1,6 @@
+test-results/
+node_modules/
+playwright-report/
+blob-report/
+pkg-*/
+

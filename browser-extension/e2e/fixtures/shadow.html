@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8" /><title>Closed Shadow</title></head>
+<body>
+  <div id="host"></div>
+  <script>
+    const host = document.getElementById('host');
+    const root = host.attachShadow({ mode: 'closed' });
+    root.innerHTML = '<button id="b"><span id="s">off</span></button>';
+    root.getElementById('b').addEventListener('click', () => {
+      root.getElementById('s').textContent = 'on';
+    });
+  </script>
+</body>
+</html>

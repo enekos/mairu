@@ -23,7 +23,13 @@
   const scheme = location.protocol;
   if (!scheme.startsWith('http')) return;
 
-  const overlay = installOverlay(document);
+  let overlay;
+  try {
+    overlay = installOverlay(document);
+  } catch (err) {
+    void err;
+    overlay = { showThought: () => {}, hideThought: () => {} };
+  }
 
   window.addEventListener('message', (event) => {
     if (!event.data) return;
@@ -148,6 +154,9 @@
             html: f.is_same_origin ? f._html : undefined,
           })),
         },
+      }, () => {
+        // Swallow any sendResponse channel errors — the SW side may not respond and that's fine.
+        void chrome.runtime.lastError;
       });
     } catch (err) {
       // SW may be restarting; next capture will retry.

@@ -14,7 +14,7 @@ const STYLE = `
 `;
 
 function define() {
-  if (typeof customElements === 'undefined') return;
+  if (typeof customElements === 'undefined' || customElements === null) return;
   if (customElements.get(TAG)) return;
   class MairuOverlay extends HTMLElement {
     connectedCallback() {

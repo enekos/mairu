@@ -18,7 +18,8 @@ function stripModuleSyntax(src) {
   return src
     .replace(/^\s*import\s+[^;]+;?\s*$/gm, '')
     .replace(/^\s*export\s+default\s+/gm, 'const __default = ')
-    .replace(/^\s*export\s+(function|class|const|let|var)\s+/gm, '$1 ')
+    .replace(/^\s*export\s+(async\s+)?function(\*?)\s+/gm, '$1function$2 ')
+    .replace(/^\s*export\s+(class|const|let|var)\s+/gm, '$1 ')
     .replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '');
 }
 

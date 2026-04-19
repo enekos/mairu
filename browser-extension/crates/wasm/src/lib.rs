@@ -3,19 +3,24 @@ use browser_extension_core::{dedup, extractor, session::SessionManager, types::*
 use std::cell::RefCell;
 use wasm_bindgen::prelude::*;
 
+use serde::Serialize;
+
+fn to_js(v: &serde_json::Value) -> JsValue {
+    // serde_wasm_bindgen default serializes JSON objects as JS Maps — use the
+    // json-compatible serializer so consumers can do `result.status` in JS.
+    let ser = serde_wasm_bindgen::Serializer::json_compatible();
+    v.serialize(&ser).unwrap_or(JsValue::NULL)
+}
+
 thread_local! {
     static SESSION: RefCell<Option<SessionManager>> = const { RefCell::new(None) };
 }
 
-#[wasm_bindgen(start)]
-pub fn start() {
-    console_error_panic_hook::set_once();
-}
-
 #[wasm_bindgen]
-pub fn init_session(session_id: &str) {
+pub fn init_session(session_id: &str, started_at_secs: u64) {
+    console_error_panic_hook::set_once();
     SESSION.with(|s| {
-        *s.borrow_mut() = Some(SessionManager::new(session_id.to_string()));
+        *s.borrow_mut() = Some(SessionManager::new_at(session_id.to_string(), started_at_secs));
     });
 }
 
@@ -108,14 +113,13 @@ pub fn process_page(args_val: JsValue) -> JsValue {
         AddPageResult::Duplicate => "duplicate",
     };
 
-    serde_wasm_bindgen::to_value(&serde_json::json!({
+    to_js(&serde_json::json!({
         "ok": true,
         "status": status,
         "is_new": result == AddPageResult::Added,
-        "content_hash": content_hash,
+        "content_hash": format!("{:016x}", content_hash),
         "section_count": section_count,
     }))
-    .unwrap_or(JsValue::NULL)
 }
 
 /// Parse iframes JSON from the content script and run the extractor on same-origin HTML.
@@ -159,12 +163,17 @@ fn extract_iframes(iframes_json: &str) -> Vec<IframeContent> {
         .collect()
 }
 
+fn to_js_value<T: Serialize + ?Sized>(v: &T) -> JsValue {
+    let ser = serde_wasm_bindgen::Serializer::json_compatible();
+    v.serialize(&ser).unwrap_or(JsValue::NULL)
+}
+
 #[wasm_bindgen]
 pub fn get_current() -> JsValue {
     SESSION.with(|s| {
         let s = s.borrow();
         match s.as_ref().and_then(|mgr| mgr.current_page()) {
-            Some(page) => serde_wasm_bindgen::to_value(page).unwrap_or(JsValue::NULL),
+            Some(page) => to_js_value(page),
             None => JsValue::NULL,
         }
     })
@@ -175,7 +184,7 @@ pub fn get_history() -> JsValue {
     SESSION.with(|s| {
         let s = s.borrow();
         match s.as_ref() {
-            Some(mgr) => serde_wasm_bindgen::to_value(mgr.history()).unwrap_or(JsValue::NULL),
+            Some(mgr) => to_js_value(mgr.history()),
             None => JsValue::NULL,
         }
     })
@@ -188,7 +197,7 @@ pub fn search_session(query: &str, limit: usize) -> JsValue {
         match s.as_ref() {
             Some(mgr) => {
                 let results = mgr.search(query, limit);
-                serde_wasm_bindgen::to_value(&results).unwrap_or(JsValue::NULL)
+                to_js_value(&results)
             }
             None => JsValue::NULL,
         }
@@ -200,7 +209,7 @@ pub fn get_session_summary() -> JsValue {
     SESSION.with(|s| {
         let s = s.borrow();
         match s.as_ref() {
-            Some(mgr) => serde_wasm_bindgen::to_value(&mgr.summary()).unwrap_or(JsValue::NULL),
+            Some(mgr) => to_js_value(&mgr.summary()),
             None => JsValue::NULL,
         }
     })
@@ -213,7 +222,7 @@ pub fn get_pending_sync() -> JsValue {
         match s.as_ref() {
             Some(mgr) => {
                 let pending: Vec<_> = mgr.pending_sync().into_iter().cloned().collect();
-                serde_wasm_bindgen::to_value(&pending).unwrap_or(JsValue::NULL)
+                to_js_value(&pending)
             }
             None => JsValue::NULL,
         }

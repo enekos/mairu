@@ -57,7 +57,7 @@ async function initialize() {
   } catch (err) {
     void err;
     currentSessionId = `session-${Date.now()}`;
-    init_session(currentSessionId);
+    init_session(currentSessionId, BigInt(Math.floor(Date.now() / 1000)));
     logger.info('session.new', { id: currentSessionId });
   }
 
@@ -94,7 +94,8 @@ async function enqueueProcessedPages() {
   for (const page of pending) {
     try {
       await queue.enqueue(buildPayload(page));
-      mark_synced(page.content_hash);
+      // content_hash is hex-serialized by the core crate; parse to BigInt for the wasm boundary.
+      mark_synced(BigInt('0x' + page.content_hash));
     } catch (err) {
       logger.warn('queue.enqueue_fail', { err: String(err), url: page.url });
     }
@@ -188,7 +189,7 @@ function handleMessage(message, sender, sendResponse) {
   } else if (message.type === 'reset_session') {
     chrome.storage.session.remove(SESSION_STORAGE_KEY, () => {
       currentSessionId = `session-${Date.now()}`;
-      init_session(currentSessionId);
+      init_session(currentSessionId, BigInt(Math.floor(Date.now() / 1000)));
       persistSession();
       sendResponse({ ok: true });
     });

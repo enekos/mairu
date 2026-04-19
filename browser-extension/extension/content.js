@@ -42,8 +42,7 @@ function getShadowRoot(el) {
   }
   return el.shadowRoot || null;
 }
-
-export function* walkShadowRoots(root) {
+function* walkShadowRoots(root) {
   const stack = [root];
   while (stack.length) {
     const node = stack.pop();
@@ -122,7 +121,7 @@ const STYLE = `
 `;
 
 function define() {
-  if (typeof customElements === 'undefined') return;
+  if (typeof customElements === 'undefined' || customElements === null) return;
   if (customElements.get(TAG)) return;
   class MairuOverlay extends HTMLElement {
     connectedCallback() {
@@ -277,7 +276,13 @@ function serializeWithBudget(root, { timeBudgetMs = 120, sizeLimit = 2 * 1024 * 
   const scheme = location.protocol;
   if (!scheme.startsWith('http')) return;
 
-  const overlay = installOverlay(document);
+  let overlay;
+  try {
+    overlay = installOverlay(document);
+  } catch (err) {
+    void err;
+    overlay = { showThought: () => {}, hideThought: () => {} };
+  }
 
   window.addEventListener('message', (event) => {
     if (!event.data) return;
@@ -402,6 +407,9 @@ function serializeWithBudget(root, { timeBudgetMs = 120, sizeLimit = 2 * 1024 * 
             html: f.is_same_origin ? f._html : undefined,
           })),
         },
+      }, () => {
+        // Swallow any sendResponse channel errors — the SW side may not respond and that's fine.
+        void chrome.runtime.lastError;
       });
     } catch (err) {
       // SW may be restarting; next capture will retry.
