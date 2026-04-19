@@ -1,108 +1,91 @@
-use serde_json::Value;
-use std::collections::HashMap;
-use std::io::{self, Read, Write};
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-use tiny_http::{Method, Response, Server};
+mod http;
+mod protocol;
 
-fn read_message() -> Option<Value> {
-    let mut len_bytes = [0u8; 4];
-    io::stdin().read_exact(&mut len_bytes).ok()?;
-    let len = u32::from_ne_bytes(len_bytes) as usize;
-    let mut msg_bytes = vec![0u8; len];
-    io::stdin().read_exact(&mut msg_bytes).ok()?;
-    serde_json::from_slice(&msg_bytes).ok()
-}
+use std::{
+    collections::HashMap,
+    net::SocketAddr,
+    sync::{atomic::AtomicU64, Arc},
+    time::Instant,
+};
+use tokio::{
+    io::BufWriter,
+    sync::{mpsc, oneshot, Mutex},
+};
 
-fn write_message(msg: &Value) -> io::Result<()> {
-    let msg_bytes = serde_json::to_vec(msg)?;
-    let len = msg_bytes.len() as u32;
-    io::stdout().write_all(&len.to_ne_bytes())?;
-    io::stdout().write_all(&msg_bytes)?;
-    io::stdout().flush()
-}
+#[tokio::main(flavor = "multi_thread", worker_threads = 2)]
+async fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+        )
+        .with_writer(std::io::stderr)
+        .init();
 
-fn main() {
-    let server = Server::http("127.0.0.1:7081").unwrap();
-    let pending_requests: Arc<Mutex<HashMap<String, Value>>> = Arc::new(Mutex::new(HashMap::new()));
-    let pending_clone = pending_requests.clone();
+    let port: u16 = std::env::var("MAIRU_EXT_HOST_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(7081);
+    let addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
 
-    // Thread to read responses from Chrome extension
-    thread::spawn(move || {
-        while let Some(msg) = read_message() {
-            if let Some(id) = msg.get("id").and_then(|i| i.as_str()) {
-                let mut reqs = pending_clone.lock().unwrap();
-                reqs.insert(id.to_string(), msg);
+    let pending: Arc<Mutex<HashMap<String, oneshot::Sender<serde_json::Value>>>> =
+        Arc::new(Mutex::new(HashMap::new()));
+    let (tx_to_ext, mut rx_to_ext) = mpsc::channel::<serde_json::Value>(64);
+
+    let writer_task = tokio::spawn(async move {
+        let mut out = BufWriter::new(tokio::io::stdout());
+        while let Some(v) = rx_to_ext.recv().await {
+            if let Err(e) = protocol::write_message(&mut out, &v).await {
+                tracing::error!("write_message: {e}");
+                break;
             }
         }
-        std::process::exit(0);
     });
 
-    let mut request_counter = 0;
-
-    for mut request in server.incoming_requests() {
-        if request.method() == &Method::Post
-            && (request.url() == "/query"
-                || request.url() == "/execute"
-                || request.url() == "/screenshot")
-        {
-            let mut content = String::new();
-            request
-                .as_reader()
-                .read_to_string(&mut content)
-                .unwrap_or_default();
-
-            if let Ok(mut json) = serde_json::from_str::<Value>(&content) {
-                request_counter += 1;
-                let req_id = format!("req-{}", request_counter);
-
-                if let Value::Object(ref mut map) = json {
-                    map.insert("id".to_string(), Value::String(req_id.clone()));
-                    if request.url() == "/execute" {
-                        map.insert("type".to_string(), Value::String("execute".to_string()));
-                    } else if request.url() == "/screenshot" {
-                        map.insert(
-                            "command".to_string(),
-                            Value::String("screenshot".to_string()),
-                        );
+    let pending_r = pending.clone();
+    let reader_task = tokio::spawn(async move {
+        let mut stdin = tokio::io::stdin();
+        loop {
+            match protocol::read_message(&mut stdin).await {
+                Ok(msg) => {
+                    if let Some(id) = msg.get("id").and_then(|v| v.as_str()).map(str::to_string) {
+                        if let Some(tx) = pending_r.lock().await.remove(&id) {
+                            let _ = tx.send(msg);
+                        }
                     }
                 }
-
-                if write_message(&json).is_ok() {
-                    // Poll for response
-                    let mut attempts = 0;
-                    let mut response_val = None;
-
-                    while attempts < 50 {
-                        // 5 second timeout
-                        thread::sleep(Duration::from_millis(100));
-                        let mut reqs = pending_requests.lock().unwrap();
-                        if let Some(resp) = reqs.remove(&req_id) {
-                            response_val = Some(resp);
-                            break;
-                        }
-                        attempts += 1;
-                    }
-
-                    if let Some(resp) = response_val {
-                        let _ = request.respond(
-                            Response::from_string(resp.to_string()).with_header(
-                                tiny_http::Header::from_bytes(
-                                    &b"Content-Type"[..],
-                                    &b"application/json"[..],
-                                )
-                                .unwrap(),
-                            ),
-                        );
-                        continue;
-                    }
+                Err(protocol::ProtocolError::Eof) => {
+                    tracing::info!("extension stdin closed");
+                    break;
+                }
+                Err(protocol::ProtocolError::TooLarge(n)) => {
+                    tracing::warn!("msg too large: {n}");
+                    continue;
+                }
+                Err(e) => {
+                    tracing::error!("read_message: {e}");
+                    break;
                 }
             }
         }
+    });
 
-        let _ = request.respond(
-            Response::from_string("{\"error\": \"timeout or bad request\"}").with_status_code(400),
-        );
+    let state = http::AppState {
+        pending,
+        to_extension: tx_to_ext,
+        started: Instant::now(),
+        counter: Arc::new(AtomicU64::new(0)),
+    };
+    let app = http::router(state);
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .expect("bind native-host http");
+    tracing::info!("native host listening on {addr}");
+    let serve = axum::serve(listener, app);
+
+    tokio::select! {
+        r = serve => { if let Err(e) = r { tracing::error!("serve: {e}"); } }
+        _ = reader_task => {}
+        _ = writer_task => {}
     }
 }
