@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Mairu Browser Context",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Gives mairu chat real-time browser awareness",
   "permissions": [
     "activeTab",
@@ -9,8 +9,12 @@
     "nativeMessaging",
     "contextMenus",
     "tabs",
-    "cookies"
+    "cookies",
+    "scripting",
+    "webNavigation",
+    "alarms"
   ],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "service-worker.js",
     "type": "module"
@@ -21,6 +25,9 @@
       "js": ["content.js"],
       "run_at": "document_idle"
     }
+  ],
+  "web_accessible_resources": [
+    { "resources": ["main-world/traps.js"], "matches": ["<all_urls>"] }
   ],
   "action": {
     "default_popup": "popup/popup.html"
