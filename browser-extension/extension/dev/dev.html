@@ -13,6 +13,7 @@
       <a href="#" class="nav-item" data-target="queue">Sync Queue</a>
       <a href="#" class="nav-item" data-target="live">Live Inspector</a>
       <a href="#" class="nav-item" data-target="logs">Event Logs</a>
+      <a href="#" class="nav-item" data-target="diagnostics">Diagnostics</a>
     </nav>
     <div class="sidebar-footer">
       <button id="btn-force-sync" class="btn">Force Sync</button>
@@ -95,6 +96,25 @@
          <h3 style="margin-bottom: 10px;">Evaluation Result</h3>
          <pre id="live-eval-content" class="code-block" style="max-height: calc(100vh - 250px);"></pre>
       </div>
+    </section>
+
+    <!-- Diagnostics -->
+    <section id="diagnostics" class="view" style="display: flex; flex-direction: column; height: 100vh;">
+      <div class="logs-header" style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
+        <h2 style="margin: 0;">Structured Event Log</h2>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <input id="diag-filter" type="text" placeholder="filter e.g. sync.*" style="padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px;" />
+          <select id="diag-level" style="padding: 4px 6px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px;">
+            <option value="">all levels</option>
+            <option value="debug">debug</option>
+            <option value="info">info</option>
+            <option value="warn">warn</option>
+            <option value="error">error</option>
+          </select>
+          <button id="btn-diag-refresh" class="btn btn-small">Refresh</button>
+        </div>
+      </div>
+      <div class="log-container" id="diag-list"></div>
     </section>
 
     <!-- Event Logs -->

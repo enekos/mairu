@@ -217,3 +217,5 @@ install-browser-extension: build-browser-extension
 
 test-browser-extension:
 	cd browser-extension && cargo test
+	cd browser-extension/extension && bun install --silent && bun run test
+	@if [ "$$MAIRU_EXT_E2E" = "1" ]; then cd browser-extension/e2e && bun install --silent && bunx playwright test; fi

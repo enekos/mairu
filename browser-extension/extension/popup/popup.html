@@ -123,6 +123,28 @@
       pointer-events: none;
     }
     .toast.show { opacity: 1; }
+
+    .health { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px 6px; padding: 8px 14px; background: #fff; border-bottom: 1px solid #e5e7eb; font-size: 10px; color: #6b7280; }
+    .health .h-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+    .health .label { text-transform: uppercase; letter-spacing: 0.4px; font-size: 9px; }
+    .pill { padding: 2px 6px; border-radius: 10px; background: #e5e7eb; font-size: 10px; font-weight: 500; color: #1f2937; min-width: 32px; text-align: center; }
+    .pill.ok { background: #c7f7d4; color: #047857; }
+    .pill.err { background: #fee2e2; color: #b91c1c; }
+    .pill.warn { background: #fef3c7; color: #b45309; }
+
+    .test-row { display: flex; gap: 6px; align-items: center; margin-top: 6px; }
+    .test-row .result { font-size: 11px; color: #6b7280; }
+    .btn-secondary {
+      padding: 5px 10px;
+      background: #e5e7eb;
+      color: #1f2937;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .btn-secondary:hover { background: #d1d5db; }
   </style>
 </head>
 <body>
@@ -133,6 +155,14 @@
       <span id="native-label">connecting…</span>
       <button id="dev-mode-btn" title="Open Dev Dashboard" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: 8px; color: #6b7280;">⚙️</button>
     </div>
+  </div>
+
+  <div class="health" aria-label="Health">
+    <div class="h-cell"><span class="label">SW</span><span id="h-sw" class="pill">–</span></div>
+    <div class="h-cell"><span class="label">WASM</span><span id="h-wasm" class="pill">–</span></div>
+    <div class="h-cell"><span class="label">Native</span><span id="h-native" class="pill">–</span></div>
+    <div class="h-cell"><span class="label">Queue</span><span id="h-queue" class="pill">0</span></div>
+    <div class="h-cell"><span class="label">Synced</span><span id="h-last" class="pill">–</span></div>
   </div>
 
   <div class="section">
@@ -164,6 +194,10 @@
         <label for="api-url">API URL</label>
         <input id="api-url" type="text" placeholder="http://127.0.0.1:7080" />
         <button id="save-btn" class="btn-save">Save</button>
+      </div>
+      <div class="test-row">
+        <button id="test-btn" class="btn-secondary">Test connection</button>
+        <span id="test-result" class="result"></span>
       </div>
     </details>
   </div>

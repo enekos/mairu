@@ -4,7 +4,8 @@ use crate::importance::compute_importance;
 use crate::scorer::TfIdfIndex;
 use crate::types::*;
 
-const MAX_PAGES: usize = 50;
+const SOFT_MAX_PAGES: usize = 100;
+const MAX_TOTAL_BYTES: usize = 8 * 1024 * 1024;
 const DEDUP_THRESHOLD: u32 = 3;
 
 pub struct SessionManager {
@@ -74,15 +75,35 @@ impl SessionManager {
         let full_text = snapshot.full_text();
         self.index.add(&doc_id, &full_text);
 
-        // Add to pages, evict oldest if needed
+        // Add to pages, then evict oldest until within both bounds.
         self.session.pages.push_back(snapshot);
-        while self.session.pages.len() > MAX_PAGES {
-            if let Some(evicted) = self.session.pages.pop_front() {
-                self.synced_hashes.remove(&evicted.content_hash);
-            }
-        }
+        self.evict_oldest();
 
         AddPageResult::Added
+    }
+
+    fn evict_oldest(&mut self) {
+        while self.session.pages.len() > SOFT_MAX_PAGES
+            || self.total_bytes() > MAX_TOTAL_BYTES
+        {
+            let evicted = match self.session.pages.pop_front() {
+                Some(p) => p,
+                None => break,
+            };
+            self.synced_hashes.remove(&evicted.content_hash);
+        }
+    }
+
+    fn total_bytes(&self) -> usize {
+        self.session
+            .pages
+            .iter()
+            .map(|p| {
+                p.sections.iter().map(|s| s.text.len()).sum::<usize>()
+                    + p.url.len()
+                    + p.title.len()
+            })
+            .sum()
     }
 
     pub fn current_page(&self) -> Option<&PageSnapshot> {
@@ -201,6 +222,7 @@ mod tests {
             dwell_ms: 0,
             interaction_count: 0,
             iframe_content: vec![],
+            truncated: false,
         }
     }
 
@@ -259,9 +281,9 @@ mod tests {
     }
 
     #[test]
-    fn test_evicts_oldest_beyond_max() {
+    fn test_evicts_oldest_beyond_soft_max() {
         let mut mgr = SessionManager::new("s1".to_string());
-        for i in 0..(MAX_PAGES + 5) {
+        for i in 0..(SOFT_MAX_PAGES + 5) {
             let text = format!("{} ", i).repeat(20);
             let snap = make_snapshot(
                 &format!("https://page{}.com", i),
@@ -271,9 +293,30 @@ mod tests {
             );
             mgr.add_page(snap);
         }
-        assert_eq!(mgr.session.pages.len(), MAX_PAGES);
-        // Oldest pages should be evicted
+        assert_eq!(mgr.session.pages.len(), SOFT_MAX_PAGES);
         assert_eq!(mgr.session.pages.front().unwrap().url, "https://page5.com");
+    }
+
+    #[test]
+    fn test_evicts_on_byte_budget() {
+        let mut mgr = SessionManager::new("s1".to_string());
+        // Each page has ~200 KiB of section text. After ~42 pages we blow past 8 MiB.
+        let big_text: String = (0..200_000).map(|i| ((b'a' + (i % 26) as u8) as char)).collect();
+        for i in 0..60 {
+            let snap = make_snapshot(
+                &format!("https://big{}.com", i),
+                &format!("Big {}", i),
+                &big_text,
+                i as u64,
+            );
+            mgr.add_page(snap);
+        }
+        assert!(mgr.total_bytes() <= MAX_TOTAL_BYTES,
+            "total bytes {} should be <= MAX_TOTAL_BYTES {}",
+            mgr.total_bytes(),
+            MAX_TOTAL_BYTES);
+        assert!(mgr.session.pages.len() < 60,
+            "should have evicted some pages");
     }
 
     #[test]

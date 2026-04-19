@@ -99,6 +99,7 @@ mod tests {
             dwell_ms,
             interaction_count: 0,
             iframe_content: vec![],
+            truncated: false,
         }
     }
 

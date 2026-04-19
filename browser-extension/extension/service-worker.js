@@ -146,7 +146,12 @@ function handleMessage(message, sender, sendResponse) {
       dwell_ms: p.dwell_ms || 0,
       interaction_count: p.interaction_count || 0,
       iframes_json: JSON.stringify(p.iframes || []),
+      truncated: !!p.truncated,
     });
+    if (result && result.ok === false) {
+      logger.warn('wasm.bad_args', { url: p.url, error: result.error });
+      return false;
+    }
     logger.debug('page.processed', { url: p.url, status: result?.status, truncated: !!p.truncated });
     if (result?.status === 'added' || result?.status === 'updated') {
       enqueueProcessedPages();

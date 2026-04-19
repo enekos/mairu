@@ -202,30 +202,57 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg.type === 'dev_log') {
-      const el = document.createElement('div');
-      el.className = `log-entry log-${msg.level}`;
-      
-      const time = new Date().toLocaleTimeString();
-      let text = `[${time}] `;
-      
-      msg.args.forEach(arg => {
-        if (typeof arg === 'object') {
-           text += JSON.stringify(arg) + ' ';
-        } else {
-           text += String(arg) + ' ';
-        }
-      });
-      
-      el.textContent = text;
-      logContainer.appendChild(el);
-      
-      // Auto scroll if near bottom
-      if (logContainer.scrollHeight - logContainer.scrollTop < logContainer.clientHeight + 100) {
-        logContainer.scrollTop = logContainer.scrollHeight;
-      }
+    if (msg.type !== 'dev_log' || !msg.entry) return;
+    const el = document.createElement('div');
+    el.className = `log-entry log-${msg.entry.level}`;
+    const time = new Date(msg.entry.t).toLocaleTimeString();
+    const fields = Object.keys(msg.entry.fields || {}).length
+      ? ' ' + JSON.stringify(msg.entry.fields)
+      : '';
+    el.textContent = `[${time}] [${msg.entry.level}] ${msg.entry.event}${fields}`;
+    logContainer.appendChild(el);
+    if (logContainer.scrollHeight - logContainer.scrollTop < logContainer.clientHeight + 100) {
+      logContainer.scrollTop = logContainer.scrollHeight;
     }
   });
+
+  // Diagnostics — on-demand snapshot of the SW's ring buffer.
+  const btnDiagRefresh = document.getElementById('btn-diag-refresh');
+  const diagList = document.getElementById('diag-list');
+  const diagFilter = document.getElementById('diag-filter');
+  const diagLevel = document.getElementById('diag-level');
+
+  function renderDiagnostics(entries) {
+    const q = diagFilter.value.trim();
+    const lvl = diagLevel.value;
+    const re = q ? new RegExp(q.replace(/\./g, '\\.').replace(/\*/g, '.*')) : null;
+    diagList.innerHTML = '';
+    for (const e of entries || []) {
+      if (lvl && e.level !== lvl) continue;
+      if (re && !re.test(e.event)) continue;
+      const d = document.createElement('div');
+      d.className = `log-entry log-${e.level}`;
+      const fields = Object.keys(e.fields || {}).length ? ' ' + JSON.stringify(e.fields) : '';
+      d.textContent = `${new Date(e.t).toISOString()} [${e.level}] ${e.event}${fields}`;
+      diagList.appendChild(d);
+    }
+  }
+
+  function loadDiagnostics() {
+    chrome.runtime.sendMessage({ type: 'get_logs' }, (res) => {
+      if (chrome.runtime.lastError || !res) {
+        diagList.innerHTML = '<div class="empty-state">Unable to reach service worker.</div>';
+        return;
+      }
+      renderDiagnostics(res.entries);
+    });
+  }
+
+  if (btnDiagRefresh) btnDiagRefresh.addEventListener('click', loadDiagnostics);
+  if (diagFilter) diagFilter.addEventListener('input', loadDiagnostics);
+  if (diagLevel) diagLevel.addEventListener('change', loadDiagnostics);
+
+  document.querySelector('[data-target="diagnostics"]').addEventListener('click', loadDiagnostics);
 
   // Init
   updateState();

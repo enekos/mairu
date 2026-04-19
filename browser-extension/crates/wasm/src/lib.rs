@@ -7,6 +7,11 @@ thread_local! {
     static SESSION: RefCell<Option<SessionManager>> = const { RefCell::new(None) };
 }
 
+#[wasm_bindgen(start)]
+pub fn start() {
+    console_error_panic_hook::set_once();
+}
+
 #[wasm_bindgen]
 pub fn init_session(session_id: &str) {
     SESSION.with(|s| {
@@ -31,13 +36,21 @@ pub struct ProcessPageArgs {
     pub interaction_count: u32,
     #[serde(default)]
     pub iframes_json: String,
+    #[serde(default)]
+    pub truncated: bool,
 }
 
 #[wasm_bindgen]
 pub fn process_page(args_val: JsValue) -> JsValue {
     let args: ProcessPageArgs = match serde_wasm_bindgen::from_value(args_val) {
         Ok(a) => a,
-        Err(_) => return JsValue::NULL,
+        Err(e) => {
+            return serde_wasm_bindgen::to_value(&serde_json::json!({
+                "ok": false,
+                "error": { "code": "bad_args", "message": e.to_string() },
+            }))
+            .unwrap_or(JsValue::NULL)
+        }
     };
 
     let console_errors: Vec<String> =
@@ -77,6 +90,7 @@ pub fn process_page(args_val: JsValue) -> JsValue {
         dwell_ms: args.dwell_ms,
         interaction_count: args.interaction_count,
         iframe_content: extract_iframes(&args.iframes_json),
+        truncated: args.truncated,
     };
 
     let section_count = snapshot.sections.len();
@@ -95,6 +109,7 @@ pub fn process_page(args_val: JsValue) -> JsValue {
     };
 
     serde_wasm_bindgen::to_value(&serde_json::json!({
+        "ok": true,
         "status": status,
         "is_new": result == AddPageResult::Added,
         "content_hash": content_hash,
