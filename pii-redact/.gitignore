@@ -1,0 +1,5 @@
+bin/
+pii-redact
+*.test
+*.out
+coverage.*

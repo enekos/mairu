@@ -1,0 +1,88 @@
+[
+  {
+    "jsonPayload": {
+      "auth": "[REDACTED:KEY]",
+      "email": "[REDACTED:KEY]",
+      "extras": {
+        "azure": "[REDACTED:UNKNOWN_KEY]",
+        "oauth": "[REDACTED:UNKNOWN_KEY]",
+        "us_phone_in_msg": "[REDACTED:UNKNOWN_KEY]",
+        "uuid": "[REDACTED:UNKNOWN_KEY]",
+        "wallet": "[REDACTED:UNKNOWN_KEY]"
+      },
+      "integrations": {
+        "apiKey": "[REDACTED:KEY]",
+        "awsKey": "[REDACTED:UNKNOWN_KEY]",
+        "githubToken": "[REDACTED:UNKNOWN_KEY]",
+        "privateKey": "[REDACTED:UNKNOWN_KEY]",
+        "slackToken": "[REDACTED:UNKNOWN_KEY]",
+        "stripeKey": "[REDACTED:UNKNOWN_KEY]",
+        "webhook": "[REDACTED:UNKNOWN_KEY]"
+      },
+      "message": "Application failed for [REDACTED:email] from [REDACTED:ipv4] at [REDACTED:ipv6]",
+      "request": {
+        "candidate": {
+          "address": "[REDACTED:KEY]",
+          "dateOfBirth": "[REDACTED:KEY]",
+          "driverLicense": "[REDACTED:KEY]",
+          "firstName": "[REDACTED:KEY]",
+          "lastName": "[REDACTED:KEY]",
+          "nationalInsuranceNumber": "[REDACTED:KEY]",
+          "nationality": "[REDACTED:KEY]",
+          "passportNumber": "[REDACTED:KEY]",
+          "phone": "[REDACTED:KEY]",
+          "ssn": "[REDACTED:KEY]"
+        },
+        "device": {
+          "fingerprint": "[REDACTED:KEY]",
+          "macAddress": "[REDACTED:KEY]",
+          "userAgent": "[REDACTED:KEY]"
+        },
+        "geo": "[REDACTED:KEY]",
+        "hr": {
+          "gender": "[REDACTED:KEY]",
+          "religion": "[REDACTED:KEY]",
+          "salary": "[REDACTED:KEY]"
+        },
+        "payment": {
+          "bic": "[REDACTED:KEY]",
+          "cardExpiry": "[REDACTED:KEY]",
+          "creditCard": "[REDACTED:KEY]",
+          "cvv": "[REDACTED:KEY]",
+          "iban": "[REDACTED:KEY]",
+          "vatNumber": "[REDACTED:KEY]"
+        }
+      },
+      "session": {
+        "accessToken": "[REDACTED:KEY]",
+        "refreshToken": "[REDACTED:KEY]",
+        "sessionId": "[REDACTED:KEY]"
+      },
+      "surprise_field": "[REDACTED:UNKNOWN_KEY]"
+    },
+    "resource": {
+      "labels": {
+        "container_name": "ats",
+        "namespace_name": "production"
+      }
+    },
+    "severity": "ERROR",
+    "timestamp": "2026-04-21T10:00:00Z",
+    "traceId": "abc123"
+  },
+  {
+    "jsonPayload": {
+      "id": "req-1",
+      "message": "clean log line",
+      "status": "ok"
+    },
+    "resource": {
+      "labels": {
+        "container_name": "gateway"
+      }
+    },
+    "severity": "INFO",
+    "timestamp": "2026-04-21T10:00:01Z",
+    "traceId": "abc123"
+  }
+]

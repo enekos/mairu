@@ -1,0 +1,88 @@
+[
+  {
+    "jsonPayload": {
+      "auth": "Bearer ****here",
+      "email": "l***@n***.io",
+      "extras": {
+        "azure": "[REDACTED:azure_conn_str]",
+        "oauth": "ya29.********************************6789",
+        "us_phone_in_msg": "call ***-***-1234 back",
+        "uuid": "********-****-****-****-0000",
+        "wallet": "0xAbCd…ef01"
+      },
+      "integrations": {
+        "apiKey": "AIza*******************************4567",
+        "awsKey": "AKIA************MPLE",
+        "githubToken": "ghp_********************************6789",
+        "privateKey": "[REDACTED:private_key_pem]\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----",
+        "slackToken": "xoxb-****ghij",
+        "stripeKey": "sk_live_******************stuv",
+        "webhook": "https://***:***@hooks.internal.corp/path"
+      },
+      "message": "Application failed for j******e@a***.io from 10.0.*.* at 2001:***:7348",
+      "request": {
+        "candidate": {
+          "address": "H****************n",
+          "dateOfBirth": "1********4",
+          "driverLicense": "D*********0",
+          "firstName": "J***",
+          "lastName": "D**",
+          "nationalInsuranceNumber": "AB******C",
+          "nationality": "G****n",
+          "passportNumber": "P********9",
+          "phone": "+14*******34",
+          "ssn": "***-**-6789"
+        },
+        "device": {
+          "fingerprint": "f*****1",
+          "macAddress": "aa:bb:**:**:**:ff",
+          "userAgent": "M*********0"
+        },
+        "geo": "[REDACTED:KEY]",
+        "hr": {
+          "gender": "f****e",
+          "religion": "n***",
+          "salary": "7*******R"
+        },
+        "payment": {
+          "bic": "D******F",
+          "cardExpiry": "1***8",
+          "creditCard": "************1111",
+          "cvv": "1**",
+          "iban": "DE89**************3000",
+          "vatNumber": "DE*******89"
+        }
+      },
+      "session": {
+        "accessToken": "a*********c",
+        "refreshToken": "r*********c",
+        "sessionId": "s******3"
+      },
+      "surprise_field": "t*************************t"
+    },
+    "resource": {
+      "labels": {
+        "container_name": "ats",
+        "namespace_name": "production"
+      }
+    },
+    "severity": "ERROR",
+    "timestamp": "2026-04-21T10:00:00Z",
+    "traceId": "abc123"
+  },
+  {
+    "jsonPayload": {
+      "id": "req-1",
+      "message": "clean log line",
+      "status": "ok"
+    },
+    "resource": {
+      "labels": {
+        "container_name": "gateway"
+      }
+    },
+    "severity": "INFO",
+    "timestamp": "2026-04-21T10:00:01Z",
+    "traceId": "abc123"
+  }
+]

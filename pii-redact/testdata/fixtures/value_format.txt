@@ -1,0 +1,5 @@
+2026-04-21T10:00:00Z  ERROR  Application failed for john.doe@acme.io from 10.0.0.5  abc123  SubmitApplication
+2026-04-21T10:00:01Z  WARN   Retrying payment with iban DE89370400440532013000  abc123  SubmitApplication
+2026-04-21T10:00:02Z  INFO   request received from +14155551234  abc123  SubmitApplication
+2026-04-21T10:00:03Z  INFO   clean line with no PII  abc123  SubmitApplication
+2026-04-21T10:00:04Z  ERROR  Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.sig rejected  abc123  SubmitApplication

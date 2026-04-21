@@ -1,0 +1,29 @@
+{
+  "content_patterns": {
+    "email":           "[\\w.+-]+@[\\w-]+\\.[\\w.-]+",
+    "phone_e164":      "\\+\\d{7,15}",
+    "phone_us":        "\\(?\\d{3}\\)?[-. ]\\d{3}[-. ]\\d{4}",
+    "iban":            "[A-Z]{2}\\d{2}[A-Z0-9]{11,30}",
+    "credit_card":     "\\b(?:\\d[ -]?){13,19}\\b",
+    "jwt":             "eyJ[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+",
+    "ipv4":            "\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b",
+    "ipv6":            "\\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\\b",
+    "bearer":          "Bearer\\s+[A-Za-z0-9_.\\-~+/=]+",
+    "ssn_us":          "\\b\\d{3}-\\d{2}-\\d{4}\\b",
+    "nino_uk":         "\\b[A-Z]{2}\\d{6}[A-D]\\b",
+    "vat_eu":          "\\b(?:AT|BE|BG|CY|CZ|DE|DK|EE|EL|ES|FI|FR|HR|HU|IE|IT|LT|LU|LV|MT|NL|PL|PT|RO|SE|SI|SK|XI)[0-9A-Z]{8,12}\\b",
+    "mac_address":     "\\b(?:[0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}\\b",
+    "latlong":         "-?\\d{1,3}\\.\\d{3,},\\s*-?\\d{1,3}\\.\\d{3,}",
+    "aws_access_key":  "\\bAKIA[0-9A-Z]{16}\\b",
+    "gcp_api_key":     "\\bAIza[0-9A-Za-z_-]{35}\\b",
+    "google_oauth":    "\\bya29\\.[A-Za-z0-9_-]{20,}",
+    "github_token":    "\\bgh[pousr]_[A-Za-z0-9]{36,}\\b",
+    "slack_token":     "xox[baprs]-[A-Za-z0-9-]{10,}",
+    "stripe_key":      "\\b(?:sk|pk|rk)_(?:live|test)_[0-9a-zA-Z]{20,}\\b",
+    "private_key_pem": "-----BEGIN[ A-Z]*PRIVATE KEY-----",
+    "basic_auth_url":  "https?://[^\\s:/@]+:[^\\s@/]+@",
+    "uuid":            "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b",
+    "eth_address":     "\\b0x[a-fA-F0-9]{40}\\b",
+    "azure_conn_str":  "DefaultEndpointsProtocol=[^;\\s]+;AccountName=[^;\\s]+;AccountKey=[^;\\s]+"
+  }
+}

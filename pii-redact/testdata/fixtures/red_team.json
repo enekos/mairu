@@ -1,0 +1,92 @@
+[
+  {
+    "timestamp": "2026-04-21T10:00:00Z",
+    "severity": "ERROR",
+    "traceId": "abc123",
+    "resource": {
+      "labels": {
+        "container_name": "ats",
+        "namespace_name": "production"
+      }
+    },
+    "jsonPayload": {
+      "message": "Application failed for john.doe@acme.io from 10.0.0.5 at 2001:db8:85a3:8d3:1319:8a2e:370:7348",
+      "email": "leak@nope.io",
+      "request": {
+        "candidate": {
+          "firstName": "Jane",
+          "lastName": "Doe",
+          "phone": "+14155551234",
+          "address": "Hauptstr 5, Berlin",
+          "dateOfBirth": "1985-03-14",
+          "nationality": "German",
+          "ssn": "123-45-6789",
+          "passportNumber": "P123456789",
+          "driverLicense": "D9876543210",
+          "nationalInsuranceNumber": "AB123456C"
+        },
+        "payment": {
+          "iban": "DE89370400440532013000",
+          "creditCard": "4111 1111 1111 1111",
+          "cvv": "123",
+          "cardExpiry": "12/28",
+          "bic": "DEUTDEFF",
+          "vatNumber": "DE123456789"
+        },
+        "device": {
+          "macAddress": "aa:bb:cc:dd:ee:ff",
+          "fingerprint": "fp-9001",
+          "userAgent": "Mozilla/5.0"
+        },
+        "geo": {
+          "latitude": "52.5200",
+          "longitude": "13.4050",
+          "coordinates": "52.5200, 13.4050"
+        },
+        "hr": {
+          "salary": "75000 EUR",
+          "gender": "female",
+          "religion": "none"
+        }
+      },
+      "auth": "Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.signature_here",
+      "session": {
+        "accessToken": "at_live_abc",
+        "refreshToken": "rt_live_abc",
+        "sessionId": "sess_123"
+      },
+      "integrations": {
+        "apiKey": "AIzaSyABCDEFGHIJKLMNOPQRSTUVWXYZ1234567",
+        "awsKey": "AKIAIOSFODNN7EXAMPLE",
+        "githubToken": "ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+        "slackToken": "xoxb-1234567890-abcdefghij",
+        "stripeKey": "sk_live_abcdefghijklmnopqrstuv",
+        "webhook": "https://admin:hunter2@hooks.internal.corp/path",
+        "privateKey": "-----BEGIN RSA PRIVATE KEY-----\nMIIEpAIBAAKCAQEA...\n-----END RSA PRIVATE KEY-----"
+      },
+      "surprise_field": "this key is not in any list",
+      "extras": {
+        "uuid": "550e8400-e29b-41d4-a716-446655440000",
+        "wallet": "0xAbCdef0123456789abcdef0123456789abcdef01",
+        "us_phone_in_msg": "call (415) 555-1234 back",
+        "oauth": "ya29.aBcDeFgHiJkLmNoPqRsTuVwXyZ0123456789",
+        "azure": "DefaultEndpointsProtocol=https;AccountName=prod;AccountKey=abcdef1234567890=="
+      }
+    }
+  },
+  {
+    "timestamp": "2026-04-21T10:00:01Z",
+    "severity": "INFO",
+    "traceId": "abc123",
+    "resource": {
+      "labels": {
+        "container_name": "gateway"
+      }
+    },
+    "jsonPayload": {
+      "message": "clean log line",
+      "status": "ok",
+      "id": "req-1"
+    }
+  }
+]

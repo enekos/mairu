@@ -1,0 +1,5 @@
+2026-04-21T10:00:00Z  ERROR  Application failed for [REDACTED:email] from [REDACTED:ipv4]  abc123  SubmitApplication
+2026-04-21T10:00:01Z  WARN   Retrying payment with iban [REDACTED:iban]  abc123  SubmitApplication
+2026-04-21T10:00:02Z  INFO   request received from [REDACTED:phone_e164]  abc123  SubmitApplication
+2026-04-21T10:00:03Z  INFO   clean line with no PII  abc123  SubmitApplication
+2026-04-21T10:00:04Z  ERROR  [REDACTED:bearer] rejected  abc123  SubmitApplication
