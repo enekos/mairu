@@ -1,6 +1,7 @@
 // mairu-ext/crates/core/src/extractor.rs
 use crate::types::{ContentSection, PageMetadata, SectionKind};
 use scraper::{ElementRef, Html, Selector};
+use std::sync::LazyLock;
 
 #[derive(serde::Serialize)]
 pub struct ExtractedPage {
@@ -8,6 +9,16 @@ pub struct ExtractedPage {
     pub sections: Vec<ContentSection>,
     pub metadata: PageMetadata,
 }
+
+static SEL_BODY: LazyLock<Selector> = LazyLock::new(|| Selector::parse("body").unwrap());
+static SEL_TITLE: LazyLock<Selector> = LazyLock::new(|| Selector::parse("title").unwrap());
+static SEL_OG_TITLE: LazyLock<Selector> = LazyLock::new(|| Selector::parse("meta[property='og:title'], meta[name='og:title']").unwrap());
+static SEL_OG_DESC: LazyLock<Selector> = LazyLock::new(|| Selector::parse("meta[property='og:description'], meta[name='description']").unwrap());
+static SEL_HTML_LANG: LazyLock<Selector> = LazyLock::new(|| Selector::parse("html[lang]").unwrap());
+static SEL_CANONICAL: LazyLock<Selector> = LazyLock::new(|| Selector::parse("link[rel='canonical']").unwrap());
+static SEL_TR: LazyLock<Selector> = LazyLock::new(|| Selector::parse("tr").unwrap());
+static SEL_TH: LazyLock<Selector> = LazyLock::new(|| Selector::parse("th").unwrap());
+static SEL_TD: LazyLock<Selector> = LazyLock::new(|| Selector::parse("td").unwrap());
 
 pub fn extract(html: &str) -> ExtractedPage {
     let document = Html::parse_document(html);
@@ -18,10 +29,7 @@ pub fn extract(html: &str) -> ExtractedPage {
     let title = extract_metadata(&document, &mut metadata);
 
     // 2. Identify the main content root (fallback to body, then document root)
-    let root = Selector::parse("body")
-        .ok()
-        .and_then(|sel| document.select(&sel).next())
-        .or_else(|| Some(document.root_element()));
+    let root = document.select(&SEL_BODY).next().or_else(|| Some(document.root_element()));
 
     // 3. Traverse and extract sections
     if let Some(root_node) = root {
@@ -38,34 +46,24 @@ pub fn extract(html: &str) -> ExtractedPage {
 fn extract_metadata(doc: &Html, meta: &mut PageMetadata) -> String {
     let mut title = String::new();
 
-    if let Ok(sel) = Selector::parse("title") {
-        if let Some(el) = doc.select(&sel).next() {
-            title = collect_text_trimmed(el);
-        }
+    if let Some(el) = doc.select(&SEL_TITLE).next() {
+        title = collect_text_trimmed(el);
     }
 
-    if let Ok(sel) = Selector::parse("meta[property='og:title'], meta[name='og:title']") {
-        if let Some(el) = doc.select(&sel).next() {
-            meta.og_title = el.value().attr("content").map(String::from);
-        }
+    if let Some(el) = doc.select(&SEL_OG_TITLE).next() {
+        meta.og_title = el.value().attr("content").map(String::from);
     }
 
-    if let Ok(sel) = Selector::parse("meta[property='og:description'], meta[name='description']") {
-        if let Some(el) = doc.select(&sel).next() {
-            meta.og_description = el.value().attr("content").map(String::from);
-        }
+    if let Some(el) = doc.select(&SEL_OG_DESC).next() {
+        meta.og_description = el.value().attr("content").map(String::from);
     }
 
-    if let Ok(sel) = Selector::parse("html[lang]") {
-        if let Some(el) = doc.select(&sel).next() {
-            meta.lang = el.value().attr("lang").map(String::from);
-        }
+    if let Some(el) = doc.select(&SEL_HTML_LANG).next() {
+        meta.lang = el.value().attr("lang").map(String::from);
     }
 
-    if let Ok(sel) = Selector::parse("link[rel='canonical']") {
-        if let Some(el) = doc.select(&sel).next() {
-            meta.canonical_url = el.value().attr("href").map(String::from);
-        }
+    if let Some(el) = doc.select(&SEL_CANONICAL).next() {
+        meta.canonical_url = el.value().attr("href").map(String::from);
     }
 
     title
@@ -390,10 +388,8 @@ fn extract_from_node(node: ElementRef, sections: &mut Vec<ContentSection>) {
         "svg" => {
             let aria_label = node.value().attr("aria-label").unwrap_or("");
             let mut title_text = String::new();
-            if let Ok(sel) = Selector::parse("title") {
-                if let Some(t) = node.select(&sel).next() {
-                    title_text = collect_text_trimmed(t);
-                }
+            if let Some(t) = node.select(&SEL_TITLE).next() {
+                title_text = collect_text_trimmed(t);
             }
 
             let label = if !aria_label.is_empty() {
@@ -481,10 +477,8 @@ fn collect_text(node: ElementRef) -> String {
             } else if tag == "svg" {
                 let aria_label = child_el.value().attr("aria-label").unwrap_or("");
                 let mut title_text = String::new();
-                if let Ok(sel) = Selector::parse("title") {
-                    if let Some(t) = child_el.select(&sel).next() {
-                        title_text = collect_text_trimmed(t);
-                    }
+                if let Some(t) = child_el.select(&SEL_TITLE).next() {
+                    title_text = collect_text_trimmed(t);
                 }
                 let label = if !aria_label.is_empty() {
                     aria_label
@@ -504,20 +498,43 @@ fn collect_text(node: ElementRef) -> String {
         }
     }
 
-    let mut cleaned = result.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cleaned = collapse_whitespace(&result);
 
     // Fallback to accessibility attributes if text is empty
     if cleaned.is_empty() {
         if let Some(aria_label) = node.value().attr("aria-label") {
-            cleaned = aria_label.to_string();
+            aria_label.to_string()
         } else if let Some(alt) = node.value().attr("alt") {
-            cleaned = alt.to_string();
+            alt.to_string()
         } else if let Some(title) = node.value().attr("title") {
-            cleaned = title.to_string();
+            title.to_string()
+        } else {
+            cleaned
+        }
+    } else {
+        cleaned
+    }
+}
+
+/// Collapse consecutive whitespace into a single space without allocating a Vec.
+fn collapse_whitespace(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    let mut in_space = true; // suppress leading spaces
+    for ch in s.chars() {
+        if ch.is_whitespace() {
+            if !in_space {
+                out.push(' ');
+                in_space = true;
+            }
+        } else {
+            out.push(ch);
+            in_space = false;
         }
     }
-
-    cleaned
+    if out.ends_with(' ') {
+        out.pop();
+    }
+    out
 }
 
 fn collect_text_trimmed(node: ElementRef) -> String {
@@ -592,21 +609,18 @@ fn extract_definition_list(node: ElementRef) -> Vec<String> {
 
 fn extract_table(node: ElementRef) -> String {
     let mut markdown = String::new();
-    let tr_sel = Selector::parse("tr").unwrap();
-    let th_sel = Selector::parse("th").unwrap();
-    let td_sel = Selector::parse("td").unwrap();
 
     let mut is_first_row = true;
-    for tr in node.select(&tr_sel) {
+    for tr in node.select(&SEL_TR) {
         let mut row_data = Vec::new();
 
         // Extract headers
-        for th in tr.select(&th_sel) {
+        for th in tr.select(&SEL_TH) {
             row_data.push(collect_text_trimmed(th));
         }
 
         // Extract cells
-        for td in tr.select(&td_sel) {
+        for td in tr.select(&SEL_TD) {
             row_data.push(collect_text_trimmed(td));
         }
 

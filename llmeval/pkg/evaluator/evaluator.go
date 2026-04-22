@@ -6,10 +6,18 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"github.com/tidwall/gjson"
 	"github.com/user/llmeval/pkg/llm"
+)
+
+var (
+	// regexCache caches compiled regexes for evaluateRegex.
+	regexCache sync.Map
+	// jsonBlockRe matches Markdown code blocks for extractJSON.
+	jsonBlockRe = regexp.MustCompile("(?s)```(?:json)?\n?(.*?)\n?```")
 )
 
 type EvalType string
@@ -91,9 +99,16 @@ func (e *Evaluator) evaluateIncludes(expected, actual string) EvalResult {
 }
 
 func (e *Evaluator) evaluateRegex(expected, actual string) EvalResult {
-	re, err := regexp.Compile(expected)
-	if err != nil {
-		return EvalResult{Pass: false, Reason: fmt.Sprintf("Invalid expected regex: %v", err)}
+	var re *regexp.Regexp
+	if cached, ok := regexCache.Load(expected); ok {
+		re = cached.(*regexp.Regexp)
+	} else {
+		var err error
+		re, err = regexp.Compile(expected)
+		if err != nil {
+			return EvalResult{Pass: false, Reason: fmt.Sprintf("Invalid expected regex: %v", err)}
+		}
+		regexCache.Store(expected, re)
 	}
 	pass := re.MatchString(actual)
 	reason := "Regex matched"
@@ -214,9 +229,7 @@ func (e *Evaluator) evaluateJSONSchema(schemaStr, actual string) EvalResult {
 // extractJSON attempts to strip Markdown code block formatting if present
 func extractJSON(input string) string {
 	input = strings.TrimSpace(input)
-	// Match first ```json ... ``` or ``` ... ```
-	re := regexp.MustCompile("(?s)```(?:json)?\n?(.*?)\n?```")
-	match := re.FindStringSubmatch(input)
+	match := jsonBlockRe.FindStringSubmatch(input)
 	if len(match) > 1 {
 		return strings.TrimSpace(match[1])
 	}

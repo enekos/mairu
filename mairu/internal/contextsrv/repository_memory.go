@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -162,38 +163,48 @@ func (r *SQLiteRepository) RecordRetrievals(ctx context.Context, ids []string) e
 	}
 	now := time.Now().UTC()
 
-	// Decay formula (integer arithmetic, applied when a new unrewarded interval is crossed):
+	// Decay formula (integer arithmetic, fires when a new unrewarded interval is crossed):
 	//   unrewarded = retrieval_count + 1 - feedback_count * INTERVAL
 	//   fires when unrewarded > 0 AND unrewarded % INTERVAL == 0 AND importance > BASELINE
 	//   new_importance = ROUND(importance + ALPHA * (BASELINE - importance))
 	//
 	// ROUND via CAST(x + 0.5 AS INT) is equivalent to floor(x + 0.5).
-	const query = `
+	// Positional ? placeholders bind in SQL text order: scalar params first
+	// (SET clause), then IDs (WHERE clause).
+	placeholders := make([]string, len(ids))
+	for i := range ids {
+		placeholders[i] = "?"
+	}
+	args := make([]any, 0, 7+len(ids))
+	args = append(args,
+		now,
+		implicitDecayBaseline,
+		implicitDecayInterval,
+		implicitDecayInterval,
+		implicitDecayInterval,
+		implicitDecayAlpha,
+		implicitDecayBaseline,
+	)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+
+	batchQuery := `
 		UPDATE memories
 		SET
 			retrieval_count    = retrieval_count + 1,
-			last_retrieved_at  = ?2,
+			last_retrieved_at  = ?,
 			importance = CASE
-				WHEN importance > ?3
-				 AND (retrieval_count + 1 - feedback_count * ?4) > 0
-				 AND (retrieval_count + 1 - feedback_count * ?4) % ?4 = 0
-				THEN MAX(1, CAST(importance + ?5 * (?3 - importance) + 0.5 AS INT))
+				WHEN importance > ?
+				 AND (retrieval_count + 1 - feedback_count * ?) > 0
+				 AND (retrieval_count + 1 - feedback_count * ?) % ? = 0
+				THEN MAX(1, CAST(importance + ? * (? - importance) + 0.5 AS INT))
 				ELSE importance
 			END
-		WHERE id = ?1`
+		WHERE id IN (` + strings.Join(placeholders, ",") + `)`
 
-	for _, id := range ids {
-		if _, err := r.db.ExecContext(ctx, query,
-			id,
-			now,
-			implicitDecayBaseline,
-			implicitDecayInterval,
-			implicitDecayAlpha,
-		); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := r.db.ExecContext(ctx, batchQuery, args...)
+	return err
 }
 
 // IncrementFeedbackCount records that explicit feedback was given for a memory.

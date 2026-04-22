@@ -1,5 +1,10 @@
 SHELL := /bin/bash
 
+# Release-style ldflags: strip symbol table (-s) and DWARF (-w) for smaller
+# binaries. Override on the command line (`make mairu-build GO_LDFLAGS=`) to
+# get a debug-friendly build with symbols intact.
+GO_LDFLAGS ?= -s -w
+
 .DEFAULT_GOAL := help
 
 .PHONY: help install install-dashboard setup build lint test clean dashboard dashboard-api dashboard-dev mairu-build mairu-web
@@ -111,7 +116,7 @@ mairu-build:
 	@mkdir -p mairu/bin
 	@echo "Building mairu..."
 	@start=$$(date +%s); \
-	go build -C mairu -v -o bin/mairu ./cmd/mairu; \
+	go build -C mairu -ldflags="$(GO_LDFLAGS)" -v -o bin/mairu ./cmd/mairu; \
 	status=$$?; \
 	end=$$(date +%s); \
 	if [ $$status -eq 0 ]; then \
@@ -126,7 +131,7 @@ mairu-build-slim:
 	@mkdir -p mairu/bin
 	@echo "Building mairu (slim)..."
 	@start=$$(date +%s); \
-	go build -C mairu -tags slim -v -o bin/mairu-slim ./cmd/mairu; \
+	go build -C mairu -ldflags="$(GO_LDFLAGS)" -tags slim -v -o bin/mairu-slim ./cmd/mairu; \
 	status=$$?; \
 	end=$$(date +%s); \
 	if [ $$status -eq 0 ]; then \
@@ -141,7 +146,7 @@ mairu-build-headless:
 	@mkdir -p mairu/bin
 	@echo "Building mairu (headless)..."
 	@start=$$(date +%s); \
-	go build -C mairu -tags headless -v -o bin/mairu-headless ./cmd/mairu; \
+	go build -C mairu -ldflags="$(GO_LDFLAGS)" -tags headless -v -o bin/mairu-headless ./cmd/mairu; \
 	status=$$?; \
 	end=$$(date +%s); \
 	if [ $$status -eq 0 ]; then \
@@ -156,7 +161,7 @@ mairu-build-contextsrvonly:
 	@mkdir -p mairu/bin
 	@echo "Building mairu (contextsrvonly)..."
 	@start=$$(date +%s); \
-	go build -C mairu -tags contextsrvonly -v -o bin/mairu-contextsrv ./cmd/mairu; \
+	go build -C mairu -ldflags="$(GO_LDFLAGS)" -tags contextsrvonly -v -o bin/mairu-contextsrv ./cmd/mairu; \
 	status=$$?; \
 	end=$$(date +%s); \
 	if [ $$status -eq 0 ]; then \
@@ -200,11 +205,11 @@ mairu-no-docker: meili-up mairu-build
 	./mairu/bin/mairu web -p 8080
 
 eval-llm:
-	cd llmeval && go build -o bin/llmeval ./cmd/llmeval
+	cd llmeval && go build -ldflags="$(GO_LDFLAGS)" -o bin/llmeval ./cmd/llmeval
 	./llmeval/bin/llmeval --dataset ./llmeval/sample_dataset.json --model gemini-2.5-flash
 
 eval-llm-vibe:
-	cd llmeval && go build -o bin/llmeval ./cmd/llmeval
+	cd llmeval && go build -ldflags="$(GO_LDFLAGS)" -o bin/llmeval ./cmd/llmeval
 	./llmeval/bin/llmeval --dataset ./llmeval/mairu_vibe_mutation_eval.json --model gemini-2.5-flash
 
 build-browser-extension:

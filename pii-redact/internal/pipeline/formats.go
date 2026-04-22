@@ -1,6 +1,9 @@
 package pipeline
 
-import "regexp"
+import (
+	"regexp"
+	"sort"
+)
 
 type formatRule struct {
 	kind        string
@@ -44,30 +47,50 @@ var formatRules = []formatRule{
 			`X-[A-Za-z-]*(?:Auth|Key|Token|Secret)[A-Za-z-]*)\s*:\s*)(.+)$`),
 		replacement: `${1}[REDACTED:http_header]`,
 	},
-	// Connection URI with embedded basic-auth:
-	//   postgres://user:pass@host / redis://:pw@host / amqp://u:p@host / etc.
-	// Caught here for the `user:pass@` half; Layer-1's uri_credentials also
-	// covers the token edge-case but the two are intentionally redundant.
-	{
-		kind:        "conn_uri",
-		re:          regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.\-]*://)(?:[^\s:@/]*):([^\s@/]+)@`),
-		replacement: `${1}[REDACTED:conn_uri]@`,
-	},
 }
 
 func scanFormats(input string) (string, []Finding) {
-	out := input
-	var findings []Finding
+	var ivs []interval
+
 	for _, r := range formatRules {
-		for _, loc := range r.re.FindAllStringIndex(out, -1) {
-			findings = append(findings, Finding{
-				Layer: LayerFormat,
-				Kind:  r.kind,
-				Start: loc[0],
-				End:   loc[1],
+		locs := r.re.FindAllStringIndex(input, -1)
+		if len(locs) == 0 {
+			continue
+		}
+		for _, loc := range locs {
+			if overlapsInterval(ivs, loc[0], loc[1]) {
+				continue
+			}
+			raw := input[loc[0]:loc[1]]
+			ivs = append(ivs, interval{
+				start: loc[0],
+				end:   loc[1],
+				kind:  r.kind,
+				text:  r.re.ReplaceAllString(raw, r.replacement),
 			})
 		}
-		out = r.re.ReplaceAllString(out, r.replacement)
+	}
+
+	// Connection URIs with embedded basic-auth (hand-rolled; faster than regex
+	// with backtracking). Layer-1's uri_credentials regex is an intentional
+	// redundant safety net.
+	for _, iv := range findConnURIs(input) {
+		if overlapsInterval(ivs, iv.start, iv.end) {
+			continue
+		}
+		ivs = append(ivs, iv)
+	}
+
+	sort.Slice(ivs, func(i, j int) bool { return ivs[i].start < ivs[j].start })
+	out := applyIntervals(input, ivs)
+	findings := make([]Finding, len(ivs))
+	for i, iv := range ivs {
+		findings[i] = Finding{
+			Layer: LayerFormat,
+			Kind:  iv.kind,
+			Start: iv.start,
+			End:   iv.end,
+		}
 	}
 	return out, findings
 }

@@ -83,6 +83,15 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 					continue
 				}
 
+				// Check for null bytes in the first 512 bytes to skip binary files.
+				header := make([]byte, 512)
+				n, err := f.Read(header)
+				if err != nil || n == 0 || bytes.IndexByte(header[:n], 0) != -1 {
+					f.Close()
+					continue
+				}
+				f.Seek(0, 0)
+
 				scanner := bufio.NewScanner(f)
 				// Increase buffer size for long lines (e.g. minified JS)
 				buf := make([]byte, 0, 64*1024)
@@ -150,11 +159,6 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 			return nil
 		}
 
-		// Quick heuristic to check if file is likely binary
-		if isLikelyBinary(path) {
-			return nil
-		}
-
 		filesCh <- path
 		return nil
 	})
@@ -192,23 +196,6 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 	}
 
 	return res, nil
-}
-
-// isLikelyBinary reads the first 512 bytes of a file and checks for a null byte
-func isLikelyBinary(path string) bool {
-	f, err := os.Open(path)
-	if err != nil {
-		return false
-	}
-	defer f.Close()
-
-	buf := make([]byte, 512)
-	n, err := f.Read(buf)
-	if err != nil || n == 0 {
-		return false
-	}
-
-	return bytes.IndexByte(buf[:n], 0) != -1
 }
 
 type findFilesTool struct{}

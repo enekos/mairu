@@ -177,18 +177,22 @@ func scoreKeyword(fields map[string]string, tokens []string, fieldBoosts map[str
 	if len(tokens) == 0 {
 		return 0
 	}
+	lowerFields := make(map[string]string, len(fields))
+	for field, value := range fields {
+		lowerFields[field] = strings.ToLower(value)
+	}
 	totalWeight := 0.0
 	matchWeight := 0.0
 	for _, token := range tokens {
 		best := 0.0
-		for field, value := range fields {
+		for field, lower := range lowerFields {
 			boost := 1.0
 			if fieldBoosts != nil {
 				if b, ok := fieldBoosts[field]; ok && b > 0 {
 					boost = b
 				}
 			}
-			if strings.Contains(strings.ToLower(value), token) && boost > best {
+			if strings.Contains(lower, token) && boost > best {
 				best = boost
 			}
 		}

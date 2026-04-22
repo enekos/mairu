@@ -28,8 +28,8 @@ func NewSQLiteRepository(dsn string) (*SQLiteRepository, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1) // SQLite works best with 1 writer to avoid BUSY errors if not using WAL properly, but let's stick to 1 for safety or use WAL mode
-	db.SetMaxIdleConns(1)
+	db.SetMaxOpenConns(4) // WAL mode allows concurrent readers; writers still serialize automatically
+	db.SetMaxIdleConns(4)
 	db.SetConnMaxLifetime(30 * time.Minute)
 
 	// Enable WAL mode for better concurrency

@@ -385,10 +385,12 @@ func (n *RAGExtractNode) Execute(ctx context.Context, state State) (State, error
 		return selected[i].index < selected[j].index
 	})
 
-	var combined string
+	var b strings.Builder
 	for _, s := range selected {
-		combined += s.text + "\n...\n"
+		b.WriteString(s.text)
+		b.WriteString("\n...\n")
 	}
+	combined := b.String()
 
 	state["doc"] = combined
 	extractNode := &ExtractNode{Provider: n.Provider}

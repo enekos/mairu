@@ -2,6 +2,7 @@ package pipeline
 
 import (
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -18,20 +19,9 @@ type freeTextPattern struct {
 // Regexes deliberately overshoot and the validator filters false-positives.
 // Masking reuses the partial-reveal shapes defined in internal/mask so the
 // pipeline output stays consistent with JSON-walker output.
+//
+// Emails are handled separately by findEmailsFast (hand-rolled scanner).
 var freeTextPatterns = []freeTextPattern{
-	{
-		kind: "email",
-		re:   regexp.MustCompile(`[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}`),
-		validator: func(s string) bool {
-			at := strings.LastIndexByte(s, '@')
-			if at <= 0 || at >= len(s)-3 {
-				return false
-			}
-			domain := s[at+1:]
-			return strings.ContainsRune(domain, '.')
-		},
-		mask: maskEmail,
-	},
 	{
 		kind: "iban",
 		// 2-letter country + 2 check digits + up to 30 alnum.
@@ -41,7 +31,7 @@ var freeTextPatterns = []freeTextPattern{
 			if len(s) < 10 {
 				return "[REDACTED:iban]"
 			}
-			return s[:4] + strings.Repeat("*", len(s)-8) + s[len(s)-4:]
+			return s[:4] + stars(len(s)-8) + s[len(s)-4:]
 		},
 	},
 	{
@@ -54,7 +44,7 @@ var freeTextPatterns = []freeTextPattern{
 			if len(digits) < 4 {
 				return "[REDACTED:credit_card]"
 			}
-			return strings.Repeat("*", len(digits)-4) + digits[len(digits)-4:]
+			return stars(len(digits)-4) + digits[len(digits)-4:]
 		},
 	},
 	{
@@ -91,7 +81,7 @@ var freeTextPatterns = []freeTextPattern{
 			if len(s) < 6 {
 				return "[REDACTED:phone]"
 			}
-			return s[:3] + strings.Repeat("*", len(s)-5) + s[len(s)-2:]
+			return s[:3] + stars(len(s)-5) + s[len(s)-2:]
 		},
 	},
 	{
@@ -146,30 +136,49 @@ var freeTextPatterns = []freeTextPattern{
 }
 
 func scanFreeText(input string) (string, []Finding) {
-	out := input
-	var findings []Finding
+	var ivs []interval
+
+	for _, iv := range findEmailsFast(input) {
+		raw := input[iv.start:iv.end]
+		if strings.Contains(raw, "REDACTED") {
+			continue
+		}
+		ivs = append(ivs, iv)
+	}
+
 	for _, p := range freeTextPatterns {
-		locs := p.re.FindAllStringIndex(out, -1)
+		locs := p.re.FindAllStringIndex(input, -1)
 		if len(locs) == 0 {
 			continue
 		}
-		for i := len(locs) - 1; i >= 0; i-- {
-			loc := locs[i]
-			raw := out[loc[0]:loc[1]]
+		for _, loc := range locs {
+			raw := input[loc[0]:loc[1]]
 			if strings.Contains(raw, "REDACTED") {
 				continue
 			}
 			if p.validator != nil && !p.validator(raw) {
 				continue
 			}
-			masked := p.mask(raw)
-			findings = append(findings, Finding{
-				Layer: LayerFreeText,
-				Kind:  p.kind,
-				Start: loc[0],
-				End:   loc[1],
+			if overlapsInterval(ivs, loc[0], loc[1]) {
+				continue
+			}
+			ivs = append(ivs, interval{
+				start: loc[0],
+				end:   loc[1],
+				kind:  p.kind,
+				text:  p.mask(raw),
 			})
-			out = out[:loc[0]] + masked + out[loc[1]:]
+		}
+	}
+	sort.Slice(ivs, func(i, j int) bool { return ivs[i].start < ivs[j].start })
+	out := applyIntervals(input, ivs)
+	findings := make([]Finding, len(ivs))
+	for i, iv := range ivs {
+		findings[i] = Finding{
+			Layer: LayerFreeText,
+			Kind:  iv.kind,
+			Start: iv.start,
+			End:   iv.end,
 		}
 	}
 	return out, findings
@@ -196,11 +205,11 @@ func keepEnds(s string) string {
 	case len(s) == 0:
 		return ""
 	case len(s) <= 2:
-		return strings.Repeat("*", len(s))
+		return stars(len(s))
 	case len(s) <= 4:
-		return s[:1] + strings.Repeat("*", len(s)-1)
+		return s[:1] + stars(len(s)-1)
 	default:
-		return s[:1] + strings.Repeat("*", len(s)-2) + s[len(s)-1:]
+		return s[:1] + stars(len(s)-2) + s[len(s)-1:]
 	}
 }
 

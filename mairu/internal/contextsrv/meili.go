@@ -2,7 +2,6 @@ package contextsrv
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -237,9 +236,8 @@ func (m *MeiliIndexer) searchIndex(index string, opts SearchOptions, fields []st
 	queryTokens := tokenizeForSearch(opts.Query)
 	items := []scoredDoc{}
 	for _, hit := range resp.Hits {
-		raw, _ := json.Marshal(hit)
 		doc := map[string]any{}
-		if err := json.Unmarshal(raw, &doc); err != nil {
+		if err := hit.DecodeInto(&doc); err != nil {
 			continue
 		}
 

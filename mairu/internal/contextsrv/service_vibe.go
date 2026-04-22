@@ -6,6 +6,7 @@ import (
 	"mairu/internal/llm"
 	"mairu/internal/prompts"
 	"strings"
+	"sync"
 )
 
 // LLMClient defines the interface for LLM operations used by the context service
@@ -29,38 +30,39 @@ func (s *AppService) VibeQuery(prompt, project string, topK int) (VibeQueryResul
 		topK = 5
 	}
 
-	queries := []struct {
-		Store string
-		Query string
-	}{
-		{Store: StoreMemory, Query: prompt},
-		{Store: StoreSkill, Query: prompt},
-		{Store: StoreNode, Query: prompt},
-	}
+	stores := []string{StoreMemory, StoreSkill, StoreNode}
 	reasoning := "Queried memories, skills, and context nodes with the same prompt for broad recall."
 
-	results := make([]VibeSearchGroup, 0, len(queries))
-	for _, q := range queries {
-		search, err := s.Search(SearchOptions{
-			Query:   q.Query,
-			Project: project,
-			Store:   q.Store,
-			TopK:    topK,
-		})
-		if err != nil {
-			continue
-		}
-		var items []map[string]any
-		switch q.Store {
-		case "memory":
-			items = toAnyMapSlice(search["memories"])
-		case "skill":
-			items = toAnyMapSlice(search["skills"])
-		default:
-			items = toAnyMapSlice(search["contextNodes"])
-		}
-		results = append(results, VibeSearchGroup{Store: q.Store, Query: q.Query, Items: items})
+	// Preallocate and index by position so result order is deterministic.
+	results := make([]VibeSearchGroup, len(stores))
+	var wg sync.WaitGroup
+	for i, store := range stores {
+		wg.Add(1)
+		go func(i int, store string) {
+			defer wg.Done()
+			search, err := s.Search(SearchOptions{
+				Query:   prompt,
+				Project: project,
+				Store:   store,
+				TopK:    topK,
+			})
+			if err != nil {
+				results[i] = VibeSearchGroup{Store: store, Query: prompt}
+				return
+			}
+			var items []map[string]any
+			switch store {
+			case StoreMemory:
+				items = toAnyMapSlice(search["memories"])
+			case StoreSkill:
+				items = toAnyMapSlice(search["skills"])
+			default:
+				items = toAnyMapSlice(search["contextNodes"])
+			}
+			results[i] = VibeSearchGroup{Store: store, Query: prompt, Items: items}
+		}(i, store)
 	}
+	wg.Wait()
 	return VibeQueryResult{Reasoning: reasoning, Results: results}, nil
 }
 

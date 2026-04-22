@@ -102,7 +102,7 @@ func Run(input string, kind Kind, opts Options) (res Result) {
 		}
 	}
 
-	{
+	if kind == KindCommand {
 		cleaned, l2 := scanArguments(current)
 		current = cleaned
 		findings = append(findings, l2...)
