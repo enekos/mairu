@@ -122,7 +122,7 @@ func redactFixtureReveal(t *testing.T, fixturePath string, strict bool) []byte {
 func redactFixture(t *testing.T, fixturePath string, strict bool) []byte {
 	t.Helper()
 	rules, err := config.Load(config.LoadOptions{
-		ConfigDirs: []string{"../../testdata/configs/join"},
+		ConfigDirs: []string{"../../testdata/configs/default"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +150,7 @@ func redactFixture(t *testing.T, fixturePath string, strict bool) []byte {
 func loadTestPatterns(t *testing.T) map[string]string {
 	t.Helper()
 	rules, err := config.Load(config.LoadOptions{
-		ConfigDirs: []string{"../../testdata/configs/join"},
+		ConfigDirs: []string{"../../testdata/configs/default"},
 	})
 	if err != nil {
 		t.Fatal(err)

@@ -24,15 +24,6 @@ See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contributor workflow and quality ga
 ├── package.json             # UI-only Bun scripts
 └── Makefile                 # Go + monorepo dev workflows
 
-## PII Redaction
-
-`pii-redact/` reads log data on stdin and emits redacted output on stdout. It
-auto-detects JSON, NDJSON, logfmt, or plain line mode. Redaction is
-config-driven: allowlisted keys pass through, denylisted keys are replaced, and
-all string values are scanned by content regexes (email, IPv4, JWT, IBAN, etc.).
-By default matches are partially masked so entries remain distinguishable while
-raw PII never survives. See [`pii-redact/README.md`](pii-redact/README.md) for
-full docs.
 ```
 
 ## Requirements
@@ -242,6 +233,15 @@ mairu minion "fix lint errors" --max-retries 2          # one-shot unattended ex
 mairu minion --github-issue 42 --council                # resolve a GitHub issue autonomously
 ```
 
+## PII Redaction
+
+`pii-redact/` reads log data on stdin and emits redacted output on stdout. It
+auto-detects JSON, NDJSON, logfmt, or plain line mode. Redaction is
+config-driven: allowlisted keys pass through, denylisted keys are replaced, and
+all string values are scanned by content regexes (email, IPv4, JWT, IBAN, etc.).
+By default matches are partially masked so entries remain distinguishable while
+raw PII never survives. See [`pii-redact/README.md`](pii-redact/README.md) for
+full docs.
 
 ## License
 
