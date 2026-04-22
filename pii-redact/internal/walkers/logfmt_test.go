@@ -13,7 +13,7 @@ import (
 func newTestOpts(t *testing.T, reveal bool) Options {
 	t.Helper()
 	rules, err := config.Load(config.LoadOptions{
-		ConfigDirs: []string{"../../testdata/configs/join"},
+		ConfigDirs: []string{"../../testdata/configs/default"},
 	})
 	if err != nil {
 		t.Fatal(err)

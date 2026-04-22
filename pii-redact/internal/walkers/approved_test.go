@@ -46,7 +46,7 @@ func TestApproved_JSON_RevealMode(t *testing.T) {
 }
 
 func TestApproved_LineMode_ValueFormat(t *testing.T) {
-	set, err := patterns.Compile(loadJOINPatterns(t))
+	set, err := patterns.Compile(loadTestPatterns(t))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestApproved_FixtureCoverage(t *testing.T) {
 func redactFixtureReveal(t *testing.T, fixturePath string, strict bool) []byte {
 	t.Helper()
 	rules, err := config.Load(config.LoadOptions{
-		ConfigDirs: []string{"../../testdata/configs/join"},
+		ConfigDirs: []string{"../../testdata/configs/default"},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -147,7 +147,7 @@ func redactFixture(t *testing.T, fixturePath string, strict bool) []byte {
 	return buf.Bytes()
 }
 
-func loadJOINPatterns(t *testing.T) map[string]string {
+func loadTestPatterns(t *testing.T) map[string]string {
 	t.Helper()
 	rules, err := config.Load(config.LoadOptions{
 		ConfigDirs: []string{"../../testdata/configs/join"},

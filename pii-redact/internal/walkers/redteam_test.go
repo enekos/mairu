@@ -15,7 +15,7 @@ import (
 // below MUST NOT appear verbatim in the redacted output.
 func TestRedTeam_NoRawPIISurvives(t *testing.T) {
 	rules, err := config.Load(config.LoadOptions{
-		ConfigDirs: []string{"../../testdata/configs/join"},
+		ConfigDirs: []string{"../../testdata/configs/default"},
 	})
 	if err != nil {
 		t.Fatalf("load config: %v", err)

@@ -27,7 +27,7 @@ With the bundled GCP profile:
 gcloud logging read '...' --format=json | pii-redact --profile gcp-logging
 ```
 
-With a custom config directory (JOIN-style deployment):
+With a custom config directory:
 
 ```bash
 gcloud logging read '...' --format=json \
