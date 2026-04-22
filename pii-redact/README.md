@@ -10,7 +10,7 @@ windows, tickets, screenshots, memory files.
 ## Install
 
 ```bash
-go install github.com/join-com/pii-redact/cmd/pii-redact@latest
+go install github.com/enekos/mairu/pii-redact/cmd/pii-redact@latest
 ```
 
 Or build locally:
@@ -181,7 +181,7 @@ intentional change to redaction behavior shows up as a reviewable diff on
 these files. Regenerate after a deliberate change:
 
 ```bash
-UPDATE_APPROVED=1 go test ./internal/redact/ -run Approved
+UPDATE_APPROVED=1 go test ./internal/walkers/ -run Approved
 ```
 
 `TestApproved_FixtureCoverage` asserts every input fixture has a matching

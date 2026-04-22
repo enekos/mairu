@@ -10,8 +10,16 @@ import (
 	"testing"
 	"time"
 
-	"mairu/internal/redact"
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 )
+
+func mustRedactor() *redact.Redactor {
+	r, err := redact.New(redact.Options{})
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
 
 // fakeRepo records InsertBashHistory calls for inspection.
 type fakeRepo struct {
@@ -43,7 +51,7 @@ func (fakeRepoErr) InsertBashHistory(_ context.Context, _, _ string, _, _ int, _
 
 // newConsumerServer builds a Server for direct processRecord testing (no socket).
 func newConsumerServer(repo BashRepo) *Server {
-	return NewServer("", repo, redact.New())
+	return NewServer("", repo, mustRedactor())
 }
 
 // TestProcessRecord_StoresBenignCommand verifies that a benign command is stored as-is.
@@ -235,7 +243,7 @@ func TestProcessRecord_EmptyOutputPassesThrough(t *testing.T) {
 
 // TestProcessRecord_RepoErrorDoesNotPanic verifies that a repo error is logged but does not panic or block.
 func TestProcessRecord_RepoErrorDoesNotPanic(t *testing.T) {
-	srv := NewServer("", fakeRepoErr{}, redact.New())
+	srv := NewServer("", fakeRepoErr{}, mustRedactor())
 
 	done := make(chan struct{})
 	go func() {

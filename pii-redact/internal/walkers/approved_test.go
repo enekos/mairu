@@ -1,4 +1,4 @@
-package redact
+package walkers
 
 import (
 	"bytes"
@@ -7,16 +7,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/join-com/pii-redact/internal/approved"
-	"github.com/join-com/pii-redact/internal/config"
-	"github.com/join-com/pii-redact/internal/mask"
-	"github.com/join-com/pii-redact/internal/patterns"
+	"github.com/enekos/mairu/pii-redact/internal/approved"
+	"github.com/enekos/mairu/pii-redact/internal/config"
+	"github.com/enekos/mairu/pii-redact/internal/mask"
+	"github.com/enekos/mairu/pii-redact/internal/patterns"
 )
 
 // These tests lock the exact redacted output of each scenario to an
 // approved file in testdata/approved/. Regenerate with:
 //
-//	UPDATE_APPROVED=1 go test ./internal/redact/ -run Approved
+//	UPDATE_APPROVED=1 go test ./internal/walkers/ -run Approved
 //
 // Every intentional change to redaction behavior should show up as a
 // reviewable diff in the approved files.
@@ -81,7 +81,7 @@ func TestApproved_FixtureCoverage(t *testing.T) {
 	}
 	if len(missing) > 0 {
 		t.Errorf("fixtures missing approved files:\n  %s\n\n"+
-			"Regenerate with UPDATE_APPROVED=1 go test ./internal/redact/",
+			"Regenerate with UPDATE_APPROVED=1 go test ./internal/walkers/",
 			strings.Join(missing, "\n  "))
 	}
 }

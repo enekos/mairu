@@ -1,4 +1,4 @@
-package redact
+package walkers
 
 import (
 	"bytes"
@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/join-com/pii-redact/internal/config"
-	"github.com/join-com/pii-redact/internal/mask"
-	"github.com/join-com/pii-redact/internal/patterns"
+	"github.com/enekos/mairu/pii-redact/internal/config"
+	"github.com/enekos/mairu/pii-redact/internal/mask"
+	"github.com/enekos/mairu/pii-redact/internal/patterns"
 )
 
 // TestRedTeam_NoRawPIISurvives is the CI hard gate. Any PII value listed

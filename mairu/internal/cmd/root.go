@@ -11,11 +11,12 @@ import (
 )
 
 var (
-	debugMode    bool
-	outputFormat string
-	verbose      bool
-	quiet        bool
-	appConfig    *config.Config
+	debugMode      bool
+	outputFormat   string
+	verbose        bool
+	quiet          bool
+	redactBashFlag bool
+	appConfig      *config.Config
 )
 
 var rootCmd = &cobra.Command{
@@ -77,4 +78,5 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "table", "Output format: table, json, plain")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show extra details (timing, weights, query plan)")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "Only output results, no status messages")
+	rootCmd.PersistentFlags().BoolVar(&redactBashFlag, "redact", false, "Redact agent bash tool output via pii-redact before the model sees it (also settable via [agent] redact_bash_output or MAIRU_REDACT_BASH)")
 }

@@ -1,12 +1,12 @@
 // Package redact implements the two redaction modes: structured JSON and
 // regex-only line mode.
-package redact
+package walkers
 
 import (
 	"bufio"
 	"io"
 
-	"github.com/join-com/pii-redact/internal/patterns"
+	"github.com/enekos/mairu/pii-redact/internal/patterns"
 )
 
 // Lines streams stdin to stdout, applying content-regex redaction to each

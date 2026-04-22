@@ -68,11 +68,19 @@ func GetAgentConfig() agent.Config {
 		repo = app.Repo()
 	}
 
+	// CLI --redact takes precedence over config file; env var (handled in
+	// agent.ResolveRedactBashOutput) is evaluated last inside agent.New.
+	redactBash := cfg.Agent.RedactBashOutput
+	if redactBashFlag {
+		redactBash = true
+	}
+
 	return agent.Config{
-		SymbolLocator:   GetLocalApp().SymbolLocator(),
-		HistoryLogger:   repo,
-		Interceptors:    interceptors,
-		UTCPProviders:   cfg.Tools.UTCPProviders,
-		AgentSystemData: agentSystemData,
+		SymbolLocator:    GetLocalApp().SymbolLocator(),
+		HistoryLogger:    repo,
+		Interceptors:     interceptors,
+		UTCPProviders:    cfg.Tools.UTCPProviders,
+		AgentSystemData:  agentSystemData,
+		RedactBashOutput: redactBash,
 	}
 }

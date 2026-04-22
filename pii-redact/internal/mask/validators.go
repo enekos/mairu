@@ -22,6 +22,17 @@ var Validators = map[string]Validator{
 	"basic_auth_url": validBasicAuth,
 }
 
+// Exported aliases so packages outside mask (e.g. pipeline) can reuse the
+// same validator logic without duplicating it.
+var (
+	ValidIPv4      = validIPv4
+	ValidLuhn      = validLuhn
+	ValidJWT       = validJWT
+	ValidIBAN      = validIBAN
+	ValidEth       = validEth
+	ValidBasicAuth = validBasicAuth
+)
+
 func validIPv4(s string) bool {
 	parts := strings.Split(s, ".")
 	if len(parts) != 4 {

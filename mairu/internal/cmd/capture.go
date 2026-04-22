@@ -21,7 +21,7 @@ import (
 //
 // Unlike the always-on shell hook (metadata only), `mairu capture` records
 // command OUTPUT — the highest-leakage surface in shell history — so the
-// daemon runs it through internal/redact.KindText before persistence.
+// daemon runs it through github.com/enekos/mairu/pii-redact KindText before persistence.
 //
 // Usage:
 //

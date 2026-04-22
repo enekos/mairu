@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"io"
 
-	"mairu/internal/redact"
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 )
 
 // BashRepo is the minimal contract the importer needs from

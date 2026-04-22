@@ -8,8 +8,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"mairu/internal/redact"
 )
 
 // nilRepo satisfies BashRepo without doing anything.
@@ -71,7 +69,7 @@ func waitListening(t *testing.T, path string) {
 func TestServerRun_ReceivesRecords(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s")
 	repo := &captureRepo{}
-	srv := NewServer(path, repo, redact.New())
+	srv := NewServer(path, repo, mustRedactor())
 
 	cancel, errCh := startServer(context.Background(), srv)
 	defer cancel()
@@ -160,7 +158,7 @@ func TestServerRun_ReturnsCleanlyOnCancel(t *testing.T) {
 func TestServerRun_HandlesMalformedPayload(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "s")
 	repo := &captureRepo{}
-	srv := NewServer(path, repo, redact.New())
+	srv := NewServer(path, repo, mustRedactor())
 
 	cancel, errCh := startServer(context.Background(), srv)
 	defer cancel()

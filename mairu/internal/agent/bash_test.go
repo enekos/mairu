@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 )
 
 func TestRunBash(t *testing.T) {
@@ -39,6 +41,37 @@ func TestRunBash(t *testing.T) {
 		}
 		if !strings.Contains(out, "STDERR") || !strings.Contains(out, "No such file or directory") {
 			t.Errorf("expected stderr in output, got: %s", out)
+		}
+	})
+
+	t.Run("bash tool redacts output when redactor is set", func(t *testing.T) {
+		rd, err := redact.New(redact.Options{})
+		if err != nil {
+			t.Fatalf("redact.New: %v", err)
+		}
+		a := &Agent{root: ".", currentDir: ".", redactor: rd, approvalChan: make(chan bool)}
+		tool := &bashTool{}
+		// Echo a realistic-looking GitHub PAT. The raw shell output
+		// contains the secret; the value the model sees must not.
+		const pat = "ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+		out := make(chan AgentEvent, 128)
+		go func() {
+			for range out {
+			}
+		}()
+		result, err := tool.Execute(context.Background(), map[string]any{
+			"command": "echo token=" + pat,
+		}, a, out)
+		close(out)
+		if err != nil {
+			t.Fatalf("tool.Execute: %v", err)
+		}
+		body, _ := result["output"].(string)
+		if strings.Contains(body, pat) {
+			t.Errorf("PAT leaked to model-visible output: %q", body)
+		}
+		if !strings.Contains(body, "REDACTED") {
+			t.Errorf("expected [REDACTED:...] marker in output: %q", body)
 		}
 	})
 

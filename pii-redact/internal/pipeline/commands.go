@@ -1,37 +1,39 @@
-package redact
+package pipeline
 
 import "strings"
+
+func defaultDenylistCommands() []string {
+	return []string{"vault", "op", "pass", "gpg", "aws", "gh", "doctl", "gcloud", "kubectl"}
+}
 
 // riskyArgs maps a denylisted program name to tokens that, when present,
 // signal the invocation is secret-adjacent (and the whole arg list should
 // be collapsed). A bare program invocation without any risky token passes
 // through untouched — we don't want `aws s3 ls` to get flattened.
 var riskyArgs = map[string][]string{
-	"vault":  {"kv", "read", "write", "login", "token"},
-	"op":     {"read", "item", "signin", "get"},
-	"pass":   {"show", "insert", "edit", "generate"},
-	"gpg":    {"--decrypt", "-d", "--export-secret-keys"},
-	"aws":    {"configure", "sso"},
-	"gh":     {"auth"},
-	"doctl":  {"auth"},
-	"gcloud": {"auth"},
+	"vault":   {"kv", "read", "write", "login", "token"},
+	"op":      {"read", "item", "signin", "get"},
+	"pass":    {"show", "insert", "edit", "generate"},
+	"gpg":     {"--decrypt", "-d", "--export-secret-keys"},
+	"aws":     {"configure", "sso"},
+	"gh":      {"auth"},
+	"doctl":   {"auth"},
+	"gcloud":  {"auth"},
+	"kubectl": {"config view", "--token"},
 }
 
-// scanCommandDenylist applies Layer 4 only to KindCommand inputs. The first
+// scanCommandDenylist applies Layer 5 only to KindCommand inputs. The first
 // whitespace-separated token is the program name; if it's on the configured
 // denylist AND the command includes one of the program's risky-arg tokens,
 // the whole argument list is collapsed to "<program> [REDACTED:denylisted_command]".
-func (r *Redactor) scanCommandDenylist(input string, kind Kind) (string, []Finding) {
-	if kind != KindCommand {
-		return input, nil
-	}
+func scanCommandDenylist(input string, denylist []string) (string, []Finding) {
 	fields := strings.Fields(input)
 	if len(fields) == 0 {
 		return input, nil
 	}
 	program := fields[0]
 
-	for _, d := range r.denylistCommands {
+	for _, d := range denylist {
 		if d != program {
 			continue
 		}
@@ -63,16 +65,16 @@ func containsAny(s string, needles []string) bool {
 
 // applyDamageCap returns the final body and whether the cap triggered. The
 // ratio is (total bytes inside [REDACTED:...] placeholders) / (total bytes
-// of input). When the ratio exceeds r.damageCapRatio, the record is too
-// hollowed-out to have retrieval value and is collapsed to a minimal
-// placeholder — keeping the first token for commands so "which tool was
-// invoked" is still searchable.
-func (r *Redactor) applyDamageCap(input string, kind Kind) (string, bool) {
-	if input == "" {
+// of input). When the ratio exceeds cap, the record is too hollowed-out to
+// have retrieval value and is collapsed to a minimal placeholder — keeping
+// the first token for commands so "which tool was invoked" is still
+// searchable.
+func applyDamageCap(input string, kind Kind, cap float64) (string, bool) {
+	if input == "" || cap <= 0 {
 		return input, false
 	}
 	redactedBytes := countRedactedBytes(input)
-	if float64(redactedBytes)/float64(len(input)) <= r.damageCapRatio {
+	if float64(redactedBytes)/float64(len(input)) <= cap {
 		return input, false
 	}
 	if kind == KindCommand {

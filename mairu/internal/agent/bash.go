@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
 	"regexp"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 	"mairu/internal/llm"
 )
 
@@ -240,24 +242,43 @@ func (t *bashTool) Execute(ctx context.Context, args map[string]any, a *Agent, o
 	outChan <- AgentEvent{Type: "status", Content: fmt.Sprintf("🖥️ Running bash: %s", command)}
 
 	start := time.Now()
-	out, err := a.RunBash(ctx, command, timeout, outChan)
+	rawOut, err := a.RunBash(ctx, command, timeout, outChan)
 	duration := int(time.Since(start).Milliseconds())
+
+	// Emit diff events on the RAW output — the TUI already saw this live.
+	if err == nil {
+		if strings.HasPrefix(rawOut, "STDOUT:\ndiff ") || strings.Contains(rawOut, "\n--- ") && strings.Contains(rawOut, "\n+++ ") {
+			outChan <- AgentEvent{Type: "diff", Content: fmt.Sprintf("```diff\n%s\n```", rawOut)}
+		}
+	}
+
+	// Redact the output handed back to the model (opt-in via agent config).
+	// History logging uses the raw output because the ingest/history pipeline
+	// has its own redactor and dedup layer.
+	modelOut := rawOut
+	if a.redactor != nil && rawOut != "" {
+		res := a.redactor.Redact(rawOut, redact.KindText)
+		if res.Dropped {
+			slog.Debug("agent/bash: redaction damage-cap tripped",
+				"findings", len(res.Findings))
+			modelOut = fmt.Sprintf("[REDACTED:damage_cap] (bash output had %d redaction findings, body withheld)", len(res.Findings))
+		} else {
+			modelOut = res.Redacted
+		}
+	}
 
 	exitCode := 0
 	var result map[string]any
 	if err != nil {
-		result = map[string]any{"error": err.Error(), "output": out}
+		result = map[string]any{"error": err.Error(), "output": modelOut}
 		exitCode = 1
 	} else {
-		result = map[string]any{"output": out}
-		if strings.HasPrefix(out, "STDOUT:\ndiff ") || strings.Contains(out, "\n--- ") && strings.Contains(out, "\n+++ ") {
-			outChan <- AgentEvent{Type: "diff", Content: fmt.Sprintf("```diff\n%s\n```", out)}
-		}
+		result = map[string]any{"output": modelOut}
 	}
 
 	if a.historyLogger != nil {
 		go func() {
-			_ = a.historyLogger.InsertBashHistory(context.Background(), a.root, command, exitCode, duration, out)
+			_ = a.historyLogger.InsertBashHistory(context.Background(), a.root, command, exitCode, duration, rawOut)
 		}()
 	}
 

@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 	"github.com/spf13/cobra"
 	"mairu/internal/ingest"
-	"mairu/internal/redact"
 )
 
 // resolveSocketPath returns the Unix socket path for the ingest daemon.
@@ -134,7 +134,10 @@ func newIngestdRunCmd() *cobra.Command {
 			}
 
 			// Step 3: build redactor.
-			redactor := redact.New()
+			redactor, err := redact.New(redact.Options{})
+			if err != nil {
+				return fmt.Errorf("build redactor: %w", err)
+			}
 
 			// Step 4: get repo.
 			app := GetLocalApp()

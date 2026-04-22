@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/join-com/pii-redact/internal/mask"
+	"github.com/enekos/mairu/pii-redact/internal/mask"
 )
 
 // Set is a compiled, ordered collection of named patterns. Order matters

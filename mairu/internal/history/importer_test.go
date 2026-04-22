@@ -5,8 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	"mairu/internal/redact"
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 )
+
+func mustRedactor() *redact.Redactor {
+	r, err := redact.New(redact.Options{})
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
 
 type fakeBashRepo struct {
 	calls []insertCall
@@ -26,7 +34,7 @@ func (f *fakeBashRepo) InsertBashHistory(_ context.Context, project, command str
 func TestImport_StoresBenignCommands(t *testing.T) {
 	in := strings.NewReader("echo hello\nls -la\npwd\n")
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatBash, repo, redact.New(), "demo", false)
+	res, err := Import(context.Background(), in, FormatBash, repo, mustRedactor(), "demo", false)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -46,7 +54,7 @@ func TestImport_RedactsSecretCommand(t *testing.T) {
 ls
 `)
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatBash, repo, redact.New(), "demo", false)
+	res, err := Import(context.Background(), in, FormatBash, repo, mustRedactor(), "demo", false)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -65,7 +73,7 @@ func TestImport_SkipsDropped(t *testing.T) {
 echo safe
 `)
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatBash, repo, redact.New(), "demo", false)
+	res, err := Import(context.Background(), in, FormatBash, repo, mustRedactor(), "demo", false)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -83,7 +91,7 @@ echo safe
 func TestImport_DeduplicatesByHash(t *testing.T) {
 	in := strings.NewReader("echo hello\necho hello\nls\necho hello\n")
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatBash, repo, redact.New(), "demo", false)
+	res, err := Import(context.Background(), in, FormatBash, repo, mustRedactor(), "demo", false)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -98,7 +106,7 @@ func TestImport_DeduplicatesByHash(t *testing.T) {
 func TestImport_DryRun(t *testing.T) {
 	in := strings.NewReader("echo hello\nls\n")
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatBash, repo, redact.New(), "demo", true)
+	res, err := Import(context.Background(), in, FormatBash, repo, mustRedactor(), "demo", true)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}
@@ -115,7 +123,7 @@ func TestImport_ZshFormat(t *testing.T) {
 : 1700000100:2;ls -la
 `)
 	repo := &fakeBashRepo{}
-	res, err := Import(context.Background(), in, FormatZsh, repo, redact.New(), "demo", false)
+	res, err := Import(context.Background(), in, FormatZsh, repo, mustRedactor(), "demo", false)
 	if err != nil {
 		t.Fatalf("import: %v", err)
 	}

@@ -1,11 +1,11 @@
-package redact
+package walkers
 
 import (
 	"bufio"
 	"io"
 	"strings"
 
-	"github.com/join-com/pii-redact/internal/patterns"
+	"github.com/enekos/mairu/pii-redact/internal/patterns"
 )
 
 // Logfmt streams `in` to `out` parsing each line as key=value pairs

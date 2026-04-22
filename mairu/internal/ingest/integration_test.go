@@ -9,8 +9,6 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"mairu/internal/redact"
 )
 
 type e2eRepo struct {
@@ -51,7 +49,7 @@ func TestEndToEnd_SocketRedactPersistence(t *testing.T) {
 	sockPath := filepath.Join(sockDir, "s")
 
 	repo := &e2eRepo{}
-	server := NewServer(sockPath, repo, redact.New())
+	server := NewServer(sockPath, repo, mustRedactor())
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

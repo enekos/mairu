@@ -1,6 +1,6 @@
 // Package history backfills the bash_history store from shell history files.
 // It recognises zsh extended-history and bash history (with or without
-// HISTTIMEFORMAT timestamps), redacts entries through internal/redact, and
+// HISTTIMEFORMAT timestamps), redacts entries through pii-redact, and
 // persists survivors via the contextsrv repository.
 package history
 

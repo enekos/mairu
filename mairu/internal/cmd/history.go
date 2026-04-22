@@ -6,10 +6,10 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 	"github.com/spf13/cobra"
 	"mairu/internal/contextsrv"
 	"mairu/internal/history"
-	"mairu/internal/redact"
 )
 
 func NewHistoryCmd() *cobra.Command {
@@ -153,7 +153,11 @@ func newHistoryImportCmd() *cobra.Command {
 				return fmt.Errorf("repository is not initialized")
 			}
 
-			res, err := history.Import(context.Background(), f, format, repo, redact.New(), project, dryRun)
+			rd, err := redact.New(redact.Options{})
+			if err != nil {
+				return fmt.Errorf("build redactor: %w", err)
+			}
+			res, err := history.Import(context.Background(), f, format, repo, rd, project, dryRun)
 			if err != nil {
 				return err
 			}

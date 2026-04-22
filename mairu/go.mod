@@ -62,6 +62,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dlclark/regexp2 v1.11.5 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
+	github.com/enekos/mairu/pii-redact v0.0.0-00010101000000-000000000000
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
@@ -131,3 +132,5 @@ require (
 )
 
 replace mairu => ./
+
+replace github.com/enekos/mairu/pii-redact => ../pii-redact

@@ -10,7 +10,7 @@ import (
 	"os"
 	"sync"
 
-	"mairu/internal/redact"
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 )
 
 // BashRepo is the persistence interface for bash history records.

@@ -3,8 +3,11 @@ package agent
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 	"sync"
 
+	"github.com/enekos/mairu/pii-redact/pkg/redact"
 	"mairu/internal/contextsrv"
 	"mairu/internal/crawler"
 	"mairu/internal/llm"
@@ -36,6 +39,11 @@ type Agent struct {
 	interceptors    []ToolInterceptor
 	AgentSystemData map[string]any
 
+	// redactor, when non-nil, scrubs bash tool output before it is returned
+	// to the model. Opt-in via config (`[agent] redact_bash_output = true`),
+	// CLI (`--redact`), or env (`MAIRU_REDACT_BASH=1`).
+	redactor *redact.Redactor
+
 	mu           sync.Mutex
 	cancel       context.CancelFunc
 	approvalChan chan bool
@@ -49,6 +57,27 @@ type Config struct {
 	Interceptors    []ToolInterceptor
 	UTCPProviders   []string
 	AgentSystemData map[string]any
+	// RedactBashOutput enables pii-redact on bash tool stdout+stderr before
+	// it is handed back to the model. Defaults to false. CLI/env may
+	// override (see ResolveRedactBashOutput).
+	RedactBashOutput bool
+}
+
+// ResolveRedactBashOutput returns the effective opt-in state combining the
+// caller's config value with the MAIRU_REDACT_BASH env var (truthy values:
+// "1", "true", "yes", "on" — case-insensitive). The env wins if set.
+func ResolveRedactBashOutput(cfgVal bool) bool {
+	v := strings.TrimSpace(os.Getenv("MAIRU_REDACT_BASH"))
+	if v == "" {
+		return cfgVal
+	}
+	switch strings.ToLower(v) {
+	case "1", "true", "yes", "on":
+		return true
+	case "0", "false", "no", "off":
+		return false
+	}
+	return cfgVal
 }
 
 func normalizeConfig(cfg ...Config) Config {
@@ -90,7 +119,7 @@ func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Ag
 		llmProvider.RegisterDynamicTools(utcpTools)
 	}
 
-	return &Agent{
+	a := &Agent{
 		llm:             llmProvider,
 		locator:         resolved.SymbolLocator,
 		root:            projectRoot,
@@ -105,7 +134,15 @@ func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Ag
 		interceptors:    resolved.Interceptors,
 		AgentSystemData: resolved.AgentSystemData,
 		approvalChan:    make(chan bool),
-	}, nil
+	}
+	if ResolveRedactBashOutput(resolved.RedactBashOutput) {
+		rd, err := redact.New(redact.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("init pii-redact: %w", err)
+		}
+		a.redactor = rd
+	}
+	return a, nil
 }
 
 // NewWithProvider creates a new Agent with an existing LLM provider (for testing/advanced use)
@@ -124,7 +161,7 @@ func NewWithProvider(projectRoot string, provider llm.Provider, cfg ...Config) (
 		provider.RegisterDynamicTools(utcpTools)
 	}
 
-	return &Agent{
+	a := &Agent{
 		llm:             provider,
 		locator:         resolved.SymbolLocator,
 		root:            projectRoot,
@@ -138,7 +175,15 @@ func NewWithProvider(projectRoot string, provider llm.Provider, cfg ...Config) (
 		interceptors:    resolved.Interceptors,
 		AgentSystemData: resolved.AgentSystemData,
 		approvalChan:    make(chan bool),
-	}, nil
+	}
+	if ResolveRedactBashOutput(resolved.RedactBashOutput) {
+		rd, err := redact.New(redact.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("init pii-redact: %w", err)
+		}
+		a.redactor = rd
+	}
+	return a, nil
 }
 
 func (a *Agent) childConfig() Config {

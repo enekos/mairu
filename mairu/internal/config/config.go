@@ -22,6 +22,15 @@ type Config struct {
 	Tools     ToolsConfig     `mapstructure:"tools"`
 	LLM       LLMConfig       `mapstructure:"llm"`
 	GitIngest GitIngestConfig `mapstructure:"git_ingest"`
+	Agent     AgentConfig     `mapstructure:"agent"`
+}
+
+// AgentConfig holds knobs consumed by the mairu agent runtime.
+type AgentConfig struct {
+	// RedactBashOutput pipes bash tool stdout+stderr through pii-redact
+	// before the model sees it. Default false (opt-in). MAIRU_REDACT_BASH
+	// env var overrides at runtime.
+	RedactBashOutput bool `mapstructure:"redact_bash_output"`
 }
 
 type LLMConfig struct {
