@@ -1,0 +1,168 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mairu:
+    name: Build Mairu (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: mairu/go.mod
+          cache-dependency-path: mairu/go.sum
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install UI dependencies
+        run: bun install --cwd mairu/ui
+
+      - name: Build UI
+        run: bun run --cwd mairu/ui build
+
+      - name: Build mairu binary
+        shell: bash
+        run: |
+          cd mairu
+          output="mairu-${{ matrix.os }}-${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then output="${output}.exe"; fi
+          go build -ldflags="-s -w" -o "../${output}" ./cmd/mairu
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mairu-${{ matrix.os }}-${{ matrix.arch }}
+          path: mairu-${{ matrix.os }}-${{ matrix.arch }}*
+
+  build-browser-extension-host:
+    name: Build Browser Extension Host (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ./browser-extension
+
+      - name: Build native host
+        shell: bash
+        run: |
+          cd browser-extension
+          cargo build --release -p browser-extension-host
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            mv target/release/browser-extension-host.exe ../browser-extension-host-${{ matrix.os }}-${{ matrix.arch }}.exe
+          else
+            mv target/release/browser-extension-host ../browser-extension-host-${{ matrix.os }}-${{ matrix.arch }}
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-extension-host-${{ matrix.os }}-${{ matrix.arch }}
+          path: browser-extension-host-${{ matrix.os }}-${{ matrix.arch }}*
+
+  package-browser-extension:
+    name: Package Browser Extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: cargo install wasm-pack
+
+      - name: Build WASM module
+        run: |
+          cd browser-extension/crates/wasm
+          wasm-pack build --target web --out-dir ../../extension/pkg
+
+      - name: Package extension
+        run: |
+          cd browser-extension/extension
+          zip -r ../../mairu-browser-extension.zip . -x "node_modules/*" -x "dev/*" -x "tests/*" -x "*.src.js" -x "vitest.config.js" -x "bun.lock" -x ".gitignore"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mairu-browser-extension
+          path: mairu-browser-extension.zip
+
+  release:
+    name: Create GitHub Release
+    needs:
+      - build-mairu
+      - build-browser-extension-host
+      - package-browser-extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Display artifacts
+        run: ls -lh artifacts/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
