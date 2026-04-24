@@ -13,7 +13,7 @@ func NewMemoryCmd() *cobra.Command {
 		Use:   "memory",
 		Short: "ContextFS memory operations",
 	}
-	c.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(c, &project)
 
 	searchCmd := &cobra.Command{
 		Use:   "search <query>",

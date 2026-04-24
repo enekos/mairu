@@ -22,7 +22,7 @@ func NewLinearCmd() *cobra.Command {
 		Use:   "linear",
 		Short: "Linear integration commands",
 	}
-	cmd.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(cmd, &project)
 
 	syncIssuesCmd := &cobra.Command{
 		Use:   "sync-issues <team_key>",
@@ -196,42 +196,39 @@ func syncLinearIssues(project, teamKey string, limit int, state string) error {
 			labels[i] = l.Name
 		}
 
-		uri := fmt.Sprintf("contextfs://%s/linear/issues/%s", project, issue.Identifier)
-		name := fmt.Sprintf("Issue %s: %s", issue.Identifier, issue.Title)
-
-		abstractParts := []string{
-			fmt.Sprintf("Linear Issue [%s]", issue.State.Name),
+		node := integrationIssue{
+			Source: "linear",
+			ID:     issue.Identifier,
+			Name:   fmt.Sprintf("Issue %s: %s", issue.Identifier, issue.Title),
+			Abstract: []string{
+				fmt.Sprintf("Linear Issue [%s]", issue.State.Name),
+			},
+			Overview: []string{
+				fmt.Sprintf("Title: %s", issue.Title),
+				fmt.Sprintf("URL: %s", issue.URL),
+				fmt.Sprintf("Created: %s", issue.CreatedAt),
+				fmt.Sprintf("Updated: %s", issue.UpdatedAt),
+			},
+			Content: issue.Description,
 		}
 		if issue.Priority > 0 {
-			abstractParts = append(abstractParts, fmt.Sprintf("Priority: %d", issue.Priority))
+			node.Abstract = append(node.Abstract, fmt.Sprintf("Priority: %d", issue.Priority))
 		}
 		if len(labels) > 0 {
-			abstractParts = append(abstractParts, fmt.Sprintf("Labels: %s", strings.Join(labels, ", ")))
+			node.Abstract = append(node.Abstract, fmt.Sprintf("Labels: %s", strings.Join(labels, ", ")))
 		}
-		abstract := strings.Join(abstractParts, " | ")
-
-		overview := fmt.Sprintf("Title: %s\nURL: %s\nCreated: %s\nUpdated: %s",
-			issue.Title, issue.URL, issue.CreatedAt, issue.UpdatedAt)
-
 		if issue.Assignee.Name != "" {
-			overview += fmt.Sprintf("\nAssignee: %s", issue.Assignee.Name)
+			node.Overview = append(node.Overview, fmt.Sprintf("Assignee: %s", issue.Assignee.Name))
 		}
 
-		content := issue.Description
-		if len(content) > 5000 {
-			content = content[:5000] + "\n...(truncated)"
-		}
-
-		_, err := StoreNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/linear", project), overview, content)
-		if err != nil {
+		if err := syncIntegrationNode(project, node); err != nil {
 			fmt.Printf("Failed to store node for issue %s: %v\n", issue.Identifier, err)
 			continue
 		}
 		fmt.Printf("Synced %s\n", issue.Identifier)
 	}
 
-	memContent := fmt.Sprintf("Synced %d Linear issues from team %s into project '%s'.", len(allIssues), teamKey, project)
-	_ = RunMemoryStore(project, memContent, "linear_sync", "linear", 7)
-
+	syncIntegrationSummary(project, "linear",
+		fmt.Sprintf("Linear issues from team %s", teamKey), len(allIssues))
 	return nil
 }

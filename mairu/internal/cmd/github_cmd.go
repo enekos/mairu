@@ -22,7 +22,7 @@ func NewGithubCmd() *cobra.Command {
 		Use:   "github",
 		Short: "GitHub integration commands",
 	}
-	cmd.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(cmd, &project)
 
 	syncIssuesCmd := &cobra.Command{
 		Use:   "sync-issues <owner/repo>",
@@ -137,48 +137,42 @@ func syncGithubIssues(project, repo string, limit int, state string) error {
 		for i, l := range issue.Labels {
 			labels[i] = l.Name
 		}
-
 		assignees := make([]string, len(issue.Assignees))
 		for i, a := range issue.Assignees {
 			assignees[i] = a.Login
 		}
 
-		// Store as a Context Node
-		uri := fmt.Sprintf("contextfs://%s/github/issues/%d", project, issue.Number)
-		name := fmt.Sprintf("%s #%d: %s", itemType, issue.Number, issue.Title)
-
-		abstractParts := []string{
-			fmt.Sprintf("GitHub %s [%s]", itemType, issue.State),
+		node := integrationIssue{
+			Source: "github",
+			ID:     fmt.Sprintf("%d", issue.Number),
+			Name:   fmt.Sprintf("%s #%d: %s", itemType, issue.Number, issue.Title),
+			Abstract: []string{
+				fmt.Sprintf("GitHub %s [%s]", itemType, issue.State),
+			},
+			Overview: []string{
+				fmt.Sprintf("Title: %s", issue.Title),
+				fmt.Sprintf("URL: %s", issue.HTMLURL),
+				fmt.Sprintf("Author: %s", issue.User.Login),
+				fmt.Sprintf("Created: %s", issue.CreatedAt),
+				fmt.Sprintf("Updated: %s", issue.UpdatedAt),
+			},
+			Content: issue.Body,
 		}
 		if len(labels) > 0 {
-			abstractParts = append(abstractParts, fmt.Sprintf("Labels: %s", strings.Join(labels, ", ")))
+			node.Abstract = append(node.Abstract, fmt.Sprintf("Labels: %s", strings.Join(labels, ", ")))
 		}
-		abstract := strings.Join(abstractParts, " | ")
-
-		overview := fmt.Sprintf("Title: %s\nURL: %s\nAuthor: %s\nCreated: %s\nUpdated: %s",
-			issue.Title, issue.HTMLURL, issue.User.Login, issue.CreatedAt, issue.UpdatedAt)
-
 		if len(assignees) > 0 {
-			overview += fmt.Sprintf("\nAssignees: %s", strings.Join(assignees, ", "))
+			node.Overview = append(node.Overview, fmt.Sprintf("Assignees: %s", strings.Join(assignees, ", ")))
 		}
 
-		content := issue.Body
-		if len(content) > 5000 {
-			content = content[:5000] + "\n...(truncated)"
-		}
-
-		// Store node
-		_, err := StoreNodeRaw(project, uri, name, abstract, fmt.Sprintf("contextfs://%s/github", project), overview, content)
-		if err != nil {
+		if err := syncIntegrationNode(project, node); err != nil {
 			fmt.Printf("Failed to store node for issue #%d: %v\n", issue.Number, err)
 			continue
 		}
 		fmt.Printf("Synced %s #%d\n", itemType, issue.Number)
 	}
 
-	// Store a single summary memory instead of spamming memories per issue
-	memContent := fmt.Sprintf("Synced %d GitHub issues and PRs from repository %s into project '%s'.", len(allIssues), repo, project)
-	_ = RunMemoryStore(project, memContent, "github_sync", "github", 7)
-
+	syncIntegrationSummary(project, "github",
+		fmt.Sprintf("GitHub issues and PRs from repository %s", repo), len(allIssues))
 	return nil
 }

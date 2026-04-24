@@ -1,156 +1,60 @@
 package cmd
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
-	"strings"
+
+	"mairu/internal/ctxclient"
 
 	"github.com/spf13/cobra"
 )
 
-func contextServerURL() string {
-	base := strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_URL"))
-	return strings.TrimRight(base, "/")
-}
-
-func contextToken() string {
-	return strings.TrimSpace(os.Getenv("MAIRU_CONTEXT_SERVER_TOKEN"))
-}
-
 func ContextGet(path string, params map[string]string) ([]byte, error) {
-	baseURL := contextServerURL()
-	if baseURL == "" {
-		baseURL = "http://localhost" // placeholder for local routing
-	}
-	u, err := url.Parse(baseURL + path)
-	if err != nil {
-		return nil, err
-	}
-	q := u.Query()
-	for k, v := range params {
-		if strings.TrimSpace(v) == "" {
-			continue
-		}
-		q.Set(k, v)
-	}
-	u.RawQuery = q.Encode()
-	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	if tok := contextToken(); tok != "" {
-		req.Header.Set("X-Context-Token", tok)
-	}
-	return doContextRequest(req)
+	return contextRequest(http.MethodGet, path, params, nil)
 }
 
 func ContextPost(path string, payload any) ([]byte, error) {
-	baseURL := contextServerURL()
-	if baseURL == "" {
-		baseURL = "http://localhost"
-	}
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodPost, baseURL+path, bytes.NewReader(raw))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if tok := contextToken(); tok != "" {
-		req.Header.Set("X-Context-Token", tok)
-	}
-	return doContextRequest(req)
+	return contextRequest(http.MethodPost, path, nil, payload)
 }
 
 func ContextPut(path string, payload any) ([]byte, error) {
-	baseURL := contextServerURL()
-	if baseURL == "" {
-		baseURL = "http://localhost"
-	}
-	raw, err := json.Marshal(payload)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest(http.MethodPut, baseURL+path, bytes.NewReader(raw))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if tok := contextToken(); tok != "" {
-		req.Header.Set("X-Context-Token", tok)
-	}
-	return doContextRequest(req)
+	return contextRequest(http.MethodPut, path, nil, payload)
 }
 
 func ContextDelete(path string, params map[string]string) ([]byte, error) {
-	baseURL := contextServerURL()
-	if baseURL == "" {
-		baseURL = "http://localhost"
-	}
-	u, err := url.Parse(baseURL + path)
-	if err != nil {
-		return nil, err
-	}
-	q := u.Query()
-	for k, v := range params {
-		if strings.TrimSpace(v) == "" {
-			continue
-		}
-		q.Set(k, v)
-	}
-	u.RawQuery = q.Encode()
-	req, err := http.NewRequest(http.MethodDelete, u.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-	if tok := contextToken(); tok != "" {
-		req.Header.Set("X-Context-Token", tok)
-	}
-	return doContextRequest(req)
+	return contextRequest(http.MethodDelete, path, params, nil)
 }
 
-func doContextRequest(req *http.Request) ([]byte, error) {
-	if contextServerURL() == "" {
-		// Use local in-memory handler
-		localHandler := getLocalHandler()
-		if localHandler == nil {
-			return nil, fmt.Errorf("local context service could not be initialized")
-		}
-
-		rec := httptest.NewRecorder()
-		localHandler.ServeHTTP(rec, req)
-
-		resp := rec.Result()
-		body := rec.Body.Bytes()
-
-		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("context server HTTP %d: %s", resp.StatusCode, string(body))
-		}
-		return body, nil
+func contextRequest(method, path string, params map[string]string, body any) ([]byte, error) {
+	base := ctxclient.BaseURL()
+	target := base
+	if target == "" {
+		target = "http://localhost"
 	}
-
-	// Remote request
-	resp, err := http.DefaultClient.Do(req)
+	req, err := ctxclient.Build(method, target+path, params, body)
 	if err != nil {
-		return nil, fmt.Errorf("context server error: %v", err)
+		return nil, err
 	}
-	defer resp.Body.Close()
+	if base == "" {
+		return serveLocal(req)
+	}
+	return ctxclient.Do(req)
+}
 
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
-	body := buf.Bytes()
-
+func serveLocal(req *http.Request) ([]byte, error) {
+	h := getLocalHandler()
+	if h == nil {
+		return nil, fmt.Errorf("local context service could not be initialized")
+	}
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	resp := rec.Result()
+	body := rec.Body.Bytes()
 	if resp.StatusCode >= 400 {
 		return nil, fmt.Errorf("context server HTTP %d: %s", resp.StatusCode, string(body))
 	}
-
 	return body, nil
 }
 
@@ -166,6 +70,10 @@ func PrintJSON(raw []byte) {
 		return
 	}
 	fmt.Println(string(formatted))
+}
+
+func addProjectFlag(c *cobra.Command, dest *string) {
+	c.PersistentFlags().StringVarP(dest, "project", "P", "", "Project name")
 }
 
 func AddCommonSearchFlags(cmd *cobra.Command) {

@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"mairu/internal/ctxclient"
 )
 
 func TestContextGetIncludesTokenAndQuery(t *testing.T) {
@@ -122,9 +124,9 @@ func TestDoContextRequestReturnsErrorOnNon2xx(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to create request: %v", err)
 	}
-	_, err = doContextRequest(req)
+	_, err = ctxclient.Do(req)
 	if err == nil {
-		t.Fatalf("expected doContextRequest to fail on non-2xx response")
+		t.Fatalf("expected ctxclient.Do to fail on non-2xx response")
 	}
 	if !strings.Contains(err.Error(), "context server HTTP 400:") {
 		t.Fatalf("expected status code in error, got: %v", err)

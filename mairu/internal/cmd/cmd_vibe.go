@@ -39,7 +39,7 @@ func NewVibeCmd() *cobra.Command {
 		Use:   "vibe",
 		Short: "ContextFS vibe operations",
 	}
-	cmd.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(cmd, &project)
 
 	mutationCmd := &cobra.Command{
 		Use:   "mutation [prompt]",

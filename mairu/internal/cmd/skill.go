@@ -12,7 +12,7 @@ func NewSkillCmd() *cobra.Command {
 		Use:   "skill",
 		Short: "ContextFS skill operations",
 	}
-	c.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(c, &project)
 
 	addCmd := &cobra.Command{
 		Use:   "add <name> <description>",

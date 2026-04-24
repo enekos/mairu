@@ -36,7 +36,7 @@ func NewNodeCmd() *cobra.Command {
 		Use:   "node",
 		Short: "ContextFS node operations",
 	}
-	c.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(c, &project)
 
 	searchCmd := &cobra.Command{
 		Use:   "search <query>",

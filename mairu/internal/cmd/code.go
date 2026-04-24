@@ -14,7 +14,7 @@ func NewCodeCmd() *cobra.Command {
 		Use:   "code",
 		Short: "Semantic code search",
 	}
-	c.PersistentFlags().StringVarP(&project, "project", "P", "", "Project name")
+	addProjectFlag(c, &project)
 
 	searchCmd := &cobra.Command{
 		Use:   "search <query>",
