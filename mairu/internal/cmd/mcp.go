@@ -6,11 +6,23 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
-	"log"
 )
+
+// resolveProject returns the per-call project if non-empty, otherwise falls
+// back to MAIRU_DEFAULT_PROJECT. This lets editor integrations (Zed, etc.)
+// inject a default project without every tool call needing to specify one.
+func resolveProject(p string) string {
+	if p != "" {
+		return p
+	}
+	return os.Getenv("MAIRU_DEFAULT_PROJECT")
+}
 
 func NewMCPCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -31,7 +43,7 @@ func NewMCPCmd() *cobra.Command {
 				if err != nil {
 					return mcp.NewToolResultError("query is required"), nil
 				}
-				project := request.GetString("project", "")
+				project := resolveProject(request.GetString("project", ""))
 				k := request.GetInt("k", 5)
 
 				params := map[string]string{
@@ -70,7 +82,7 @@ func NewMCPCmd() *cobra.Command {
 				if err != nil {
 					return mcp.NewToolResultError("content is required"), nil
 				}
-				project := request.GetString("project", "")
+				project := resolveProject(request.GetString("project", ""))
 				category := request.GetString("category", "observation")
 				if category == "" {
 					category = "observation"
@@ -112,7 +124,7 @@ func NewMCPCmd() *cobra.Command {
 				if err != nil {
 					return mcp.NewToolResultError("query is required"), nil
 				}
-				project := request.GetString("project", "")
+				project := resolveProject(request.GetString("project", ""))
 				k := request.GetInt("k", 5)
 
 				params := map[string]string{
@@ -147,7 +159,7 @@ func NewMCPCmd() *cobra.Command {
 				if err != nil {
 					return mcp.NewToolResultError("prompt is required"), nil
 				}
-				project := request.GetString("project", "")
+				project := resolveProject(request.GetString("project", ""))
 				k := request.GetInt("k", 5)
 
 				planOut, err := ContextPost("/api/vibe/mutation/plan", map[string]any{

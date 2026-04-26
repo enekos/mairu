@@ -1,6 +1,6 @@
 id = "mairu"
 name = "Mairu Agent"
-version = "0.1.0"
+version = "0.2.0"
 schema_version = 1
 authors = ["Eneko Sarasola"]
 description = "A dynamic context and memory storage system for coding agents"
@@ -8,3 +8,23 @@ repository = "https://github.com/enekos/mairu"
 
 [context_servers.mairu]
 name = "Mairu Agent"
+
+[slash_commands.mairu-search]
+description = "Search Mairu memories for the current project"
+requires_argument = true
+
+[slash_commands.mairu-nodes]
+description = "Search Mairu hierarchical context nodes (code/doc trees)"
+requires_argument = true
+
+[slash_commands.mairu-recall]
+description = "Search both Mairu memories and context nodes and inject results"
+requires_argument = true
+
+[slash_commands.mairu-dashboard]
+description = "Open the Mairu dashboard, optionally filtered by query"
+requires_argument = false
+
+[slash_commands.mairu-doctor]
+description = "Check Mairu context-server health and active project"
+requires_argument = false

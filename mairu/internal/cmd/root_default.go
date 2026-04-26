@@ -68,6 +68,7 @@ func init() {
 		NewTuiCmd(),
 		NewTelegramCmd(),
 		NewMCPCmd(),
+		NewACPCmd(),
 		NewUTCPCmd(),
 	)
 

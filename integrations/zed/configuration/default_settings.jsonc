@@ -1,3 +1,18 @@
 {
-  "path": null
+  // Absolute path to the `mairu` binary. Leave null to use whatever is on $PATH.
+  "path": null,
+
+  // Project namespace passed to every Mairu MCP tool call as a default.
+  // If null, the extension falls back to MAIRU_DEFAULT_PROJECT from the
+  // shell, then to the basename of the open worktree.
+  "default_project": null,
+
+  // URL of the Mairu context server (HTTP API) used by slash commands.
+  // Start the server with `mairu context-server` (default port 8788).
+  // Falls back to MAIRU_API_URL or MAIRU_CONTEXT_SERVER_URL.
+  "api_url": null,
+
+  // Optional auth token for the context server (X-Context-Token header).
+  // Falls back to MAIRU_CONTEXT_SERVER_TOKEN.
+  "auth_token": null
 }
