@@ -47,14 +47,14 @@ func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 
 	res := sb.String()
 
-	// Byte truncation just in case the lines are absurdly long (e.g. minified JS)
-	maxBytes := 50 * 1024 // 50KB
-	if len(res) > maxBytes {
-		res = res[:maxBytes] + "\n...[Output truncated, exceeded 50KB limit. Use offset/limit or grep to find what you need]"
+	// Dual-axis head truncation guards against absurdly long single lines
+	// (minified JS) AND absurdly long total output.
+	if tr := TruncateHead(res, limit, DefaultMaxBytes); tr.Truncated {
+		res = tr.Content + FormatTruncationNote(tr, "head")
 	}
 
 	if endIdx < totalLines {
-		res += fmt.Sprintf("\n...[File truncated. Showing lines %d to %d of %d. Use offset=%d to read more]", startIdx+1, endIdx, totalLines, endIdx+1)
+		res += fmt.Sprintf("\n...[File window. Showing lines %d to %d of %d. Use offset=%d to read more]", startIdx+1, endIdx, totalLines, endIdx+1)
 	}
 
 	return res, nil
@@ -70,15 +70,19 @@ func (a *Agent) WriteFile(filePath string, content string) (string, error) {
 	}
 
 	var oldContent []byte
-	if _, err := os.Stat(fullPath); err == nil {
-		oldContent, err = os.ReadFile(fullPath)
-		if err != nil {
-			return "", fmt.Errorf("failed to read existing file %s: %w", filePath, err)
-		}
+	if a.fileQueue == nil {
+		a.fileQueue = newFileMutationQueue()
 	}
-
-	err := os.WriteFile(fullPath, []byte(content), 0644)
-	if err != nil {
+	if err := a.fileQueue.With(fullPath, func() error {
+		if _, statErr := os.Stat(fullPath); statErr == nil {
+			b, readErr := os.ReadFile(fullPath)
+			if readErr != nil {
+				return fmt.Errorf("failed to read existing file %s: %w", filePath, readErr)
+			}
+			oldContent = b
+		}
+		return os.WriteFile(fullPath, []byte(content), 0644)
+	}); err != nil {
 		return "", err
 	}
 

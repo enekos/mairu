@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"mairu/internal/llm"
 	"mairu/internal/prompts"
@@ -94,7 +95,10 @@ func (a *Agent) RunStream(prompt string, outChan chan<- AgentEvent) {
 			systemPrompt += contextFiles
 		}
 
-		systemPrompt += fmt.Sprintf("\n\nCurrent working directory: %s", a.currentDir)
+		// Volatile fields (date, cwd) go LAST so the cacheable prefix above
+		// stays stable across runs. Pi-mono does the same — see system-prompt.ts.
+		systemPrompt += fmt.Sprintf("\n\nToday's date: %s\nCurrent working directory: %s",
+			time.Now().UTC().Format("2006-01-02"), a.currentDir)
 
 		a.llm.SetSystemInstruction(systemPrompt)
 		a.emitLog(outChan, "Initialized new session with context length: %d chars", len(systemPrompt))

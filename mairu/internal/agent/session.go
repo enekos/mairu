@@ -341,13 +341,45 @@ func (a *Agent) GetHistoryText() []string {
 	return lines
 }
 
+// compactionThreshold is the history-message count that triggers compaction.
+// Kept package-level so the mid-turn auto-compaction guard can reuse it.
+const compactionThreshold = 20
+
+// midTurnCompactionThreshold is the higher water-mark at which a mid-turn
+// auto-compaction fires. Higher than the entry threshold so we don't thrash
+// inside a single user turn — only kick in when a tool chain has clearly
+// blown the budget.
+const midTurnCompactionThreshold = 60
+
+// maybeAutoCompact runs CompactContext only when the history has grown well
+// past the entry threshold. Logs but never aborts the run on failure.
+func (a *Agent) maybeAutoCompact(outChan chan<- AgentEvent) {
+	if a.llm == nil {
+		return
+	}
+	if len(a.llm.GetHistory()) < midTurnCompactionThreshold {
+		return
+	}
+	if outChan != nil {
+		a.emitLog(outChan, "Auto-compacting mid-turn (history at %d messages)", len(a.llm.GetHistory()))
+	}
+	if err := a.CompactContext(); err != nil && outChan != nil {
+		a.emitLog(outChan, "Mid-turn compaction failed (continuing anyway): %v", err)
+	}
+}
+
 func (a *Agent) CompactContext() error {
 	history := a.llm.GetHistory()
 
 	// If history is small, don't bother
-	if len(history) < 20 {
+	if len(history) < compactionThreshold {
 		return nil
 	}
+
+	// Track every file the model has touched so the post-compaction summary
+	// can hand the next turn a precise "what's hot" pointer instead of a vague
+	// recap. Mirrors pi-mono's CompactionDetails.
+	ops := extractFileOps(history)
 
 	var conversation string
 	for _, c := range history {
@@ -395,7 +427,7 @@ func (a *Agent) CompactContext() error {
 		return err
 	}
 
-	summary := resp.Content
+	summary := resp.Content + ops.format()
 
 	// Now replace the history with the summary
 	compactedHistory := []llm.Message{

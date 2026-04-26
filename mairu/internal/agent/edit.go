@@ -20,6 +20,19 @@ type EditBlock struct {
 // MultiEdit safely applies multiple block replacements to a file.
 func (a *Agent) MultiEdit(filePath string, edits []EditBlock) (string, error) {
 	fullPath := fmt.Sprintf("%s/%s", a.root, filePath)
+	if a.fileQueue == nil {
+		a.fileQueue = newFileMutationQueue()
+	}
+	var diffOut string
+	err := a.fileQueue.With(fullPath, func() error {
+		out, err := a.multiEditLocked(fullPath, filePath, edits)
+		diffOut = out
+		return err
+	})
+	return diffOut, err
+}
+
+func (a *Agent) multiEditLocked(fullPath, filePath string, edits []EditBlock) (string, error) {
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", err
@@ -78,6 +91,19 @@ func (a *Agent) MultiEdit(filePath string, edits []EditBlock) (string, error) {
 // ReplaceBlock safely replaces an exact string block in a file.
 func (a *Agent) ReplaceBlock(filePath string, oldString, newString string) (string, error) {
 	fullPath := filepath.Join(a.root, filePath)
+	if a.fileQueue == nil {
+		a.fileQueue = newFileMutationQueue()
+	}
+	var diffOut string
+	err := a.fileQueue.With(fullPath, func() error {
+		out, err := a.replaceBlockLocked(fullPath, filePath, oldString, newString)
+		diffOut = out
+		return err
+	})
+	return diffOut, err
+}
+
+func (a *Agent) replaceBlockLocked(fullPath, filePath, oldString, newString string) (string, error) {
 	content, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", err

@@ -44,6 +44,8 @@ type Agent struct {
 	// CLI (`--redact`), or env (`MAIRU_REDACT_BASH=1`).
 	redactor *redact.Redactor
 
+	fileQueue *fileMutationQueue
+
 	mu           sync.Mutex
 	cancel       context.CancelFunc
 	approvalChan chan bool
@@ -134,6 +136,7 @@ func New(projectRoot string, providerCfg llm.ProviderConfig, cfg ...Config) (*Ag
 		interceptors:    resolved.Interceptors,
 		AgentSystemData: resolved.AgentSystemData,
 		approvalChan:    make(chan bool),
+		fileQueue:       newFileMutationQueue(),
 	}
 	if ResolveRedactBashOutput(resolved.RedactBashOutput) {
 		rd, err := redact.New(redact.Options{})
@@ -175,6 +178,7 @@ func NewWithProvider(projectRoot string, provider llm.Provider, cfg ...Config) (
 		interceptors:    resolved.Interceptors,
 		AgentSystemData: resolved.AgentSystemData,
 		approvalChan:    make(chan bool),
+		fileQueue:       newFileMutationQueue(),
 	}
 	if ResolveRedactBashOutput(resolved.RedactBashOutput) {
 		rd, err := redact.New(redact.Options{})

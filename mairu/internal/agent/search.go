@@ -184,15 +184,14 @@ func (a *Agent) fallbackSearch(query string) (string, error) {
 
 	var sb strings.Builder
 	for _, m := range matches {
-		sb.WriteString(fmt.Sprintf("%s:%d:%s\n", m.file, m.line, strings.TrimSpace(m.text)))
-		if sb.Len() > 10000 {
-			break
-		}
+		// Cap each match line so a single minified line can't blow context.
+		text, _ := TruncateLine(strings.TrimSpace(m.text), GrepMaxLineLength)
+		sb.WriteString(fmt.Sprintf("%s:%d:%s\n", m.file, m.line, text))
 	}
 
 	res := sb.String()
-	if len(res) > 10000 {
-		res = res[:10000] + "\n...[Output truncated, too many matches]"
+	if tr := TruncateHead(res, DefaultMaxLines, DefaultMaxBytes); tr.Truncated {
+		res = tr.Content + FormatTruncationNote(tr, "head")
 	}
 
 	return res, nil

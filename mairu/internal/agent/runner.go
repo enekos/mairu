@@ -42,6 +42,11 @@ func (r *Runner) Run(ctx context.Context, prompt string, outChan chan<- AgentEve
 		r.agent.cancel = cancel
 		r.agent.mu.Unlock()
 
+		// Just-in-time compaction. If a long mid-turn tool chain has pushed
+		// history past threshold since RunStream's initial check, fold it now
+		// to keep the next request inside the cache window.
+		r.agent.maybeAutoCompact(outChan)
+
 		iter, err := r.agent.llm.ChatStream(attemptCtx, prompt)
 		if err != nil {
 			r.agent.mu.Lock()
@@ -145,6 +150,9 @@ func (r *Runner) handleIterator(ctx context.Context, iter llm.ChatStreamIterator
 			}
 			results[lastIdx].Response["_loop_warning"] = NudgeMessage()
 		}
+
+		// Same JIT compaction guard between tool-result rounds.
+		r.agent.maybeAutoCompact(outChan)
 
 		nextIter := r.agent.llm.SendFunctionResponsesStream(ctx, results)
 		return r.handleIterator(ctx, nextIter, outChan)

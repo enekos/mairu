@@ -192,9 +192,9 @@ func (a *Agent) runBashOnce(ctx context.Context, command string, timeoutMs int, 
 			result += fmt.Sprintf("\nExited with error: %v", err)
 		}
 
-		// Truncate if output is too long (max 10000 chars, tail truncation)
-		if len(result) > 10000 {
-			result = "[Output truncated, showing last 10000 chars]...\n" + result[len(result)-10000:]
+		// Dual-axis tail truncation: bash output's signal is at the end.
+		if tr := TruncateTail(result, DefaultMaxLines, DefaultMaxBytes); tr.Truncated {
+			result = tr.Content + FormatTruncationNote(tr, "tail")
 		}
 
 		return strings.TrimSpace(result), err, nil

@@ -27,8 +27,8 @@ func TestRenderSessionSummarize(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if !strings.Contains(out, "Please summarize") {
-		t.Errorf("missing string in session_summarize")
+	if !strings.Contains(out, "summarization assistant") {
+		t.Errorf("missing summarization preamble in session_summarize")
 	}
 	if !strings.Contains(out, "Hello, this is a test.") {
 		t.Errorf("missing conversation in session_summarize")
