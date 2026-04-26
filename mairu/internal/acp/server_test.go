@@ -574,7 +574,7 @@ func TestRequestPermission_IncludesToolCallID(t *testing.T) {
 
 func TestServerRun_InitializeRoundTrip(t *testing.T) {
 	stdin := &bytes.Buffer{}
-	stdout := &bytes.Buffer{}
+	stdoutR, stdoutW := io.Pipe()
 
 	s := New(llm.ProviderConfig{}, func(cwd string) (*agent.Agent, error) {
 		return nil, errors.New("no agent")
@@ -595,14 +595,14 @@ func TestServerRun_InitializeRoundTrip(t *testing.T) {
 	// Run blocks until stdin is closed.
 	done := make(chan error, 1)
 	go func() {
-		done <- s.Run(ctx, stdin, stdout)
+		done <- s.Run(ctx, stdin, stdoutW)
 	}()
 
 	// Give Run a moment to process.
 	time.Sleep(100 * time.Millisecond)
 
 	var resp rpcMessage
-	if err := json.NewDecoder(stdout).Decode(&resp); err != nil {
+	if err := json.NewDecoder(stdoutR).Decode(&resp); err != nil {
 		t.Fatalf("decode response: %v", err)
 	}
 	if resp.ID == nil {
