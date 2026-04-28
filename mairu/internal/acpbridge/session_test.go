@@ -9,6 +9,54 @@ import (
 	"time"
 )
 
+func TestSessionFanoutConcurrentUnsubscribeNoRaceNoPanic(t *testing.T) {
+	bin := buildFixture(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	sess, err := StartSession(ctx, "race-1", AgentSpec{Command: bin}, NewRing(64))
+	if err != nil {
+		t.Fatalf("start: %v", err)
+	}
+	defer sess.Close()
+
+	const N = 8
+	subs := make([]<-chan StampedFrame, N)
+	for i := range subs {
+		subs[i] = sess.Subscribe()
+	}
+
+	// Drain everything in the background.
+	for _, sub := range subs {
+		go func(c <-chan StampedFrame) {
+			for range c {
+			}
+		}(sub)
+	}
+
+	// Spam Send + Unsubscribe concurrently.
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < 500; i++ {
+			_ = sess.Send([]byte(`{"jsonrpc":"2.0","method":"ping"}`))
+		}
+		close(done)
+	}()
+
+	// Unsubscribe in random order while sends are in flight.
+	for i, sub := range subs {
+		if i%2 == 0 {
+			sess.Unsubscribe(sub)
+		}
+	}
+	<-done
+	for i, sub := range subs {
+		if i%2 == 1 {
+			sess.Unsubscribe(sub)
+		}
+	}
+}
+
 // buildFixture compiles testdata/echo_acp/ into a temp file and returns its path.
 func buildFixture(t *testing.T) string {
 	t.Helper()

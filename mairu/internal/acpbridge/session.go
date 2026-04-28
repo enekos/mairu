@@ -88,14 +88,15 @@ func (s *Session) waitLoop() {
 	s.closeAllSubscribers()
 }
 
+// fanout delivers sf to every current subscriber on a non-blocking basis.
+// The session mutex is held for the whole fan-out to serialize against
+// Unsubscribe and closeAllSubscribers — so a subscriber channel cannot be
+// closed underneath us mid-send. The send is non-blocking (default branch),
+// so the lock is held only for as long as a slice walk takes.
 func (s *Session) fanout(sf StampedFrame) {
 	s.mu.Lock()
-	subs := make([]chan StampedFrame, 0, len(s.subscribers))
+	defer s.mu.Unlock()
 	for ch := range s.subscribers {
-		subs = append(subs, ch)
-	}
-	s.mu.Unlock()
-	for _, ch := range subs {
 		select {
 		case ch <- sf:
 		default:
