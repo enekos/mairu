@@ -81,6 +81,3 @@ func (b *Bridge) Shutdown(ctx context.Context) error {
 	}
 	return b.srv.Shutdown(ctx)
 }
-
-// errors is used by New; keep the import live.
-var _ = errors.New
