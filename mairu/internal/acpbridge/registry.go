@@ -49,6 +49,12 @@ func (r *Registry) Create(ctx context.Context, agent string, specs map[string]Ag
 	if err != nil {
 		return "", err
 	}
+	pm := NewPermissionMux(60 * time.Second)
+	pm.OnTimeout = func(synthetic []byte) {
+		// Send adds its own newline; pass the raw JSON-RPC frame.
+		_ = sess.Send(synthetic)
+	}
+	sess.PermissionMux = pm
 	now := time.Now()
 	r.mu.Lock()
 	r.sessions[id] = &entry{

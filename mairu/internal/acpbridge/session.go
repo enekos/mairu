@@ -2,6 +2,7 @@ package acpbridge
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -14,6 +15,8 @@ type Session struct {
 	ID    string
 	Agent string
 	Spec  AgentSpec
+
+	PermissionMux *PermissionMux // optional; nil disables fallback
 
 	cmd    *exec.Cmd
 	stdin  io.WriteCloser
@@ -73,6 +76,11 @@ func (s *Session) readLoop() {
 		copy(frame, line)
 		id := s.ring.Push(frame)
 		s.fanout(StampedFrame{ID: id, Frame: frame})
+		if s.PermissionMux != nil && bytes.Contains(frame, []byte(`"method":"session/request_permission"`)) {
+			if rid := extractRequestID(frame); rid != nil {
+				s.PermissionMux.Track(context.Background(), rid, string(frame))
+			}
+		}
 	}
 }
 
@@ -136,6 +144,15 @@ func (s *Session) Send(frame []byte) error {
 		return errors.New("session closed")
 	}
 	s.mu.Unlock()
+	if s.PermissionMux != nil {
+		// A response from a client. Best-effort: if it carries an id and no
+		// method, treat as permission resolution.
+		if !bytes.Contains(frame, []byte(`"method"`)) {
+			if id := extractRequestID(frame); id != nil {
+				s.PermissionMux.Resolve(id)
+			}
+		}
+	}
 	if _, err := s.stdin.Write(frame); err != nil {
 		return err
 	}
@@ -173,3 +190,34 @@ func (s *Session) Close() error {
 
 // Done returns a channel that is closed when the agent process exits.
 func (s *Session) Done() <-chan struct{} { return s.doneCh }
+
+// extractRequestID does a best-effort extraction of the JSON-RPC id from
+// a frame. It returns nil if no id is found. It does NOT fully parse the
+// JSON; this is intentional — frames must be passed through as-is.
+func extractRequestID(frame []byte) []byte {
+	const key = `"id":`
+	i := bytes.Index(frame, []byte(key))
+	if i < 0 {
+		return nil
+	}
+	j := i + len(key)
+	for j < len(frame) && (frame[j] == ' ' || frame[j] == '\t') {
+		j++
+	}
+	end := j
+	depth := 0
+	for end < len(frame) {
+		c := frame[end]
+		if depth == 0 && (c == ',' || c == '}') {
+			break
+		}
+		if c == '{' || c == '[' {
+			depth++
+		}
+		if c == '}' || c == ']' {
+			depth--
+		}
+		end++
+	}
+	return frame[j:end]
+}
