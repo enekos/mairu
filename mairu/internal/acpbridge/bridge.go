@@ -5,7 +5,10 @@ package acpbridge
 import (
 	"context"
 	"errors"
+	"net"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // Options configures a Bridge instance.
@@ -21,6 +24,9 @@ type Bridge struct {
 	opts     Options
 	registry *Registry
 	srv      *http.Server
+	listener net.Listener
+	mu       sync.RWMutex
+	addr     string
 }
 
 // New validates opts and returns a ready-to-start Bridge.
@@ -41,7 +47,40 @@ func New(opts Options) (*Bridge, error) {
 }
 
 // Start begins serving ACP connections. Blocks until ctx is cancelled.
-func (b *Bridge) Start(ctx context.Context) error { return errors.New("not implemented") }
+func (b *Bridge) Start(ctx context.Context) error {
+	ln, err := net.Listen("tcp", b.opts.Addr)
+	if err != nil {
+		return err
+	}
+	b.listener = ln
+	b.mu.Lock()
+	b.addr = ln.Addr().String()
+	b.srv = &http.Server{Handler: b.Mux()}
+	b.mu.Unlock()
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_ = b.srv.Shutdown(shutdownCtx)
+	}()
+	return b.srv.Serve(ln)
+}
+
+// ListenAddr returns the actual address the bridge is listening on.
+// Returns an empty string if the bridge has not started yet.
+func (b *Bridge) ListenAddr() string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.addr
+}
 
 // Shutdown gracefully stops the bridge.
-func (b *Bridge) Shutdown(ctx context.Context) error { return nil }
+func (b *Bridge) Shutdown(ctx context.Context) error {
+	if b.srv == nil {
+		return nil
+	}
+	return b.srv.Shutdown(ctx)
+}
+
+// errors is used by New; keep the import live.
+var _ = errors.New
