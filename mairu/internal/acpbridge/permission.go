@@ -32,6 +32,11 @@ func (p *PermissionMux) Track(ctx context.Context, id []byte, _frame string) {
 	key := string(id)
 	done := make(chan struct{})
 	p.mu.Lock()
+	if _, exists := p.pending[key]; exists {
+		// Duplicate id from agent; first tracker still running. Ignore.
+		p.mu.Unlock()
+		return
+	}
 	p.pending[key] = done
 	p.mu.Unlock()
 

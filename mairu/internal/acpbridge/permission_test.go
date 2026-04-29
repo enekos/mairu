@@ -43,3 +43,37 @@ func TestPermissionResolveBeforeTimeout(t *testing.T) {
 	case <-time.After(100 * time.Millisecond):
 	}
 }
+
+func TestPermissionTrackDuplicateIDIsNoop(t *testing.T) {
+	pm := NewPermissionMux(50 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	count := 0
+	gotAgent := make(chan struct{}, 4)
+	pm.OnTimeout = func([]byte) {
+		count++
+		gotAgent <- struct{}{}
+	}
+
+	// Track the same id twice — second call must be ignored.
+	pm.Track(ctx, []byte("9"), "")
+	pm.Track(ctx, []byte("9"), "")
+
+	// Wait for the (single) timeout to fire.
+	select {
+	case <-gotAgent:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("timeout never fired")
+	}
+
+	// Make sure no second timeout fires.
+	select {
+	case <-gotAgent:
+		t.Fatal("OnTimeout fired twice for duplicate Track")
+	case <-time.After(150 * time.Millisecond):
+	}
+	if count != 1 {
+		t.Fatalf("count = %d, want 1", count)
+	}
+}

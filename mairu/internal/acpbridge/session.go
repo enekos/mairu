@@ -147,7 +147,7 @@ func (s *Session) Send(frame []byte) error {
 	if s.PermissionMux != nil {
 		// A response from a client. Best-effort: if it carries an id and no
 		// method, treat as permission resolution.
-		if !bytes.Contains(frame, []byte(`"method"`)) {
+		if !bytes.Contains(frame, []byte(`"method":`)) {
 			if id := extractRequestID(frame); id != nil {
 				s.PermissionMux.Resolve(id)
 			}
