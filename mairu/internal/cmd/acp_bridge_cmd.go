@@ -20,8 +20,8 @@ import (
 // and locally-spawned ACP agents.
 func NewACPBridgeCmd() *cobra.Command {
 	var (
-		addr   string
-		noAuth bool
+		addr        string
+		noTailscale bool
 	)
 
 	cmd := &cobra.Command{
@@ -30,13 +30,17 @@ func NewACPBridgeCmd() *cobra.Command {
 		Long: `Starts a WebSocket server that proxies ACP JSON-RPC frames between
 remote clients (e.g. mairu-mobile) and locally-spawned ACP agents.
 
-By default the bridge binds 127.0.0.1:7777 and accepts any peer (use only
-behind a tailnet). Pass --no-auth=false to enable the pluggable peer
-authorizer (currently no real Tailscale identity wiring; see plan).`,
+By default the bridge binds 127.0.0.1:7777. Without --no-tailscale the
+bridge expects to run behind a Tailscale identity gate (tsnet wiring is
+deferred; until then --no-tailscale is required for the daemon to start).
+Pass --no-tailscale to bypass the gate for development, CI, and the
+mobile e2e harness.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := acpbridge.Options{Addr: addr}
-			if noAuth {
+			if noTailscale {
 				opts.Authorizer = acpbridge.AllowAll{}
+			} else {
+				return errors.New("acp-bridge: Tailscale identity gate is not yet wired; pass --no-tailscale to run without auth (development only)")
 			}
 			b, err := acpbridge.New(opts)
 			if err != nil {
@@ -46,7 +50,7 @@ authorizer (currently no real Tailscale identity wiring; see plan).`,
 			ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 			defer cancel()
 
-			fmt.Fprintf(cmd.ErrOrStderr(), "acp-bridge listening on %s\n", addr)
+			fmt.Fprintf(cmd.ErrOrStderr(), "acp-bridge listening on %s (auth: allow-all)\n", addr)
 			if err := b.Start(ctx); err != nil && !errors.Is(err, http.ErrServerClosed) {
 				return err
 			}
@@ -55,6 +59,6 @@ authorizer (currently no real Tailscale identity wiring; see plan).`,
 	}
 
 	cmd.Flags().StringVar(&addr, "addr", "127.0.0.1:7777", "Listen address")
-	cmd.Flags().BoolVar(&noAuth, "no-auth", true, "Disable peer auth (development; tailnet recommended)")
+	cmd.Flags().BoolVar(&noTailscale, "no-tailscale", false, "Bypass Tailscale identity gate (development only)")
 	return cmd
 }
