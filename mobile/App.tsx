@@ -10,6 +10,7 @@ import { WSTransport } from "./src/acp/transport";
 import { ACPClient } from "./src/acp/client";
 import { attachSession } from "./src/state/sessionGlue";
 import { Recorder } from "./src/voice/recorder";
+import { ConnectionDot } from "./src/ui/ConnectionDot";
 
 export default function App() {
   const host = useStore((s) => s.host);
@@ -68,6 +69,7 @@ export default function App() {
     <SafeAreaView style={s.full}>
       <View style={s.header}>
         <Text style={s.h}>mairu</Text>
+        <ConnectionDot />
       </View>
       {!sid ? (
         <SessionPicker />
@@ -100,6 +102,13 @@ export default function App() {
 
 const s = StyleSheet.create({
   full: { flex: 1 },
-  header: { padding: 12, borderBottomWidth: 1, borderColor: "#eee" },
+  header: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   h: { fontWeight: "700" },
 });
