@@ -43,6 +43,12 @@ pnpm-debug.log*
 mairu/ui/test-results/
 mairu/ui/playwright-report/
 
+# Expo / React Native
+mobile/.expo/
+mobile/web-build/
+mobile/ios/
+mobile/android/
+
 # Daemon persistent cache
 .contextfs-cache.json
 .contextfs-cache.json.tmp
