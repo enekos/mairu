@@ -50,9 +50,8 @@ func TruncateHead(content string, maxLines, maxBytes int) TruncateResult {
 	}
 
 	totalBytes := len(content)
-	lines := strings.Split(content, "\n")
-	totalLines := len(lines)
-
+	// Fast path: count lines without splitting.
+	totalLines := strings.Count(content, "\n") + 1
 	if totalLines <= maxLines && totalBytes <= maxBytes {
 		return TruncateResult{
 			Content: content, Truncated: false,
@@ -62,14 +61,17 @@ func TruncateHead(content string, maxLines, maxBytes int) TruncateResult {
 		}
 	}
 
-	out := make([]string, 0, maxLines)
+	// Scan forward without allocating a lines slice.
 	bytesUsed := 0
+	linesKept := 0
 	by := "lines"
-	for i, line := range lines {
-		if i >= maxLines {
-			break
+	var i int
+	for i = 0; i < len(content); {
+		j := i
+		for j < len(content) && content[j] != '\n' {
+			j++
 		}
-		add := len(line)
+		add := j - i
 		if i > 0 {
 			add++ // newline
 		}
@@ -77,17 +79,30 @@ func TruncateHead(content string, maxLines, maxBytes int) TruncateResult {
 			by = "bytes"
 			break
 		}
-		out = append(out, line)
 		bytesUsed += add
+		linesKept++
+		if linesKept >= maxLines {
+			by = "lines"
+			// Move j past the newline so the cut includes it.
+			if j < len(content) && content[j] == '\n' {
+				j++
+			}
+			i = j
+			break
+		}
+		if j < len(content) && content[j] == '\n' {
+			j++
+		}
+		i = j
 	}
-	if len(out) >= maxLines && bytesUsed <= maxBytes {
-		by = "lines"
+	outStr := content[:i]
+	if i > 0 && content[i-1] == '\n' {
+		outStr = content[:i-1]
 	}
-	outStr := strings.Join(out, "\n")
 	return TruncateResult{
 		Content: outStr, Truncated: true, TruncatedBy: by,
 		TotalLines: totalLines, TotalBytes: totalBytes,
-		OutputLines: len(out), OutputBytes: len(outStr),
+		OutputLines: linesKept, OutputBytes: len(outStr),
 		MaxLines: maxLines, MaxBytes: maxBytes,
 	}
 }
@@ -103,9 +118,8 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 	}
 
 	totalBytes := len(content)
-	lines := strings.Split(content, "\n")
-	totalLines := len(lines)
-
+	// Fast path: count lines without splitting.
+	totalLines := strings.Count(content, "\n") + 1
 	if totalLines <= maxLines && totalBytes <= maxBytes {
 		return TruncateResult{
 			Content: content, Truncated: false,
@@ -115,49 +129,58 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 		}
 	}
 
-	// Collect lines in reverse order to avoid O(n²) slice prepends.
-	rev := make([]string, 0, maxLines)
+	// Scan backward without allocating a lines slice.
 	bytesUsed := 0
+	linesKept := 0
 	by := "lines"
-	for i := len(lines) - 1; i >= 0 && len(rev) < maxLines; i-- {
-		line := lines[i]
-		add := len(line)
-		if len(rev) > 0 {
+	var i int = len(content)
+	for i > 0 && linesKept < maxLines {
+		j := i - 1
+		for j > 0 && content[j-1] != '\n' {
+			j--
+		}
+		add := i - j
+		if linesKept > 0 {
 			add++ // newline
 		}
 		if bytesUsed+add > maxBytes {
 			by = "bytes"
 			// Edge case: single line bigger than maxBytes — keep its tail.
-			if len(rev) == 0 {
-				start := len(line) - maxBytes
-				if start < 0 {
-					start = 0
+			if linesKept == 0 {
+				start := j + (i - j) - maxBytes
+				if start < j {
+					start = j
 				}
 				// Walk forward to a valid UTF-8 boundary.
-				for start < len(line) && !utf8.RuneStart(line[start]) {
+				for start < i && !utf8.RuneStart(content[start]) {
 					start++
 				}
-				rev = append(rev, line[start:])
-				bytesUsed = len(line) - start
+				return TruncateResult{
+					Content:     content[start:],
+					Truncated:   true,
+					TruncatedBy: "bytes",
+					TotalLines:  totalLines,
+					TotalBytes:  totalBytes,
+					OutputLines: 1,
+					OutputBytes: i - start,
+					MaxLines:    maxLines,
+					MaxBytes:    maxBytes,
+				}
 			}
 			break
 		}
-		rev = append(rev, line)
 		bytesUsed += add
+		linesKept++
+		i = j
 	}
-	if len(rev) >= maxLines && bytesUsed <= maxBytes {
+	if linesKept >= maxLines && bytesUsed <= maxBytes {
 		by = "lines"
 	}
-	// Reverse rev into out to restore original order.
-	out := make([]string, len(rev))
-	for i, j := 0, len(rev)-1; j >= 0; i, j = i+1, j-1 {
-		out[i] = rev[j]
-	}
-	outStr := strings.Join(out, "\n")
+	// i now points to the start of the first kept line.
 	return TruncateResult{
-		Content: outStr, Truncated: true, TruncatedBy: by,
+		Content: content[i:], Truncated: true, TruncatedBy: by,
 		TotalLines: totalLines, TotalBytes: totalBytes,
-		OutputLines: len(out), OutputBytes: len(outStr),
+		OutputLines: linesKept, OutputBytes: len(content) - i,
 		MaxLines: maxLines, MaxBytes: maxBytes,
 	}
 }
