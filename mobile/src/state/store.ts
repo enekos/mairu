@@ -28,6 +28,7 @@ type StoreState = {
   selectedSessionId: string | null;
   eventsBySession: Record<string, TimelineEvent[]>;
   pendingPermissions: PermissionRequest[];
+  activeTurnsBySession: Record<string, boolean>;
 };
 
 type StoreActions = {
@@ -37,6 +38,7 @@ type StoreActions = {
   appendEvent: (sessionId: string, ev: TimelineEvent) => void;
   pushPermission: (p: PermissionRequest) => void;
   resolvePermission: (id: number | string) => void;
+  setActiveTurn: (sessionId: string, active: boolean) => void;
   reset: () => void;
 };
 
@@ -46,6 +48,7 @@ const initial: StoreState = {
   selectedSessionId: null,
   eventsBySession: {},
   pendingPermissions: [],
+  activeTurnsBySession: {},
 };
 
 export const useStore = create<StoreState & StoreActions>((set) => ({
@@ -66,6 +69,10 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
     set((st) => ({
       pendingPermissions: st.pendingPermissions.filter((p) => p.id !== id),
     })),
+  setActiveTurn: (sid, active) =>
+    set((st) => ({
+      activeTurnsBySession: { ...st.activeTurnsBySession, [sid]: active },
+    })),
   reset: () =>
     set({
       host: initial.host,
@@ -73,5 +80,6 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
       selectedSessionId: initial.selectedSessionId,
       eventsBySession: {},
       pendingPermissions: [],
+      activeTurnsBySession: {},
     }),
 }));

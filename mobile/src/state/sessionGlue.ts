@@ -17,7 +17,16 @@ export function attachSession(client: ACPClient, sessionId: string) {
 
   client.onNotification((f) => {
     if (f.method !== "session/update" || !f.params) return;
-    const ev = mapUpdate(f.params);
+    const p: any = f.params;
+    if (p?.kind === "turn_started") {
+      store.setActiveTurn(sessionId, true);
+      return;
+    }
+    if (p?.kind === "turn_ended") {
+      store.setActiveTurn(sessionId, false);
+      return;
+    }
+    const ev = mapUpdate(p);
     if (!ev) return;
     store.appendEvent(sessionId, { ...ev, eventId: f.eventId });
   });

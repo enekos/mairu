@@ -16,6 +16,9 @@ export default function App() {
   const setHost = useStore((s) => s.setHost);
   const setConn = useStore((s) => s.setConnection);
   const pending = useStore((s) => s.pendingPermissions);
+  const activeTurn = useStore((s) =>
+    s.selectedSessionId ? !!s.activeTurnsBySession[s.selectedSessionId] : false,
+  );
 
   // Restore stored host on cold start.
   useEffect(() => {
@@ -59,7 +62,7 @@ export default function App() {
         <>
           <Timeline />
           <Composer
-            active={false}
+            active={activeTurn}
             onSubmit={(text) => wired?.c.notify("session/prompt", { text })}
             onCancel={() => wired?.c.notify("session/cancel", {})}
           />

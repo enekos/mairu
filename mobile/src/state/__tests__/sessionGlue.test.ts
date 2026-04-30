@@ -48,6 +48,34 @@ test("converts user_message into user event", () => {
   expect(useStore.getState().eventsBySession["s1"]![0]!.kind).toBe("user");
 });
 
+test("turn_started sets activeTurns; turn_ended clears it", () => {
+  const t = new WSTransport({ baseUrl: "ws://h:7777/acp", sessionId: "s1" });
+  const c = new ACPClient(t);
+  attachSession(c, "s1");
+  t.connect();
+  FakeWebSocket.instances[0]!.open();
+  FakeWebSocket.instances[0]!.recv(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      method: "session/update",
+      params: { kind: "turn_started" },
+      "x-mairu-event-id": 1,
+    }),
+  );
+  expect(useStore.getState().activeTurnsBySession["s1"]).toBe(true);
+  FakeWebSocket.instances[0]!.recv(
+    JSON.stringify({
+      jsonrpc: "2.0",
+      method: "session/update",
+      params: { kind: "turn_ended" },
+      "x-mairu-event-id": 2,
+    }),
+  );
+  expect(useStore.getState().activeTurnsBySession["s1"]).toBe(false);
+  // turn_started/turn_ended don't pollute the timeline
+  expect(useStore.getState().eventsBySession["s1"]).toBeUndefined();
+});
+
 test("permission requests land in pendingPermissions and reply when resolved", async () => {
   const t = new WSTransport({ baseUrl: "ws://h:7777/acp", sessionId: "s1" });
   const c = new ACPClient(t);
