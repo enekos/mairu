@@ -13,6 +13,7 @@ GO_LDFLAGS ?= -s -w
 .PHONY: meili-up meili-down meili-status meili-clean setup-no-docker dev-no-docker mairu-no-docker
 .PHONY: build-browser-extension install-browser-extension test-browser-extension
 .PHONY: mairu-build-slim mairu-build-headless mairu-build-contextsrvonly
+.PHONY: mobile-install mobile-test mobile-e2e mobile-lint mobile-typecheck mobile-start
 
 help:
 	@echo "mairu monorepo Makefile"
@@ -33,6 +34,14 @@ help:
 	@echo "  make build-browser-extension    Build the browser extension and native host"
 	@echo "  make install-browser-extension  Install the native host for Chrome"
 	@echo "  make test-browser-extension     Run tests for the browser extension"
+	@echo
+	@echo "Mobile (Expo):"
+	@echo "  make mobile-install     Install JS deps for mobile/"
+	@echo "  make mobile-test        Run jest unit suite"
+	@echo "  make mobile-e2e         Run jest e2e suite (requires acpbridge in tree)"
+	@echo "  make mobile-lint        Run eslint"
+	@echo "  make mobile-typecheck   Run tsc --noEmit"
+	@echo "  make mobile-start       Start the Expo dev server"
 	@echo
 	@echo "Runtime:"
 	@echo "  make setup              Initialize indexes (requires Meilisearch)"
@@ -224,3 +233,21 @@ test-browser-extension:
 	cd browser-extension && cargo test
 	cd browser-extension/extension && bun install --silent && bun run test
 	@if [ "$$MAIRU_EXT_E2E" = "1" ]; then cd browser-extension/e2e && bun install --silent && bunx playwright test; fi
+
+mobile-install:
+	cd mobile && bun install
+
+mobile-test:
+	cd mobile && bun run test
+
+mobile-e2e:
+	cd mobile && bun run e2e
+
+mobile-lint:
+	cd mobile && bun run lint
+
+mobile-typecheck:
+	cd mobile && bun run typecheck
+
+mobile-start:
+	cd mobile && bun run start
