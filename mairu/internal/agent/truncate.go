@@ -115,19 +115,20 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 		}
 	}
 
-	out := make([]string, 0, maxLines)
+	// Collect lines in reverse order to avoid O(n²) slice prepends.
+	rev := make([]string, 0, maxLines)
 	bytesUsed := 0
 	by := "lines"
-	for i := len(lines) - 1; i >= 0 && len(out) < maxLines; i-- {
+	for i := len(lines) - 1; i >= 0 && len(rev) < maxLines; i-- {
 		line := lines[i]
 		add := len(line)
-		if len(out) > 0 {
-			add++
+		if len(rev) > 0 {
+			add++ // newline
 		}
 		if bytesUsed+add > maxBytes {
 			by = "bytes"
 			// Edge case: single line bigger than maxBytes — keep its tail.
-			if len(out) == 0 {
+			if len(rev) == 0 {
 				start := len(line) - maxBytes
 				if start < 0 {
 					start = 0
@@ -136,16 +137,21 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 				for start < len(line) && !utf8.RuneStart(line[start]) {
 					start++
 				}
-				out = append([]string{line[start:]}, out...)
+				rev = append(rev, line[start:])
 				bytesUsed = len(line) - start
 			}
 			break
 		}
-		out = append([]string{line}, out...)
+		rev = append(rev, line)
 		bytesUsed += add
 	}
-	if len(out) >= maxLines && bytesUsed <= maxBytes {
+	if len(rev) >= maxLines && bytesUsed <= maxBytes {
 		by = "lines"
+	}
+	// Reverse rev into out to restore original order.
+	out := make([]string, len(rev))
+	for i, j := 0, len(rev)-1; j >= 0; i, j = i+1, j-1 {
+		out[i] = rev[j]
 	}
 	outStr := strings.Join(out, "\n")
 	return TruncateResult{

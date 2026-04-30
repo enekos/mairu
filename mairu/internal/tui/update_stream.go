@@ -52,6 +52,7 @@ func (m *model) handleAgentStream(msg agentStreamMsg) tea.Cmd {
 			m.autoScroll()
 
 			m.thinking = true
+			m.thinkingStartedAt = time.Now()
 			m.refreshThinkingIndicator(time.Now(), true)
 			m.currentResponse = ""
 			m.toolEvents = nil

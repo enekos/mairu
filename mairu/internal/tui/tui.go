@@ -56,6 +56,7 @@ type model struct {
 	thinkingGlyph      string
 	thinkingPhrase     string
 	nextPhraseSwitchAt time.Time
+	thinkingStartedAt  time.Time
 
 	currentResponse   string
 	currentBashOutput string
@@ -195,6 +196,12 @@ func tickAnim() tea.Cmd {
 	})
 }
 
+func tickAnimSlow() tea.Cmd {
+	return tea.Tick(time.Millisecond*100, func(t time.Time) tea.Msg {
+		return animTickMsg(t)
+	})
+}
+
 func (m model) Init() tea.Cmd {
 	return tea.Batch(textarea.Blink, m.spinner.Tick, tickAnim())
 }
@@ -237,7 +244,7 @@ func (m *model) recomputeLayout() {
 	if len(m.sessions) > 0 {
 		sessionTabsHeight = 2
 	}
-	panesHeight := m.height - taHeight - 3 - sessionTabsHeight
+	panesHeight := m.height - taHeight - 4 - sessionTabsHeight
 	if panesHeight < 7 {
 		panesHeight = 7
 	}

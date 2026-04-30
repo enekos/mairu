@@ -21,17 +21,28 @@ func (m *model) renderMessages() {
 		switch msg.Role {
 		case "System":
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			chunk = systemStyle.Render("◇ System "+header) + "\n" + systemStyle.Render(rendered) + "\n"
+			head := rolePillSystem.Render(" ◇ system ") + " " + sidebarLabelStyle.Render(header)
+			body := systemAccentBar.Render(strings.TrimRight(rendered, "\n"))
+			chunk = head + "\n" + body + "\n\n"
 		case "You":
-			chunk = userStyle.Render("○ You "+header) + "\n" + msg.Content + "\n\n"
+			head := rolePillUser.Render(" ○ you ") + " " + sidebarLabelStyle.Render(header)
+			body := userAccentBar.Render(msg.Content)
+			chunk = head + "\n" + body + "\n\n"
 		case "Error":
-			chunk = errorStyle.Render("✗ Error "+header) + "\n" + msg.Content + "\n\n"
+			head := rolePillError.Render(" ✗ error ") + " " + sidebarLabelStyle.Render(header)
+			body := errorAccentBar.Render(errorStyle.Render(strings.TrimRight(msg.Content, "\n")))
+			chunk = head + "\n" + body + "\n\n"
 		case "Diff":
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			chunk = sidebarLabelStyle.Render("⎇ Diff "+header) + "\n" + rendered + "\n"
+			head := lipgloss.NewStyle().Background(colorInfo).Foreground(lipgloss.Color("#19181a")).Bold(true).Padding(0, 1).Render(" ⎇ diff ") + " " + sidebarLabelStyle.Render(header)
+			chunk = head + "\n" + rendered + "\n"
 		default:
 			rendered, _ := m.mdRenderer.Render(msg.Content)
-			chunk = agentStyle.Render("● Mairu "+header) + "\n" + rendered + "\n"
+			// Static gradient label for completed agent messages.
+			roleLabel := gradientText(" ● mairu ", agentGradient, 0, true)
+			head := rolePillAgent.Render(roleLabel) + " " + sidebarLabelStyle.Render(header)
+			body := agentAccentBar.Render(strings.TrimRight(rendered, "\n"))
+			chunk = head + "\n" + body + "\n\n"
 			showEvents := msg.Expanded || (m.sidebarMode == "explore" && m.selectedMessage == idx)
 			if showEvents && len(msg.ToolEvents) > 0 {
 				var toolSb strings.Builder
@@ -41,7 +52,7 @@ func (m *model) renderMessages() {
 					if msg.Expanded || isFocused {
 						evStr := renderExpandedToolEventBox(e)
 						if isFocused {
-							evStr = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, false, true).BorderForeground(lipgloss.Color("#88c0d0")).PaddingLeft(1).Render(evStr)
+							evStr = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, false, true).BorderForeground(colorPrompt).PaddingLeft(1).Render(evStr)
 						}
 						toolSb.WriteString(evStr + "\n")
 					} else {
@@ -57,12 +68,19 @@ func (m *model) renderMessages() {
 	}
 
 	if m.thinking {
+		// Animated streaming label: rainbow gradient that sweeps with animFrame.
+		phase := math.Mod(float64(m.animFrame)*0.02, 1.0)
+		roleLabel := gradientText(" ● mairu ", []string{"#ff6188", "#fc9867", "#ffd866", "#a9dc76", "#78dce8", "#ab9df2"}, phase, true)
+		streamingTag := lipgloss.NewStyle().Foreground(pulseColor(m.animFrame)).Italic(true).Render(" streaming…")
 		var chunk string
 		if m.currentResponse != "" {
 			rendered, _ := m.mdRenderer.Render(m.currentResponse)
-			chunk = agentStyle.Render("● Mairu (streaming)") + "\n" + rendered + "\n"
+			head := rolePillAgent.Render(roleLabel) + streamingTag
+			body := agentAccentBar.BorderForeground(pulseColor(m.animFrame)).Render(strings.TrimRight(rendered, "\n"))
+			chunk = head + "\n" + body + "\n"
 		} else {
-			chunk = agentStyle.Render("● Mairu (streaming)") + "\n\n"
+			head := rolePillAgent.Render(roleLabel) + streamingTag
+			chunk = head + "\n\n"
 		}
 		sb.WriteString(chunk)
 		if len(m.toolEvents) > 0 {
@@ -103,7 +121,7 @@ func (m model) renderSessionTabs() string {
 
 func (m model) View() string {
 	if m.showAnim {
-		return m.renderAnimation()
+		return m.renderSplash()
 	}
 	if m.showList {
 		return m.listModel.View()
@@ -127,10 +145,13 @@ func (m model) View() string {
 		m.recomputeLayout()
 	}
 
-	chatPane := chatPaneStyle.
+	cps := chatPaneStyle.
 		Width(m.chatPaneWidth).
-		Height(m.panesHeight).
-		Render(m.renderPaneTabs() + "\n" + m.viewport.View())
+		Height(m.panesHeight)
+	if m.thinking {
+		cps = cps.BorderForeground(streamingBorderColor(m.animFrame))
+	}
+	chatPane := cps.Render(m.renderPaneTabs() + "\n" + m.viewport.View())
 	mainRow := chatPane
 	if m.sidebarWidth > 0 {
 		sidebarPane := sidebarPaneStyle.
@@ -146,19 +167,15 @@ func (m model) View() string {
 	}
 
 	viewStr := fmt.Sprintf(
-		"%s\n%s\n%s%s\n%s",
+		"%s\n%s\n%s\n%s%s\n%s",
+		m.renderStatusBar(),
 		appStyle.Render(m.renderSessionTabs()),
 		appStyle.Render(mainRow),
 		acView,
 		appStyle.Render(inputView),
-		appStyle.Render(m.renderFooter()),
+		m.renderRichFooter(),
 	)
 	return viewStr
-}
-
-func (m model) renderFooter() string {
-	footer := "PgUp/PgDn scroll  ·  Home/End top-bottom  ·  Ctrl+F follow  ·  Ctrl+E sidebars  ·  Ctrl+O next tab  ·  Ctrl+N nvim  ·  Ctrl+G lazygit  ·  /help"
-	return footerStyle.Render(footer)
 }
 
 func (m model) renderPaneTabs() string {
@@ -194,56 +211,4 @@ func (m model) renderAutocomplete() string {
 		sb.WriteString(style.Render(fmt.Sprintf("%s%-18s %s", prefix, cmd.Name, cmd.Description)) + "\n")
 	}
 	return sb.String()
-}
-
-func (m model) renderAnimation() string {
-	width, height := m.width, m.height
-	if width <= 0 || height <= 0 {
-		return ""
-	}
-	chars := []rune(" 010101¦|/:=+")
-	var sb strings.Builder
-
-	// t goes from 0.0 to 1.0 over the ~400ms
-	t := float64(m.animFrame) / 20.0
-
-	for y := 0; y < height; y++ {
-		for x := 0; x < width; x++ {
-			// Crazy noise that changes significantly with x, y, and t
-			crazyNoise := math.Sin(float64(x)*0.5+t*10.0) * math.Cos(float64(y)*0.8-t*5.0)
-
-			// t goes 0 to 1. Wave propagates downwards but with crazy edges
-			wave := t*1.5 - float64(y)/float64(height) + crazyNoise*0.3
-
-			idx := 0
-			// wave > 0 means the wave has reached this point
-			// wave < 0.8 means it's the "tail" of the wave
-			if wave > 0 && wave < 0.8 {
-				// Characters change constantly
-				randVal := math.Sin(float64(x*17 + y*31 + m.animFrame*43))
-				charIdx := int((randVal+1.0)*0.5*float64(len(chars)-1)) + 1
-
-				// Fade out the tail
-				if wave > 0.6 {
-					charIdx = charIdx / 3
-				} else if wave > 0.4 {
-					charIdx = charIdx / 2
-				}
-
-				idx = charIdx
-			}
-
-			if idx < 0 {
-				idx = 0
-			}
-			if idx >= len(chars) {
-				idx = len(chars) - 1
-			}
-			sb.WriteRune(chars[idx])
-		}
-		if y < height-1 {
-			sb.WriteString("\n")
-		}
-	}
-	return lipgloss.NewStyle().Foreground(colorTool).Render(sb.String())
 }

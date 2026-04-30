@@ -52,8 +52,8 @@ func TestGeminiCacheIntegration(t *testing.T) {
 	hugePrompt := sb.String()
 
 	cacheName, err := provider.CacheContext(ctx, hugePrompt, 15*time.Minute)
-	if status.Code(err) == codes.PermissionDenied {
-		t.Skip("Skipping Gemini cache integration test: API key is invalid or leaked")
+	if status.Code(err) == codes.PermissionDenied || status.Code(err) == codes.InvalidArgument {
+		t.Skip("Skipping Gemini cache integration test: API key is invalid or missing")
 	}
 	assert.NoError(t, err)
 	assert.NotEmpty(t, cacheName)

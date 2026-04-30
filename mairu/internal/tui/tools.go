@@ -93,13 +93,14 @@ func previewToolValue(v any, maxLen int) string {
 
 func renderToolEventBox(ev toolEvent) string {
 	var body strings.Builder
+	icon := toolKindIcon(ev.Kind)
 	switch ev.Kind {
 	case "call":
-		body.WriteString(toolCallTitleStyle.Render(ev.Title))
+		body.WriteString(toolCallTitleStyle.Render(icon + "  " + ev.Title))
 	case "result":
-		body.WriteString(toolResultTitleStyle.Render(ev.Title))
+		body.WriteString(toolResultTitleStyle.Render(icon + "  " + ev.Title))
 	default:
-		body.WriteString(toolStatusTitleStyle.Render(ev.Title))
+		body.WriteString(toolStatusTitleStyle.Render(icon + "  " + ev.Title))
 	}
 	if len(ev.Lines) > 0 {
 		for _, line := range ev.Lines {
@@ -129,13 +130,14 @@ func renderToolEventBox(ev toolEvent) string {
 
 func renderExpandedToolEventBox(ev toolEvent) string {
 	var body strings.Builder
+	icon := toolKindIcon(ev.Kind)
 	switch ev.Kind {
 	case "call":
-		body.WriteString(toolCallTitleStyle.Render(ev.Title))
+		body.WriteString(toolCallTitleStyle.Render(icon + "  " + ev.Title))
 	case "result":
-		body.WriteString(toolResultTitleStyle.Render(ev.Title))
+		body.WriteString(toolResultTitleStyle.Render(icon + "  " + ev.Title))
 	default:
-		body.WriteString(toolStatusTitleStyle.Render(ev.Title))
+		body.WriteString(toolStatusTitleStyle.Render(icon + "  " + ev.Title))
 	}
 
 	if ev.Raw != nil {

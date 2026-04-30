@@ -52,13 +52,18 @@ func (m model) handleDeleteItemMsg(msg deleteItemMsg) (tea.Model, tea.Cmd) {
 func (m model) handleAnimTickMsg(msg animTickMsg) (model, tea.Cmd, bool) {
 	if m.showAnim {
 		m.animFrame++
-		if m.animFrame > 20 {
+		if m.animFrame > splashTotalFrames {
 			m.showAnim = false
 			m.recomputeLayout()
 			m.renderMessages()
 			return m, nil, true
 		}
 		return m, tickAnim(), true
+	}
+	if m.thinking {
+		// Advance animFrame so streaming border, brand pill, and glyph animate.
+		m.animFrame++
+		return m, tickAnim(), false
 	}
 	return m, nil, false
 }

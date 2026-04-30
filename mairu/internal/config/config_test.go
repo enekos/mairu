@@ -50,6 +50,10 @@ func TestFindProjectConfig_StopsAtGitBoundary(t *testing.T) {
 func TestLoad_Defaults(t *testing.T) {
 	// Point viper away from real config files
 	t.Setenv("HOME", t.TempDir())
+	// Isolate from legacy env vars that override defaults
+	t.Setenv("DASHBOARD_API_PORT", "")
+	t.Setenv("EMBEDDING_MODEL", "")
+	t.Setenv("EMBEDDING_DIM", "")
 
 	cfg, err := Load(t.TempDir()) // no .mairu.toml in this dir
 	if err != nil {
@@ -89,6 +93,8 @@ func TestLoad_Defaults(t *testing.T) {
 func TestLoad_UserConfigOverridesDefaults(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	// Isolate from legacy env vars that would override user config
+	t.Setenv("DASHBOARD_API_PORT", "")
 	configDir := filepath.Join(home, ".config", "mairu")
 	os.MkdirAll(configDir, 0755)
 	os.WriteFile(filepath.Join(configDir, "config.toml"), []byte(`

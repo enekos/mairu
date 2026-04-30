@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
@@ -40,9 +41,14 @@ func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 		endIdx = totalLines
 	}
 
+	// Pre-allocate builder: content length + ~8 bytes per line for "NNNN: \n"
 	var sb strings.Builder
+	sb.Grow(len(content) + (endIdx-startIdx)*8)
 	for i := startIdx; i < endIdx; i++ {
-		sb.WriteString(fmt.Sprintf("%d: %s\n", i+1, lines[i]))
+		sb.WriteString(strconv.Itoa(i + 1))
+		sb.WriteString(": ")
+		sb.WriteString(lines[i])
+		sb.WriteByte('\n')
 	}
 
 	res := sb.String()

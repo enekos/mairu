@@ -118,6 +118,7 @@ func (m model) handleEnter(msg tea.KeyMsg) (model, tea.Cmd, bool) {
 	m.autoScroll()
 
 	m.thinking = true
+	m.thinkingStartedAt = time.Now()
 	m.refreshThinkingIndicator(time.Now(), true)
 	m.currentResponse = ""
 	m.toolEvents = nil
@@ -125,6 +126,6 @@ func (m model) handleEnter(msg tea.KeyMsg) (model, tea.Cmd, bool) {
 	m.activeStream = make(chan agent.AgentEvent, 100)
 	go m.agent.RunStream(v, m.activeStream)
 
-	cmd = waitForStream(m.activeStream)
+	cmd = tea.Batch(waitForStream(m.activeStream), tickAnimSlow())
 	return m, cmd, false
 }
