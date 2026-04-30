@@ -1,8 +1,8 @@
 import Voice from "@react-native-voice/voice";
 
 export class Recorder {
-  private listeners: Array<(text: string) => void> = [];
-  private errs: Array<(e: Error) => void> = [];
+  private listeners: ((text: string) => void)[] = [];
+  private errs: ((e: Error) => void)[] = [];
   private locale: string;
 
   constructor(locale = "en-US") {

@@ -1,3 +1,6 @@
+import Voice from "@react-native-voice/voice";
+import { Recorder } from "../recorder";
+
 jest.mock("@react-native-voice/voice", () => ({
   __esModule: true,
   default: {
@@ -9,9 +12,6 @@ jest.mock("@react-native-voice/voice", () => ({
     removeAllListeners: jest.fn(),
   },
 }));
-
-import Voice from "@react-native-voice/voice";
-import { Recorder } from "../recorder";
 
 beforeEach(() => {
   (Voice as any).start.mockClear();

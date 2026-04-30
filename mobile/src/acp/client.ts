@@ -13,7 +13,7 @@ export class ACPClient {
   private nextId = 1;
   private pending = new Map<number | string, Pending>();
   private handlers = new Map<string, ServerHandler>();
-  private notifyListeners: Array<(f: ACPFrame) => void> = [];
+  private notifyListeners: ((f: ACPFrame) => void)[] = [];
 
   constructor(private transport: WSTransport) {
     transport.onFrame((f) => this.dispatch(f));

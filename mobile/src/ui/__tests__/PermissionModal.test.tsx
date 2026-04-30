@@ -1,12 +1,12 @@
+import React from "react";
+import { fireEvent, render } from "@testing-library/react-native";
+import { PermissionModal } from "../PermissionModal";
+
 jest.mock("expo-haptics", () => ({
   __esModule: true,
   notificationAsync: jest.fn().mockResolvedValue(undefined),
   NotificationFeedbackType: { Warning: "warning" },
 }));
-
-import React from "react";
-import { fireEvent, render } from "@testing-library/react-native";
-import { PermissionModal } from "../PermissionModal";
 
 const baseReq = {
   id: 1,

@@ -13,8 +13,8 @@ export class WSTransport {
   private ws: WebSocket | null = null;
   private state: ConnectionState = "idle";
   private outbox: string[] = [];
-  private listeners: Array<(f: ACPFrame) => void> = [];
-  private stateListeners: Array<(s: ConnectionState) => void> = [];
+  private listeners: ((f: ACPFrame) => void)[] = [];
+  private stateListeners: ((s: ConnectionState) => void)[] = [];
   private lastEventId = 0;
   private attempt = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;

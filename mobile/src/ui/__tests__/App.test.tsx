@@ -1,3 +1,9 @@
+import React from "react";
+import { render } from "@testing-library/react-native";
+import App from "../../../App";
+import { useStore } from "../../state/store";
+import { FakeWebSocket } from "../../acp/testing/fakeWebSocket";
+
 jest.mock("../../api/sessions", () => ({
   listSessions: jest.fn().mockResolvedValue([
     { id: "s1", agent: "mairu", started_at: 0, last_activity_at: 0, active: true },
@@ -28,12 +34,6 @@ jest.mock("@react-native-voice/voice", () => ({
     removeAllListeners: jest.fn(),
   },
 }));
-
-import React from "react";
-import { render, waitFor } from "@testing-library/react-native";
-import App from "../../../App";
-import { useStore } from "../../state/store";
-import { FakeWebSocket } from "../../acp/testing/fakeWebSocket";
 
 beforeEach(() => {
   FakeWebSocket.instances = [];
