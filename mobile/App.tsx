@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SafeAreaView, View, Text, StyleSheet } from "react-native";
 import { useStore } from "./src/state/store";
 import { ConnectScreen, loadStoredHost } from "./src/ui/ConnectScreen";
@@ -9,6 +9,7 @@ import { PermissionModal } from "./src/ui/PermissionModal";
 import { WSTransport } from "./src/acp/transport";
 import { ACPClient } from "./src/acp/client";
 import { attachSession } from "./src/state/sessionGlue";
+import { Recorder } from "./src/voice/recorder";
 
 export default function App() {
   const host = useStore((s) => s.host);
@@ -19,6 +20,18 @@ export default function App() {
   const activeTurn = useStore((s) =>
     s.selectedSessionId ? !!s.activeTurnsBySession[s.selectedSessionId] : false,
   );
+  const [draft, setDraft] = useState("");
+
+  const recorder = useMemo(() => new Recorder(), []);
+  useEffect(() => {
+    recorder.onResult((t) => setDraft((d) => (d ? d + " " + t : t)));
+  }, [recorder]);
+  const startRec = useCallback(() => {
+    recorder.start().catch(() => {});
+  }, [recorder]);
+  const stopRec = useCallback(() => {
+    recorder.stop().catch(() => {});
+  }, [recorder]);
 
   // Restore stored host on cold start.
   useEffect(() => {
@@ -63,8 +76,15 @@ export default function App() {
           <Timeline />
           <Composer
             active={activeTurn}
-            onSubmit={(text) => wired?.c.notify("session/prompt", { text })}
+            draft={draft}
+            onDraftChange={setDraft}
+            onSubmit={(text) => {
+              wired?.c.notify("session/prompt", { text });
+              setDraft("");
+            }}
             onCancel={() => wired?.c.notify("session/cancel", {})}
+            onStartRecord={startRec}
+            onStopRecord={stopRec}
           />
         </>
       )}

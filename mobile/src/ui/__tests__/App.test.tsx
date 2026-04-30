@@ -17,6 +17,17 @@ jest.mock("expo-haptics", () => ({
   notificationAsync: jest.fn().mockResolvedValue(undefined),
   NotificationFeedbackType: { Warning: "warning" },
 }));
+jest.mock("@react-native-voice/voice", () => ({
+  __esModule: true,
+  default: {
+    onSpeechResults: null as any,
+    onSpeechError: null as any,
+    start: jest.fn().mockResolvedValue(undefined),
+    stop: jest.fn().mockResolvedValue(undefined),
+    destroy: jest.fn().mockResolvedValue(undefined),
+    removeAllListeners: jest.fn(),
+  },
+}));
 
 import React from "react";
 import { render, waitFor } from "@testing-library/react-native";

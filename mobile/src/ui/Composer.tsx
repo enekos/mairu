@@ -5,10 +5,24 @@ type Props = {
   onSubmit: (text: string) => void;
   onCancel: () => void;
   active: boolean;
+  onStartRecord?: () => void;
+  onStopRecord?: () => void;
+  draft?: string;
+  onDraftChange?: (text: string) => void;
 };
 
-export function Composer({ onSubmit, onCancel, active }: Props) {
-  const [text, setText] = useState("");
+export function Composer({
+  onSubmit,
+  onCancel,
+  active,
+  onStartRecord,
+  onStopRecord,
+  draft,
+  onDraftChange,
+}: Props) {
+  const [internal, setInternal] = useState("");
+  const text = draft ?? internal;
+  const setText = onDraftChange ?? setInternal;
   function send() {
     const trimmed = text.trim();
     if (!trimmed) return;
@@ -24,6 +38,16 @@ export function Composer({ onSubmit, onCancel, active }: Props) {
         style={s.input}
         multiline
       />
+      {onStartRecord && onStopRecord && (
+        <Pressable
+          testID="mic"
+          onPressIn={onStartRecord}
+          onPressOut={onStopRecord}
+          style={[s.btn, s.mic]}
+        >
+          <Text style={s.btnText}>🎤</Text>
+        </Pressable>
+      )}
       {active && (
         <Pressable onPress={onCancel} style={[s.btn, s.stop]}>
           <Text style={s.stopText}>Stop</Text>
@@ -61,4 +85,5 @@ const s = StyleSheet.create({
   btnText: { color: "white", fontWeight: "600" },
   stop: { backgroundColor: "#c33" },
   stopText: { color: "white", fontWeight: "600" },
+  mic: { backgroundColor: "#444" },
 });

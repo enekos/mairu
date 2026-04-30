@@ -32,6 +32,41 @@ test("Stop button visible only when active", () => {
   expect(queryByText("Stop")).toBeTruthy();
 });
 
+test("press-and-hold mic calls onStartRecord; release calls onStopRecord", () => {
+  const start = jest.fn();
+  const stop = jest.fn();
+  const { getByTestId } = render(
+    <Composer
+      onSubmit={() => {}}
+      onCancel={() => {}}
+      active={false}
+      onStartRecord={start}
+      onStopRecord={stop}
+    />,
+  );
+  fireEvent(getByTestId("mic"), "pressIn");
+  expect(start).toHaveBeenCalled();
+  fireEvent(getByTestId("mic"), "pressOut");
+  expect(stop).toHaveBeenCalled();
+});
+
+test("draft prop overrides internal state", () => {
+  const onDraftChange = jest.fn();
+  const { getByPlaceholderText } = render(
+    <Composer
+      onSubmit={() => {}}
+      onCancel={() => {}}
+      active={false}
+      draft="from parent"
+      onDraftChange={onDraftChange}
+    />,
+  );
+  const input = getByPlaceholderText(/message/i);
+  expect(input.props.value).toBe("from parent");
+  fireEvent.changeText(input, "next");
+  expect(onDraftChange).toHaveBeenCalledWith("next");
+});
+
 test("Stop press fires onCancel", () => {
   const onCancel = jest.fn();
   const { getByText } = render(
