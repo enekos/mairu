@@ -67,11 +67,15 @@ func TruncateHead(content string, maxLines, maxBytes int) TruncateResult {
 	by := "lines"
 	var i int
 	for i = 0; i < len(content); {
-		j := i
-		for j < len(content) && content[j] != '\n' {
-			j++
+		j := strings.IndexByte(content[i:], '\n')
+		if j == -1 {
+			j = len(content) - i
 		}
-		add := j - i
+		lineLen := j
+		if j < len(content)-i {
+			j++ // include newline in advance
+		}
+		add := lineLen
 		if i > 0 {
 			add++ // newline
 		}
@@ -83,17 +87,10 @@ func TruncateHead(content string, maxLines, maxBytes int) TruncateResult {
 		linesKept++
 		if linesKept >= maxLines {
 			by = "lines"
-			// Move j past the newline so the cut includes it.
-			if j < len(content) && content[j] == '\n' {
-				j++
-			}
-			i = j
+			i += j
 			break
 		}
-		if j < len(content) && content[j] == '\n' {
-			j++
-		}
-		i = j
+		i += j
 	}
 	outStr := content[:i]
 	if i > 0 && content[i-1] == '\n' {
@@ -135,9 +132,11 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 	by := "lines"
 	var i int = len(content)
 	for i > 0 && linesKept < maxLines {
-		j := i - 1
-		for j > 0 && content[j-1] != '\n' {
-			j--
+		j := strings.LastIndexByte(content[:i], '\n')
+		if j == -1 {
+			j = 0
+		} else {
+			j++ // point to start of line (past the newline)
 		}
 		add := i - j
 		if linesKept > 0 {
@@ -147,7 +146,7 @@ func TruncateTail(content string, maxLines, maxBytes int) TruncateResult {
 			by = "bytes"
 			// Edge case: single line bigger than maxBytes — keep its tail.
 			if linesKept == 0 {
-				start := j + (i - j) - maxBytes
+				start := i - maxBytes
 				if start < j {
 					start = j
 				}
