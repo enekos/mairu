@@ -69,6 +69,7 @@ func init() {
 		NewTelegramCmd(),
 		NewMCPCmd(),
 		NewACPCmd(),
+		NewACPBridgeCmd(),
 		NewUTCPCmd(),
 	)
 
