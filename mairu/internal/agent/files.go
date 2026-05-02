@@ -16,13 +16,10 @@ import (
 // ReadFile reads the content of a file, adding line numbers and supporting offset/limit.
 func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 	fullPath := filepath.Join(a.root, filePath)
-	content, err := os.ReadFile(fullPath)
+	contentBytes, err := os.ReadFile(fullPath)
 	if err != nil {
 		return "", fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
-
-	lines := strings.Split(string(content), "\n")
-	totalLines := len(lines)
 
 	if offset < 1 {
 		offset = 1
@@ -31,24 +28,53 @@ func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 		limit = 2000
 	}
 
-	startIdx := offset - 1
-	if startIdx >= totalLines {
+	content := string(contentBytes)
+
+	// Fast path for empty file.
+	if len(content) == 0 {
+		if offset > 1 {
+			return "File only has 0 lines. Offset 1 is out of bounds.", nil
+		}
+		return "", nil
+	}
+
+	// Count total lines without splitting.
+	totalLines := strings.Count(content, "\n") + 1
+
+	if offset > totalLines {
 		return fmt.Sprintf("File only has %d lines. Offset %d is out of bounds.", totalLines, offset), nil
 	}
 
-	endIdx := startIdx + limit
-	if endIdx > totalLines {
-		endIdx = totalLines
+	// Find start position: skip (offset-1) newlines.
+	start := 0
+	for line := 1; line < offset && start < len(content); line++ {
+		if idx := strings.IndexByte(content[start:], '\n'); idx != -1 {
+			start += idx + 1
+		} else {
+			start = len(content)
+		}
 	}
 
-	// Pre-allocate builder: content length + ~8 bytes per line for "NNNN: \n"
+	// Format lines from start up to limit.
 	var sb strings.Builder
-	sb.Grow(len(content) + (endIdx-startIdx)*8)
-	for i := startIdx; i < endIdx; i++ {
-		sb.WriteString(strconv.Itoa(i + 1))
+	sb.Grow(len(contentBytes) + limit*8)
+	lineNo := offset
+	pos := start
+	linesFormatted := 0
+	for pos < len(content) && linesFormatted < limit {
+		end := pos
+		if idx := strings.IndexByte(content[pos:], '\n'); idx != -1 {
+			end = pos + idx
+		} else {
+			end = len(content)
+		}
+		sb.WriteString(strconv.Itoa(lineNo))
 		sb.WriteString(": ")
-		sb.WriteString(lines[i])
+		sb.WriteString(content[pos:end])
 		sb.WriteByte('\n')
+		lineNo++
+		linesFormatted++
+		pos = end + 1
 	}
 
 	res := sb.String()
@@ -59,8 +85,9 @@ func (a *Agent) ReadFile(filePath string, offset, limit int) (string, error) {
 		res = tr.Content + FormatTruncationNote(tr, "head")
 	}
 
-	if endIdx < totalLines {
-		res += fmt.Sprintf("\n...[File window. Showing lines %d to %d of %d. Use offset=%d to read more]", startIdx+1, endIdx, totalLines, endIdx+1)
+	endLine := offset + linesFormatted - 1
+	if endLine < totalLines {
+		res += fmt.Sprintf("\n...[File window. Showing lines %d to %d of %d. Use offset=%d to read more]", offset, endLine, totalLines, endLine+1)
 	}
 
 	return res, nil

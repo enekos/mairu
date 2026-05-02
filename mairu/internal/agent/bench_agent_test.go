@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -153,32 +155,27 @@ func BenchmarkExtractFileOps(b *testing.B) {
 	}
 }
 
-// BenchmarkReadFileLineFormatting measures the line-number formatting cost.
-func BenchmarkReadFileLineFormatting(b *testing.B) {
+// BenchmarkReadFile measures the actual ReadFile function with line formatting.
+func BenchmarkReadFile(b *testing.B) {
 	lines := make([]string, 2000)
 	for i := range lines {
 		lines[i] = fmt.Sprintf("line %d has some content here", i)
 	}
 	content := strings.Join(lines, "\n")
+
+	tmpDir := b.TempDir()
+	ag, err := NewWithProvider(tmpDir, newMockBenchProvider(), Config{})
+	if err != nil {
+		b.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "test.go"), []byte(content), 0644); err != nil {
+		b.Fatal(err)
+	}
+
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = formatFileLines(content, 1, 2000)
+		_, _ = ag.ReadFile("test.go", 1, 2000)
 	}
-}
-
-// formatFileLines mirrors ReadFile's inner formatting logic for benchmarking.
-func formatFileLines(content string, offset, limit int) string {
-	lines := strings.Split(content, "\n")
-	startIdx := offset - 1
-	endIdx := startIdx + limit
-	if endIdx > len(lines) {
-		endIdx = len(lines)
-	}
-	var sb strings.Builder
-	for i := startIdx; i < endIdx; i++ {
-		sb.WriteString(fmt.Sprintf("%d: %s\n", i+1, lines[i]))
-	}
-	return sb.String()
 }
 
 // BenchmarkStripANSI measures ANSI stripping overhead.
