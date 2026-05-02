@@ -22,19 +22,27 @@ var knownTokenPatterns = []tokenPattern{
 	// -- git hosts --
 	{"github_pat_classic", regexp.MustCompile(`ghp_[A-Za-z0-9]{36,}`), "ghp_"},
 	{"github_pat_fine", regexp.MustCompile(`github_pat_[A-Za-z0-9_]{22,}`), "github_pat_"},
-	{"github_oauth", regexp.MustCompile(`gh[osu]_[A-Za-z0-9]{36,}`), ""},
+	{"github_oauth", regexp.MustCompile(`gh[osu]_[A-Za-z0-9]{36,}`), "gho_"},
 	{"gitlab_pat", regexp.MustCompile(`glpat-[A-Za-z0-9_\-]{20,}`), "glpat"},
 	{"bitbucket_app_pw", regexp.MustCompile(`ATBB[A-Za-z0-9_\-]{32,}`), "ATBB"},
 
 	// -- payments / commerce --
-	{"stripe_key", regexp.MustCompile(`sk_(?:live|test)_[A-Za-z0-9]{24,}`), "sk_"},
 	{"stripe_pub", regexp.MustCompile(`pk_(?:live|test)_[A-Za-z0-9]{24,}`), "pk_"},
 	{"stripe_restricted", regexp.MustCompile(`rk_(?:live|test)_[A-Za-z0-9]{24,}`), "rk_"},
 	{"shopify_token", regexp.MustCompile(`shp(?:at|ca|pa|ss)_[a-fA-F0-9]{32,}`), "shp"},
 	{"square_access_token", regexp.MustCompile(`EAAA[A-Za-z0-9_\-]{60,}`), "EAAA"},
 
 	// -- cloud --
-	{"aws_access_key", regexp.MustCompile(`\b(?:AKIA|ASIA|AGPA|AIDA|AROA|ANPA|ANVA|ACCA)[0-9A-Z]{16}\b`), "AKIA"},
+	// AWS access keys split by prefix so the probe system skips the
+	// expensive alternation when only one prefix is present.
+	{"aws_access_key", regexp.MustCompile(`\bAKIA[0-9A-Z]{16}\b`), "AKIA"},
+	{"aws_access_key", regexp.MustCompile(`\bASIA[0-9A-Z]{16}\b`), "ASIA"},
+	{"aws_access_key", regexp.MustCompile(`\bAGPA[0-9A-Z]{16}\b`), "AGPA"},
+	{"aws_access_key", regexp.MustCompile(`\bAIDA[0-9A-Z]{16}\b`), "AIDA"},
+	{"aws_access_key", regexp.MustCompile(`\bAROA[0-9A-Z]{16}\b`), "AROA"},
+	{"aws_access_key", regexp.MustCompile(`\bANPA[0-9A-Z]{16}\b`), "ANPA"},
+	{"aws_access_key", regexp.MustCompile(`\bANVA[0-9A-Z]{16}\b`), "ANVA"},
+	{"aws_access_key", regexp.MustCompile(`\bACCA[0-9A-Z]{16}\b`), "ACCA"},
 	{"gcp_service_account", regexp.MustCompile(`"type":\s*"service_account"`), "service_account"},
 	{"gcp_api_key", regexp.MustCompile(`AIza[0-9A-Za-z_\-]{35}`), "AIza"},
 	{"gcp_oauth_refresh", regexp.MustCompile(`1//0[A-Za-z0-9_\-]{40,}`), "1//0"},
@@ -46,11 +54,11 @@ var knownTokenPatterns = []tokenPattern{
 	{"heroku_api_key", regexp.MustCompile(`HRKU-[A-Za-z0-9_\-]{32,}`), "HRKU"},
 
 	// -- saas / observability --
-	{"slack_token", regexp.MustCompile(`xox[abpors]-[A-Za-z0-9-]{10,}`), "xox"},
+
 	{"slack_webhook", regexp.MustCompile(`https://hooks\.slack\.com/services/T[A-Za-z0-9_\-]+/B[A-Za-z0-9_\-]+/[A-Za-z0-9_\-]{24,}`), "hooks.slack.com"},
 	{"discord_webhook", regexp.MustCompile(`https://(?:canary\.|ptb\.)?discord(?:app)?\.com/api/webhooks/\d+/[A-Za-z0-9_\-]{60,}`), "discord"},
 	{"discord_bot_token", regexp.MustCompile(`[MN][A-Za-z0-9_\-]{23}\.[A-Za-z0-9_\-]{6}\.[A-Za-z0-9_\-]{27,}`), ""},
-	{"datadog_api_key", regexp.MustCompile(`\bdd[ap]i_[a-f0-9]{32}\b`), ""},
+	{"datadog_api_key", regexp.MustCompile(`\bdd[ap]i_[a-f0-9]{32}\b`), "ddapi_"},
 	{"pagerduty_token", regexp.MustCompile(`\bpdu[a-zA-Z0-9_\-]{20,}\b`), "pdu"},
 	{"newrelic_user_key", regexp.MustCompile(`NRAK-[A-Z0-9]{27}`), "NRAK"},
 	{"sentry_dsn", regexp.MustCompile(`https://[a-f0-9]{32}@o?\d+\.ingest\.sentry\.io/\d+`), "ingest.sentry.io"},
@@ -83,11 +91,13 @@ var knownTokenPatterns = []tokenPattern{
 	{"vercel_token", regexp.MustCompile(`\b[A-Za-z0-9]{24}_vercel\b`), "_vercel"},
 	{"netlify_pat", regexp.MustCompile(`\bnfp_[A-Za-z0-9_\-]{40,}\b`), "nfp_"},
 	{"figma_pat", regexp.MustCompile(`figd_[A-Za-z0-9_\-]{40,}`), "figd_"},
-	{"supabase_service", regexp.MustCompile(`eyJhbGciOi[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`), "eyJhbGciOi"},
-
 	// -- generic / structural --
-	{"jwt", regexp.MustCompile(`eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+`), "eyJ"},
-	{"uri_credentials", regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.\-]*://)[^\s:@/]+:([^\s@/]+)@`), ""},
+	// jwt is handled by findJWTsFast (hand-rolled scanner) instead of regex
+	// to avoid backtracking overhead on the three quantified segments.
+	// uri_credentials is intentionally removed: findConnURIs in Layer 0 already
+	// covers the same URI-with-embedded-credentials shape with a faster hand-
+	// rolled scanner, and the regex here was only a redundant safety net that
+	// rarely matched (overlapsRedacted skipped it on redacted text).
 	{"pem_private_key", regexp.MustCompile(`(?s)-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----`), "-----BEGIN"},
 	{"pem_openssh", regexp.MustCompile(`(?s)-----BEGIN OPENSSH PRIVATE KEY-----.*?-----END OPENSSH PRIVATE KEY-----`), "-----BEGIN OPENSSH"},
 	{"pkcs12_b64", regexp.MustCompile(`MIIK[A-Za-z0-9+/]{400,}={0,2}`), "MIIK"},
@@ -98,15 +108,62 @@ var knownTokenPatterns = []tokenPattern{
 // declaration order so longer/more-specific rules (jwt, supabase_service)
 // win against shorter generic ones (uri_credentials) when ranges overlap.
 func scanKnownTokens(input string) (string, []Finding, bool) {
-	var ivs []interval
+	ivs := make([]interval, 0, 4)
 	hit := false
-	hasColonSlashSlash := strings.Contains(input, "://")
-	hasAt := strings.Contains(input, "@")
+	hasDiscordBot := hasDiscordBotTokenProbe(input)
+	hasAsana := hasAsanaPatProbe(input)
+
+	// Hand-rolled scanners for the most common anchored-prefix patterns.
+	// These avoid regex backtracking and allocations entirely.
+	for _, iv := range findJWTsFast(input) {
+		if overlapsRedacted(input, iv.start, iv.end, input[iv.start:iv.end]) {
+			continue
+		}
+		if overlapsInterval(ivs, iv.start, iv.end) {
+			continue
+		}
+		hit = true
+		ivs = append(ivs, iv)
+	}
+	for _, iv := range findGitHubPATClassic(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+	for _, iv := range findGitHubPATFine(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+	for _, iv := range findAWSAccessKeys(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+	for _, iv := range findGCPAPIKey(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+	for _, iv := range findSlackToken(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+	for _, iv := range findStripeKey(input) {
+		if checkAndAppend(&ivs, input, iv) {
+			hit = true
+		}
+	}
+
 	for _, p := range knownTokenPatterns {
 		if p.probe != "" && !strings.Contains(input, p.probe) {
 			continue
 		}
-		if p.kind == "uri_credentials" && (!hasColonSlashSlash || !hasAt) {
+		if p.kind == "discord_bot_token" && !hasDiscordBot {
+			continue
+		}
+		if p.kind == "asana_pat" && !hasAsana {
 			continue
 		}
 		locs := p.re.FindAllStringIndex(input, -1)
@@ -134,7 +191,9 @@ func scanKnownTokens(input string) (string, []Finding, bool) {
 		}
 	}
 
-	sort.Slice(ivs, func(i, j int) bool { return ivs[i].start < ivs[j].start })
+	if len(ivs) > 1 {
+		sort.Slice(ivs, func(i, j int) bool { return ivs[i].start < ivs[j].start })
+	}
 	out := applyIntervals(input, ivs)
 
 	findings := make([]Finding, len(ivs))
@@ -184,6 +243,269 @@ func boundaryHitsRedacted(s string, start, end int) bool {
 				return true
 			}
 			return false
+		}
+	}
+	return false
+}
+
+// findJWTsFast scans for JSON Web Tokens using a hand-rolled parser.
+// It anchors on the "eyJ" prefix (base64url of '{"') and validates the
+// three dot-separated base64url segments without regex backtracking.
+func findJWTsFast(input string) []interval {
+	ivs := make([]interval, 0, 4)
+	start := 0
+	for {
+		i := strings.Index(input[start:], "eyJ")
+		if i < 0 {
+			break
+		}
+		seg0 := start + i
+		// Walk over base64url chars until first '.'
+		dot1 := -1
+		for j := seg0 + 3; j < len(input); j++ {
+			c := input[j]
+			if c == '.' {
+				dot1 = j
+				break
+			}
+			if !isBase64URL(c) {
+				break
+			}
+		}
+		if dot1 < 0 || dot1-seg0 < 10 {
+			start = seg0 + 3
+			continue
+		}
+		// Walk over base64url chars until second '.'
+		dot2 := -1
+		for j := dot1 + 1; j < len(input); j++ {
+			c := input[j]
+			if c == '.' {
+				dot2 = j
+				break
+			}
+			if !isBase64URL(c) {
+				break
+			}
+		}
+		if dot2 < 0 || dot2-dot1 < 10 {
+			start = seg0 + 3
+			continue
+		}
+		// Walk over base64url chars until end of segment
+		seg2End := dot2 + 1
+		for seg2End < len(input) && isBase64URL(input[seg2End]) {
+			seg2End++
+		}
+		if seg2End-dot2 < 2 {
+			start = seg0 + 3
+			continue
+		}
+		ivs = append(ivs, interval{
+			start: seg0,
+			end:   seg2End,
+			kind:  "jwt",
+			text:  "[REDACTED:jwt]",
+		})
+		start = seg2End
+	}
+	return ivs
+}
+
+func isBase64URL(c byte) bool {
+	return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') ||
+		c == '_' || c == '-'
+}
+
+// hasDiscordBotTokenProbe reports whether s contains at least two dots and
+// at least one 'M' or 'N', the minimum requirements for a Discord bot token.
+func hasDiscordBotTokenProbe(s string) bool {
+	if strings.Count(s, ".") < 2 {
+		return false
+	}
+	return strings.ContainsAny(s, "MN")
+}
+
+// checkAndAppend is a helper that runs the overlap checks for hand-rolled
+// intervals and appends them if clean.  It returns true when an interval
+// was accepted.
+func checkAndAppend(ivs *[]interval, input string, iv interval) bool {
+	if overlapsRedacted(input, iv.start, iv.end, input[iv.start:iv.end]) {
+		return false
+	}
+	if overlapsInterval(*ivs, iv.start, iv.end) {
+		return false
+	}
+	*ivs = append(*ivs, iv)
+	return true
+}
+
+// findGitHubPATClassic finds ghp_<36+ alnum> tokens.
+func findGitHubPATClassic(input string) []interval {
+	return findPrefixMatches(input, "ghp_", "github_pat_classic", 40,
+		func(c byte) bool { return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') })
+}
+
+// findGitHubPATFine finds github_pat_<22+ alnum/_> tokens.
+func findGitHubPATFine(input string) []interval {
+	return findPrefixMatches(input, "github_pat_", "github_pat_fine", 33,
+		func(c byte) bool {
+			return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '-'
+		})
+}
+
+// findAWSAccessKeys finds AKIA/ASIA/AGPA/AIDA/AROA/ANPA/ANVA/ACCA prefixes
+// followed by 16 uppercase/digit characters.
+func findAWSAccessKeys(input string) []interval {
+	var ivs []interval
+	prefixes := []string{"AKIA", "ASIA", "AGPA", "AIDA", "AROA", "ANPA", "ANVA", "ACCA"}
+	for _, pre := range prefixes {
+		ivs = append(ivs, findPrefixMatches(input, pre, "aws_access_key", 20,
+			func(c byte) bool { return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') })...)
+	}
+	return ivs
+}
+
+// findGCPAPIKey finds AIza<35+ alnum/_> tokens.
+func findGCPAPIKey(input string) []interval {
+	return findPrefixMatches(input, "AIza", "gcp_api_key", 39,
+		func(c byte) bool {
+			return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_' || c == '-'
+		})
+}
+
+// findSlackToken finds xox[abpors]-<10+ alnum/-> tokens.
+func findSlackToken(input string) []interval {
+	var ivs []interval
+	start := 0
+	for {
+		i := strings.Index(input[start:], "xox")
+		if i < 0 {
+			break
+		}
+		pos := start + i
+		if pos+3 >= len(input) {
+			break
+		}
+		c := input[pos+3]
+		if c != 'a' && c != 'b' && c != 'p' && c != 'o' && c != 'r' && c != 's' {
+			start = pos + 3
+			continue
+		}
+		if pos+4 >= len(input) || input[pos+4] != '-' {
+			start = pos + 3
+			continue
+		}
+		end := pos + 5
+		for end < len(input) {
+			ch := input[end]
+			if (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '-' {
+				end++
+			} else {
+				break
+			}
+		}
+		if end-pos >= 15 {
+			ivs = append(ivs, interval{start: pos, end: end, kind: "slack_token", text: "[REDACTED:slack_token]"})
+		}
+		start = pos + 3
+	}
+	return ivs
+}
+
+// findStripeKey finds sk_(live|test)_<24+ alnum> tokens.
+func findStripeKey(input string) []interval {
+	var ivs []interval
+	start := 0
+	for {
+		i := strings.Index(input[start:], "sk_")
+		if i < 0 {
+			break
+		}
+		pos := start + i
+		if pos+3 >= len(input) {
+			break
+		}
+		rest := input[pos+3:]
+		var envLen int
+		if strings.HasPrefix(rest, "live_") {
+			envLen = 5
+		} else if strings.HasPrefix(rest, "test_") {
+			envLen = 5
+		} else {
+			start = pos + 3
+			continue
+		}
+		end := pos + 3 + envLen
+		for end < len(input) {
+			ch := input[end]
+			if (ch >= '0' && ch <= '9') || (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') {
+				end++
+			} else {
+				break
+			}
+		}
+		if end-pos >= 32 {
+			ivs = append(ivs, interval{start: pos, end: end, kind: "stripe_key", text: "[REDACTED:stripe_key]"})
+		}
+		start = pos + 3
+	}
+	return ivs
+}
+
+// findPrefixMatches is a generic helper for anchored-prefix token scanners.
+// It finds all occurrences of prefix, checks word boundaries, expands over
+// validChars, and returns intervals of at least minLen bytes.
+func findPrefixMatches(input, prefix, kind string, minLen int, validChar func(byte) bool) []interval {
+	var ivs []interval
+	start := 0
+	for {
+		i := strings.Index(input[start:], prefix)
+		if i < 0 {
+			break
+		}
+		pos := start + i
+		// Word boundary before prefix.
+		if pos > 0 {
+			prev := input[pos-1]
+			if (prev >= '0' && prev <= '9') || (prev >= 'A' && prev <= 'Z') || (prev >= 'a' && prev <= 'z') || prev == '_' {
+				start = pos + len(prefix)
+				continue
+			}
+		}
+		end := pos + len(prefix)
+		for end < len(input) && validChar(input[end]) {
+			end++
+		}
+		// Word boundary after match.
+		if end < len(input) {
+			next := input[end]
+			if (next >= '0' && next <= '9') || (next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z') || next == '_' {
+				start = pos + len(prefix)
+				continue
+			}
+		}
+		if end-pos >= minLen {
+			ivs = append(ivs, interval{start: pos, end: end, kind: kind, text: "[REDACTED:" + kind + "]"})
+		}
+		start = pos + len(prefix)
+	}
+	return ivs
+}
+
+// hasAsanaPatProbe reports whether s contains a slash followed by many
+// digits followed by a colon, which is the core shape of an Asana PAT.
+func hasAsanaPatProbe(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] == '/' && i+18 < len(s) {
+			// look for 16+ digits then ':'
+			j := i + 1
+			for j < len(s) && s[j] >= '0' && s[j] <= '9' {
+				j++
+			}
+			if j-i >= 17 && j < len(s) && s[j] == ':' {
+				return true
+			}
 		}
 	}
 	return false

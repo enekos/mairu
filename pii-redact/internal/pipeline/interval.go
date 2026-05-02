@@ -28,6 +28,10 @@ func applyIntervals(input string, ivs []interval) string {
 	if len(ivs) == 0 {
 		return input
 	}
+	if len(ivs) == 1 {
+		iv := ivs[0]
+		return input[:iv.start] + iv.text + input[iv.end:]
+	}
 	var b strings.Builder
 	b.Grow(len(input))
 	last := 0
