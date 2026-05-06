@@ -12,19 +12,19 @@ windows, tickets, screenshots, memory files.
 ### One-liner (curl)
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/enekos/mairu/main/pii-redact/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/enekos/mairu/master/pii-redact/install.sh | sh
 ```
 
 Customize the install directory:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/enekos/mairu/main/pii-redact/install.sh | INSTALL_DIR=~/.local/bin sh
+curl -sSL https://raw.githubusercontent.com/enekos/mairu/master/pii-redact/install.sh | INSTALL_DIR=~/.local/bin sh
 ```
 
 Or install a specific release:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/enekos/mairu/main/pii-redact/install.sh | VERSION=v0.1.0 sh
+curl -sSL https://raw.githubusercontent.com/enekos/mairu/master/pii-redact/install.sh | VERSION=v0.1.0 sh
 ```
 
 ### Go install
