@@ -140,12 +140,57 @@ jobs:
           name: mairu-browser-extension
           path: mairu-browser-extension.zip
 
+  build-pii-redact:
+    name: Build pii-redact (${{ matrix.os }}/${{ matrix.arch }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+            runner: ubuntu-latest
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+          - os: darwin
+            arch: amd64
+            runner: macos-latest
+          - os: darwin
+            arch: arm64
+            runner: macos-latest
+          - os: windows
+            arch: amd64
+            runner: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: pii-redact/go.mod
+          cache-dependency-path: pii-redact/go.sum
+
+      - name: Build pii-redact binary
+        shell: bash
+        run: |
+          cd pii-redact
+          output="pii-redact-${{ matrix.os }}-${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then output="${output}.exe"; fi
+          go build -ldflags="-s -w" -o "../${output}" ./cmd/pii-redact
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pii-redact-${{ matrix.os }}-${{ matrix.arch }}
+          path: pii-redact-${{ matrix.os }}-${{ matrix.arch }}*
+
   release:
     name: Create GitHub Release
     needs:
       - build-mairu
       - build-browser-extension-host
       - package-browser-extension
+      - build-pii-redact
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
