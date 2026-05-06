@@ -65,7 +65,19 @@ if [ -w "$INSTALL_DIR" ]; then
   mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
 else
   if command -v sudo >/dev/null 2>&1; then
-    sudo mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}"
+    # Check if we can sudo without a password (non-interactive / piped install)
+    if sudo -n mv "$TMPFILE" "${INSTALL_DIR}/${BINARY}" 2>/dev/null; then
+      :
+    else
+      echo ""
+      echo "Cannot write to ${INSTALL_DIR} without a password."
+      echo "Either run with a writable INSTALL_DIR:"
+      echo "  curl -sSL ... | INSTALL_DIR=\$HOME/.local/bin sh"
+      echo "Or run the script directly with sudo:"
+      echo "  sudo sh -c '\$(curl -sSL ...)'"
+      rm -f "$TMPFILE"
+      exit 1
+    fi
   else
     echo "Cannot write to ${INSTALL_DIR}. Set INSTALL_DIR or run with sudo."
     rm -f "$TMPFILE"
