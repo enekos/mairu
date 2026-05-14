@@ -210,8 +210,62 @@ function handleMessage(message, sender, sendResponse) {
   } else if (message.type === 'force_sync') {
     syncTick().then(() => sendResponse({ success: true }));
     return true;
+  } else if (message.type === 'send_to_agent') {
+    sendSelectionToAgent(message.payload || {}, sender)
+      .then((res) => sendResponse(res))
+      .catch((err) => sendResponse({ ok: false, error: String(err && err.message ? err.message : err) }));
+    return true;
   }
   return false;
+}
+
+async function sendSelectionToAgent(payload, sender) {
+  const text = (payload.text || '').toString();
+  if (!text.trim()) return { ok: false, error: 'No text selected' };
+
+  const prompt = (payload.prompt || '').toString().trim();
+  const pageUrl = payload.url || (sender && sender.tab && sender.tab.url) || '';
+  const pageTitle = (payload.title || (sender && sender.tab && sender.tab.title) || '').toString();
+  const ts = payload.timestamp || Date.now();
+
+  const promptBlock = prompt ? `User prompt:\n${prompt}\n\n` : '';
+  const body = {
+    uri: `contextfs://browser/ask/${ts}`,
+    project: 'browser',
+    name: prompt
+      ? `Ask Mairu: ${prompt.slice(0, 80)}`
+      : `Selection from ${pageTitle || pageUrl || 'page'}`,
+    abstract: prompt
+      ? prompt.slice(0, 200)
+      : text.slice(0, 200),
+    overview: `User-initiated request from browser extension. Page: ${pageUrl}`,
+    content: `${promptBlock}Selected text from ${pageUrl}:\n\n${text}`,
+    metadata: {
+      source: 'browser-extension/selection-prompt',
+      page_url: pageUrl,
+      page_title: pageTitle,
+      has_prompt: prompt.length > 0,
+      timestamp: ts,
+    },
+  };
+
+  try {
+    const resp = await fetch(`${mairApiUrl}/api/context`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (resp.ok) {
+      logger.info('selection_prompt.sent', { uri: body.uri, hasPrompt: prompt.length > 0 });
+      return { ok: true, uri: body.uri };
+    }
+    const errText = await resp.text().catch(() => '');
+    logger.warn('selection_prompt.fail', { status: resp.status, body: errText.slice(0, 200) });
+    return { ok: false, error: `API returned ${resp.status}` };
+  } catch (err) {
+    logger.warn('selection_prompt.fail', { err: String(err) });
+    return { ok: false, error: `Could not reach Mairu (${String(err && err.message ? err.message : err)})` };
+  }
 }
 
 chrome.runtime.onMessage.addListener(handleMessage);

@@ -31,6 +31,29 @@
     overlay = { showThought: () => {}, hideThought: () => {} };
   }
 
+  try {
+    installSelectionPrompt(document, {
+      onSubmit: ({ text, prompt, url, title }) => new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage(
+            { type: 'send_to_agent', payload: { text, prompt, url, title, timestamp: Date.now() } },
+            (resp) => {
+              if (chrome.runtime.lastError) {
+                resolve({ ok: false, error: chrome.runtime.lastError.message });
+                return;
+              }
+              resolve(resp || { ok: false, error: 'No response from extension' });
+            },
+          );
+        } catch (err) {
+          resolve({ ok: false, error: String(err && err.message ? err.message : err) });
+        }
+      }),
+    });
+  } catch (err) {
+    void err;
+  }
+
   window.addEventListener('message', (event) => {
     if (!event.data) return;
     if (event.data.type === '__MAIRU_ERROR') {

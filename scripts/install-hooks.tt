@@ -1,0 +1,30 @@
+// Install the repo's pre-commit hook into .git/hooks.
+// Original: scripts/install-hooks.sh
+
+func main(): void {
+  let top = exec("git rev-parse --show-toplevel 2>/dev/null")
+  if !top.ok {
+    eprint("Git hooks directory not found. Run inside a git repository.")
+    exit(1)
+  }
+  let root = trim(top.stdout)
+  let sourceHook = root + "/.githooks/pre-commit"
+  let hooksDir = root + "/.git/hooks"
+  let targetHook = hooksDir + "/pre-commit"
+
+  if !isDir(hooksDir) {
+    eprint("Git hooks directory not found. Run inside a git repository.")
+    exit(1)
+  }
+  if !isFile(sourceHook) {
+    eprint("Source hook missing: " + sourceHook)
+    exit(1)
+  }
+
+  let r = exec("install -m 0755 \"" + sourceHook + "\" \"" + targetHook + "\"")
+  if !r.ok {
+    eprint(trim(r.stderr))
+    exit(r.code)
+  }
+  echo("Installed pre-commit hook to " + targetHook)
+}

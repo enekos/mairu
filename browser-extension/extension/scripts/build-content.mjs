@@ -10,6 +10,7 @@ const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..')
 const LIBS = [
   'lib/dom.js',
   'lib/overlay.js',
+  'lib/selection-prompt.js',
   'lib/hydration.js',
   'lib/serializer.js',
 ];

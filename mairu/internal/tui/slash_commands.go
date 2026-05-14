@@ -191,6 +191,13 @@ func (m model) handleSlashCommand(v string) (model, tea.Cmd, bool) {
 		}
 		return m, nil, true
 
+	case "/memory":
+		msgs := m.handleMemoryCommand(arg)
+		m.messages = append(m.messages, msgs...)
+		m.renderMessages()
+		m.autoScroll()
+		return m, nil, true
+
 	case "/agent", "/nvim", "/lazygit":
 		// No-op in text mode; these open panes in the GUI build.
 		m.messages = append(m.messages, ChatMessage{Role: "System", Content: "Pane switching is only available in the GUI build."})

@@ -1,0 +1,192 @@
+// Local Meilisearch lifecycle: download / start / stop / status / clean.
+// Original: mairu/scripts/meili-local.sh
+//
+// Each subcommand function takes only `root` and recomputes paths/env locally,
+// because tartalo's sh codegen flattens record fields into positional args
+// (which breaks past $9). Keeping function signatures narrow sidesteps that.
+
+func repoRoot(): string {
+  let r = exec("git rev-parse --show-toplevel 2>/dev/null")
+  if !r.ok {
+    eprint("meili-local: not inside a git repository")
+    exit(1)
+  }
+  return trim(r.stdout)
+}
+
+func detectAssetName(): string {
+  let osR = exec("uname -s")
+  let archR = exec("uname -m")
+  let key = trim(osR.stdout) + "-" + trim(archR.stdout)
+  match key {
+    "Darwin-arm64" => return "meilisearch-macos-apple-silicon"
+    "Darwin-x86_64" => return "meilisearch-macos-amd64"
+    "Linux-aarch64" => return "meilisearch-linux-aarch64"
+    "Linux-arm64" => return "meilisearch-linux-aarch64"
+    "Linux-x86_64" => return "meilisearch-linux-amd64"
+    _ => {
+      eprint("Unsupported platform: " + key)
+      exit(1)
+    }
+  }
+  return ""
+}
+
+func toolsDirOf(root: string): string { return root + "/.tools/meilisearch" }
+func dataDirOf(root: string): string { return root + "/.data/meilisearch" }
+func logDirOf(root: string): string { return root + "/.logs" }
+func pidFileOf(root: string): string { return toolsDirOf(root) + "/meilisearch.pid" }
+func versionFileOf(root: string): string { return toolsDirOf(root) + "/version.txt" }
+func meiliBinOf(root: string): string { return toolsDirOf(root) + "/meilisearch" }
+func logFileOf(root: string): string { return logDirOf(root) + "/meilisearch.log" }
+
+func meiliVersion(): string { return env("MEILI_VERSION") ?? "v1.12.3" }
+func meiliHost(): string { return env("MEILI_HOST") ?? "127.0.0.1" }
+func meiliPort(): string { return env("MEILI_PORT") ?? "7700" }
+func meiliApiKey(): string { return env("MEILI_API_KEY") ?? "contextfs-dev-key" }
+func meiliURL(): string { return "http://" + meiliHost() + ":" + meiliPort() }
+func healthURL(): string { return meiliURL() + "/health" }
+
+func isRunning(pidFile: string): bool {
+  if !isFile(pidFile) {
+    return false
+  }
+  let pid = trim(readFile(pidFile))
+  if pid == "" {
+    return false
+  }
+  let r = exec("kill -0 " + pid + " >/dev/null 2>&1")
+  return r.ok
+}
+
+func downloadMeili(root: string): void {
+  let toolsDir = toolsDirOf(root)
+  let meiliBin = meiliBinOf(root)
+  let versionFile = versionFileOf(root)
+  let version = meiliVersion()
+  let asset = detectAssetName()
+  let url = "https://github.com/meilisearch/meilisearch/releases/download/" + version + "/" + asset
+
+  mkdir(toolsDir)
+  if isFile(meiliBin) && isFile(versionFile) {
+    if trim(readFile(versionFile)) == version {
+      return
+    }
+  }
+
+  echo("Downloading Meilisearch " + version + " (" + asset + ")...")
+  let r = exec("curl -fL \"" + url + "\" -o \"" + meiliBin + "\"")
+  if !r.ok {
+    eprint(trim(r.stderr))
+    exit(r.code)
+  }
+  let chmodR = exec("chmod +x \"" + meiliBin + "\"")
+  if !chmodR.ok {
+    eprint(trim(chmodR.stderr))
+    exit(chmodR.code)
+  }
+  writeFile(versionFile, version)
+}
+
+func waitForHealth(root: string): void {
+  let url = healthURL()
+  let i = 0
+  while i < 30 {
+    let r = fetchTimeout(url, 2)
+    if r.ok {
+      return
+    }
+    sleep(1)
+    i = i + 1
+  }
+  eprint("Meilisearch did not become healthy in time. Check " + logFileOf(root))
+  exit(1)
+}
+
+func startMeili(root: string): void {
+  mkdir(dataDirOf(root))
+  mkdir(logDirOf(root))
+  mkdir(toolsDirOf(root))
+  downloadMeili(root)
+
+  let pidFile = pidFileOf(root)
+  let url = meiliURL()
+  if isRunning(pidFile) {
+    echo("Meilisearch is already running at " + url)
+    return
+  }
+
+  echo("Starting Meilisearch at " + url)
+  let cmd = "nohup \"" + meiliBinOf(root) + "\"" +
+    " --http-addr \"" + meiliHost() + ":" + meiliPort() + "\"" +
+    " --master-key \"" + meiliApiKey() + "\"" +
+    " --db-path \"" + dataDirOf(root) + "\"" +
+    " > \"" + logFileOf(root) + "\" 2>&1 &" +
+    " echo $! > \"" + pidFile + "\""
+  let r = exec(cmd)
+  if !r.ok {
+    eprint(trim(r.stderr))
+    exit(r.code)
+  }
+
+  waitForHealth(root)
+  echo("Meilisearch is healthy at " + url)
+}
+
+func stopMeili(root: string): void {
+  let pidFile = pidFileOf(root)
+  if !isRunning(pidFile) {
+    echo("Meilisearch is not running")
+    removeFile(pidFile)
+    return
+  }
+  let pid = trim(readFile(pidFile))
+  echo("Stopping Meilisearch (pid " + pid + ")...")
+  exec("kill " + pid + " >/dev/null 2>&1 || true")
+  removeFile(pidFile)
+}
+
+func statusMeili(root: string): void {
+  let pidFile = pidFileOf(root)
+  if isRunning(pidFile) {
+    echo("Meilisearch is running (pid " + trim(readFile(pidFile)) + ") at " + meiliURL())
+  } else {
+    echo("Meilisearch is stopped")
+  }
+}
+
+func cleanMeili(root: string): void {
+  stopMeili(root)
+  exec("rm -rf \"" + dataDirOf(root) + "\" \"" + logFileOf(root) + "\"")
+  echo("Deleted local Meilisearch data and logs")
+}
+
+func usage(): void {
+  echo("Usage: mairu/scripts/meili-local.sh <command>")
+  echo("")
+  echo("Commands:")
+  echo("  up      Download (if needed) and start Meilisearch locally")
+  echo("  down    Stop local Meilisearch")
+  echo("  status  Print Meilisearch status")
+  echo("  clean   Stop Meilisearch and delete local data/logs")
+}
+
+func main(): void {
+  let root = repoRoot()
+  let argv = args()
+  let cmd = ""
+  if len(argv) > 0 {
+    cmd = argv[0]
+  }
+
+  match cmd {
+    "up" => startMeili(root)
+    "down" => stopMeili(root)
+    "status" => statusMeili(root)
+    "clean" => cleanMeili(root)
+    _ => {
+      usage()
+      exit(1)
+    }
+  }
+}

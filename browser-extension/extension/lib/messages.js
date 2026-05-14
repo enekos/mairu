@@ -8,6 +8,7 @@ export const MESSAGE_TYPES = {
   search: { required: [] },
   set_api_url: { required: ['url'] },
   force_sync: { required: [] },
+  send_to_agent: { required: ['payload.text'] },
   reset_session: { required: [] },
   clear_queue: { required: [] },
   dev_log: { required: [] },

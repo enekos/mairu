@@ -1,0 +1,174 @@
+// Go developer subcommands: fmt / fmt-check / lint / test / test-race /
+// coverage / check / check-ci. Original: mairu/scripts/go-dev.sh
+
+func repoRoot(): string {
+  let r = exec("git rev-parse --show-toplevel 2>/dev/null")
+  if !r.ok {
+    eprint("go-dev: not inside a git repository")
+    exit(1)
+  }
+  return trim(r.stdout)
+}
+
+// ui/embed.go uses //go:embed all:dist — the directory must exist and contain
+// at least one file or `go vet` / `go test` fail. CI runs `bun run build` first;
+// locally we drop a stub if the dir is empty.
+func ensureUIEmbedDist(mairuDir: string): void {
+  let dist = mairuDir + "/ui/dist"
+  mkdir(dist)
+  let entries = listDir(dist)
+  if len(entries) == 0 {
+    writeFile(dist + "/index.html", "<!doctype html><meta charset=\"utf-8\"><title>mairu</title><!-- stub: run bun run build in mairu/ui -->\n")
+  }
+}
+
+func listGoFiles(root: string): string[] {
+  let r = exec("git -C \"" + root + "\" ls-files -- '*.go'")
+  if !r.ok {
+    eprint(trim(r.stderr))
+    exit(r.code)
+  }
+  let s = trim(r.stdout)
+  if s == "" {
+    let empty: string[] = []
+    return empty
+  }
+  return split(s, "\n")
+}
+
+// runStream executes `cmd` and forwards its stdout/stderr to ours, then
+// returns the exit code. Output is buffered (tartalo's exec captures), so
+// anything that takes a long time will print at the end — acceptable for
+// dev/CI scripts where exit code is what matters.
+func runStream(cmd: string): number {
+  let r = exec(cmd)
+  if r.stdout != "" {
+    echo(r.stdout)
+  }
+  if r.stderr != "" {
+    eprint(r.stderr)
+  }
+  return r.code
+}
+
+func mustRun(cmd: string): void {
+  let code = runStream(cmd)
+  if code != 0 {
+    exit(code)
+  }
+}
+
+func quote(s: string): string {
+  return "\"" + s + "\""
+}
+
+func fmtGo(root: string): void {
+  echo("Formatting Go packages...")
+  let files = listGoFiles(root)
+  if len(files) == 0 {
+    return
+  }
+  let joined = join(map(files, quote), " ")
+  mustRun("cd \"" + root + "\" && gofmt -w " + joined)
+}
+
+func fmtCheckGo(root: string): void {
+  let files = listGoFiles(root)
+  if len(files) == 0 {
+    echo("No tracked Go files found.")
+    return
+  }
+  let joined = join(map(files, quote), " ")
+  let r = exec("cd \"" + root + "\" && gofmt -l " + joined)
+  if !r.ok {
+    eprint(trim(r.stderr))
+    exit(r.code)
+  }
+  let bad = trim(r.stdout)
+  if bad != "" {
+    echo("Go formatting check failed. Run: make fmt-go")
+    for f in split(bad, "\n") {
+      echo(" - " + f)
+    }
+    exit(1)
+  }
+  echo("Go formatting is clean.")
+}
+
+func lintGo(mairuDir: string): void {
+  ensureUIEmbedDist(mairuDir)
+  let have = exec("command -v golangci-lint >/dev/null 2>&1")
+  if have.ok {
+    echo("Linting with golangci-lint...")
+    mustRun("cd \"" + mairuDir + "\" && golangci-lint run ./...")
+    return
+  }
+  echo("golangci-lint not found, falling back to go vet.")
+  echo("Install with: go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest")
+  mustRun("cd \"" + mairuDir + "\" && go vet ./...")
+}
+
+func testGo(mairuDir: string): void {
+  ensureUIEmbedDist(mairuDir)
+  echo("Running Go tests...")
+  mustRun("cd \"" + mairuDir + "\" && go test ./...")
+}
+
+func testRaceGo(mairuDir: string): void {
+  ensureUIEmbedDist(mairuDir)
+  echo("Running Go tests with race detector...")
+  mustRun("cd \"" + mairuDir + "\" && go test -race ./...")
+}
+
+func coverageGo(mairuDir: string): void {
+  ensureUIEmbedDist(mairuDir)
+  echo("Running Go coverage...")
+  mustRun("cd \"" + mairuDir + "\" && go test -coverprofile=coverage.out ./... && go tool cover -func=coverage.out")
+}
+
+func usage(): void {
+  echo("Usage: go-dev.sh <command>")
+  echo("")
+  echo("Commands:")
+  echo("  fmt        Format Go code")
+  echo("  fmt-check  Verify gofmt cleanliness")
+  echo("  lint       Run golangci-lint (or fallback go vet)")
+  echo("  test       Run go test ./...")
+  echo("  test-race  Run go test -race ./...")
+  echo("  coverage   Run go test coverage and report")
+  echo("  check      Run fmt-check + lint + tests")
+  echo("  check-ci   Run fmt-check + lint + race tests")
+}
+
+func main(): void {
+  let root = repoRoot()
+  let mairuDir = root + "/mairu"
+  let argv = args()
+  let cmd = ""
+  if len(argv) > 0 {
+    cmd = argv[0]
+  }
+
+  match cmd {
+    "fmt" => fmtGo(root)
+    "fmt-check" => fmtCheckGo(root)
+    "lint" => lintGo(mairuDir)
+    "test" => testGo(mairuDir)
+    "test-race" => testRaceGo(mairuDir)
+    "coverage" => coverageGo(mairuDir)
+    "check" => {
+      fmtCheckGo(root)
+      lintGo(mairuDir)
+      testGo(mairuDir)
+    }
+    "check-ci" => {
+      fmtCheckGo(root)
+      lintGo(mairuDir)
+      testRaceGo(mairuDir)
+    }
+    _ => {
+      usage()
+      exit(1)
+    }
+  }
+}

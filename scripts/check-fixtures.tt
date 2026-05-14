@@ -1,0 +1,25 @@
+// Ensure every AST testdata *.input.* file has a matching *.approved.{json,md}.
+// Logic lives in mairu/internal/ast/approved_test.go (TestFixtureCompleteness).
+// Original: scripts/check-fixtures.sh
+
+func main(): void {
+  let top = exec("git rev-parse --show-toplevel 2>/dev/null")
+  if !top.ok {
+    eprint("check-fixtures: not inside a git repository")
+    exit(1)
+  }
+  let mairuDir = trim(top.stdout) + "/mairu"
+  if !isFile(mairuDir + "/go.mod") {
+    eprint("check-fixtures: cannot find " + mairuDir + "/go.mod")
+    exit(1)
+  }
+
+  let r = exec("cd \"" + mairuDir + "\" && go test ./internal/ast/... -run '^TestFixtureCompleteness$' -count=1")
+  if r.stdout != "" {
+    echo(r.stdout)
+  }
+  if r.stderr != "" {
+    eprint(r.stderr)
+  }
+  exit(r.code)
+}
