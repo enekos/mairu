@@ -5,10 +5,12 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"mairu/internal/contextsrv"
+	"mairu/internal/trace"
 )
 
 type localServiceFactory struct {
@@ -62,6 +64,15 @@ func (f *localServiceFactory) init() {
 	}
 
 	f.app = app
+
+	if traceEnabled() && cfg.MeiliURL != "" {
+		trace.SetDefault(trace.NewMeiliRecorder(cfg.MeiliURL, cfg.MeiliAPIKey))
+	}
+}
+
+func traceEnabled() bool {
+	v := strings.ToLower(strings.TrimSpace(os.Getenv("MAIRU_TRACE")))
+	return v == "1" || v == "true" || v == "yes" || v == "on"
 }
 
 func (f *localServiceFactory) handler() http.Handler {

@@ -75,5 +75,7 @@ func init() {
 		NewDoctorCmd(),
 		NewSetupCmd(),
 		NewEvalCmd(),
+		NewEvalLLMCmd(),
+		NewTraceCmd(),
 	)
 }

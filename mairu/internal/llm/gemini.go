@@ -9,6 +9,8 @@ import (
 
 	"github.com/google/generative-ai-go/genai"
 	"google.golang.org/api/option"
+
+	"mairu/internal/trace"
 )
 
 // Ensure GeminiProvider implements Provider interface
@@ -286,35 +288,84 @@ func (g *GeminiProvider) GenerateJSON(ctx context.Context, system, user string, 
 	model.SystemInstruction = &genai.Content{
 		Parts: []genai.Part{genai.Text(system)},
 	}
+
+	start := time.Now()
 	resp, err := model.GenerateContent(ctx, genai.Text(user))
+	latencyMs := time.Since(start).Milliseconds()
+
+	t := trace.LLMTrace{
+		Model:     g.modelName,
+		System:    system,
+		Prompt:    user,
+		LatencyMs: latencyMs,
+	}
+	if schema != nil {
+		if b, mErr := json.Marshal(schema); mErr == nil {
+			t.Schema = string(b)
+		}
+	}
 	if err != nil {
+		t.Error = err.Error()
+		trace.Emit(ctx, t)
 		return err
 	}
+	if resp != nil && resp.UsageMetadata != nil {
+		t.TokensIn = int(resp.UsageMetadata.PromptTokenCount)
+		t.TokensOut = int(resp.UsageMetadata.CandidatesTokenCount)
+	}
 	if len(resp.Candidates) == 0 || len(resp.Candidates[0].Content.Parts) == 0 {
+		t.Error = "empty response"
+		trace.Emit(ctx, t)
 		return fmt.Errorf("empty response")
 	}
 	part := resp.Candidates[0].Content.Parts[0]
-	if txt, ok := part.(genai.Text); ok {
-		if err := json.Unmarshal([]byte(txt), out); err != nil {
-			return fmt.Errorf("failed to parse JSON: %w", err)
-		}
-		return nil
+	txt, ok := part.(genai.Text)
+	if !ok {
+		t.Error = "unexpected part type"
+		trace.Emit(ctx, t)
+		return fmt.Errorf("unexpected part type")
 	}
-	return fmt.Errorf("unexpected part type")
+	t.Response = string(txt)
+	if err := json.Unmarshal([]byte(txt), out); err != nil {
+		t.Error = fmt.Sprintf("failed to parse JSON: %v", err)
+		trace.Emit(ctx, t)
+		return fmt.Errorf("failed to parse JSON: %w", err)
+	}
+	trace.Emit(ctx, t)
+	return nil
 }
 
 // GenerateContent implements the Provider interface
 func (g *GeminiProvider) GenerateContent(ctx context.Context, modelName, prompt string) (string, error) {
 	model := g.client.GenerativeModel(modelName)
 	applySafetySettings(model)
+	start := time.Now()
 	res, err := model.GenerateContent(ctx, genai.Text(prompt))
+	latencyMs := time.Since(start).Milliseconds()
+
+	t := trace.LLMTrace{
+		Model:     modelName,
+		Prompt:    prompt,
+		LatencyMs: latencyMs,
+	}
 	if err != nil {
+		t.Error = err.Error()
+		trace.Emit(ctx, t)
 		return "", err
 	}
-	if len(res.Candidates) > 0 && len(res.Candidates[0].Content.Parts) > 0 {
-		return fmt.Sprintf("%v", res.Candidates[0].Content.Parts[0]), nil
+	if res != nil && res.UsageMetadata != nil {
+		t.TokensIn = int(res.UsageMetadata.PromptTokenCount)
+		t.TokensOut = int(res.UsageMetadata.CandidatesTokenCount)
 	}
-	return "", fmt.Errorf("no content generated")
+	if len(res.Candidates) == 0 || len(res.Candidates[0].Content.Parts) == 0 {
+		t.Error = "no content generated"
+		trace.Emit(ctx, t)
+		return "", fmt.Errorf("no content generated")
+	}
+	out := fmt.Sprintf("%v", res.Candidates[0].Content.Parts[0])
+	t.Response = out
+	trace.Emit(ctx, t)
+	return out, nil
 }
 
 // RegisterDynamicTools implements the Provider interface

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"mairu/internal/prompts"
+	"mairu/internal/trace"
 )
 
 type RouterAction struct {
@@ -87,6 +88,7 @@ func DecideMemoryAction(ctx context.Context, client RouterLLMClient, newContent 
 		},
 		Required: []string{"action", "reason"},
 	}
+	ctx = trace.WithOperation(ctx, "router.memory_action")
 	err = client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err
@@ -165,6 +167,7 @@ func DecideContextAction(ctx context.Context, client RouterLLMClient, uri, name,
 		},
 		Required: []string{"action", "reason"},
 	}
+	ctx = trace.WithOperation(ctx, "router.context_action")
 	err = client.GenerateJSON(ctx, "system", prompt, schema, &decision)
 	if err != nil {
 		return RouterAction{Action: "create"}, err

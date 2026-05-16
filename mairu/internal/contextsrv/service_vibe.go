@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"mairu/internal/llm"
 	"mairu/internal/prompts"
+	"mairu/internal/trace"
 	"strings"
 	"sync"
 )
@@ -102,7 +103,9 @@ func (s *AppService) PlanVibeMutation(prompt, project string, topK int) (VibeMut
 	}
 
 	var res VibeMutationPlan
-	err = s.llmClient.GenerateJSON(context.Background(), systemPrompt, "USER PROMPT: "+mutationPrompt, nil, &res)
+	planCtx := trace.WithOperation(trace.WithProject(context.Background(), project), "vibe.mutation_plan")
+	userMsg := "USER PROMPT: " + mutationPrompt
+	err = s.llmClient.GenerateJSON(planCtx, systemPrompt, userMsg, nil, &res)
 	if err == nil {
 		if parsed, ok := parseMutationPlan(res); ok {
 			return parsed, nil
@@ -120,7 +123,9 @@ func (s *AppService) PlanVibeMutation(prompt, project string, topK int) (VibeMut
 		return fallback, nil
 	}
 
-	err = s.llmClient.GenerateJSON(context.Background(), compactSystemPrompt, "USER PROMPT (possibly truncated): "+truncateForLLM(mutationPrompt, 6000), nil, &res)
+	compactCtx := trace.WithOperation(trace.WithProject(context.Background(), project), "vibe.mutation_plan_compact")
+	compactUserMsg := "USER PROMPT (possibly truncated): " + truncateForLLM(mutationPrompt, 6000)
+	err = s.llmClient.GenerateJSON(compactCtx, compactSystemPrompt, compactUserMsg, nil, &res)
 	if err == nil {
 		if parsed, ok := parseMutationPlan(res); ok {
 			return parsed, nil

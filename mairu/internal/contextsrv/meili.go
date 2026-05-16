@@ -37,7 +37,7 @@ func NewMeiliIndexer(host, apiKey string, embedder Embedder) *MeiliIndexer {
 }
 
 func (m *MeiliIndexer) EnsureIndexes() error {
-	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols, IndexBashHistory}
+	indexes := []string{IndexMemories, IndexSkills, IndexNodes, IndexSymbols, IndexBashHistory, IndexLLMTraces}
 	for _, idx := range indexes {
 		task, err := m.client.CreateIndex(&meilisearch.IndexConfig{
 			Uid:        idx,
@@ -50,12 +50,26 @@ func (m *MeiliIndexer) EnsureIndexes() error {
 			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
 		}
 		filterable := []interface{}{"project", "uri", "category", "owner"}
+		if idx == IndexLLMTraces {
+			filterable = []interface{}{"project", "operation", "model", "status", "parent_id"}
+		}
 		task, err = m.client.Index(idx).UpdateFilterableAttributes(&filterable)
 		if err != nil {
 			return fmt.Errorf("update filterable attributes for %q: %w", idx, err)
 		}
 		if task != nil {
 			_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
+		}
+
+		if idx == IndexLLMTraces {
+			sortable := []string{"created_at", "latency_ms"}
+			task, err = m.client.Index(idx).UpdateSortableAttributes(&sortable)
+			if err != nil {
+				return fmt.Errorf("update sortable attributes for %q: %w", idx, err)
+			}
+			if task != nil {
+				_, _ = m.client.WaitForTask(task.TaskUID, 100*time.Millisecond)
+			}
 		}
 
 		dim := 768

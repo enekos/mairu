@@ -20,6 +20,7 @@ const (
 	IndexNodes       = "contextfs_context_nodes"
 	IndexSymbols     = "contextfs_symbols"
 	IndexBashHistory = "contextfs_bash_history"
+	IndexLLMTraces   = "contextfs_llm_traces"
 
 	ModerationStatusClean       = "clean"
 	ModerationStatusFlaggedSoft = "flagged_soft"

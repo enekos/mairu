@@ -5,6 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
+
+	"mairu/internal/trace"
 )
 
 // Ensure KimiProvider implements Provider interface
@@ -286,12 +289,19 @@ func (k *KimiProvider) GenerateJSON(ctx context.Context, system, user string, sc
 		{Role: "user", Content: user},
 	}
 
+	t := trace.LLMTrace{
+		Model:  k.model,
+		System: system,
+		Prompt: user,
+	}
+
 	// Add schema instructions to user prompt if provided
 	if schema != nil {
 		schemaJSON, err := json.Marshal(schema)
 		if err != nil {
 			return fmt.Errorf("failed to marshal schema: %w", err)
 		}
+		t.Schema = string(schemaJSON)
 		messages[1].Content += "\n\nRespond with JSON conforming to this schema:\n" + string(schemaJSON)
 	}
 
@@ -303,20 +313,32 @@ func (k *KimiProvider) GenerateJSON(ctx context.Context, system, user string, sc
 		},
 	}
 
+	start := time.Now()
 	resp, err := k.client.ChatCompletion(ctx, req)
+	t.LatencyMs = time.Since(start).Milliseconds()
+
 	if err != nil {
+		t.Error = err.Error()
+		trace.Emit(ctx, t)
 		return err
 	}
+	t.TokensIn = resp.Usage.PromptTokens
+	t.TokensOut = resp.Usage.CompletionTokens
 
 	if len(resp.Choices) == 0 {
+		t.Error = "empty response"
+		trace.Emit(ctx, t)
 		return fmt.Errorf("empty response")
 	}
 
 	content := resp.Choices[0].Message.Content
+	t.Response = content
 	if err := json.Unmarshal([]byte(content), out); err != nil {
+		t.Error = fmt.Sprintf("failed to parse JSON: %v", err)
+		trace.Emit(ctx, t)
 		return fmt.Errorf("failed to parse JSON: %w", err)
 	}
-
+	trace.Emit(ctx, t)
 	return nil
 }
 
@@ -329,16 +351,33 @@ func (k *KimiProvider) GenerateContent(ctx context.Context, model, prompt string
 		},
 	}
 
-	resp, err := k.client.ChatCompletion(ctx, req)
-	if err != nil {
-		return "", err
+	t := trace.LLMTrace{
+		Model:  model,
+		Prompt: prompt,
 	}
 
+	start := time.Now()
+	resp, err := k.client.ChatCompletion(ctx, req)
+	t.LatencyMs = time.Since(start).Milliseconds()
+
+	if err != nil {
+		t.Error = err.Error()
+		trace.Emit(ctx, t)
+		return "", err
+	}
+	t.TokensIn = resp.Usage.PromptTokens
+	t.TokensOut = resp.Usage.CompletionTokens
+
 	if len(resp.Choices) == 0 {
+		t.Error = "no content generated"
+		trace.Emit(ctx, t)
 		return "", fmt.Errorf("no content generated")
 	}
 
-	return resp.Choices[0].Message.Content, nil
+	out := resp.Choices[0].Message.Content
+	t.Response = out
+	trace.Emit(ctx, t)
+	return out, nil
 }
 
 // Close cleans up resources.

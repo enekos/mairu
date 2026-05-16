@@ -1,0 +1,21 @@
+{
+  "description": "Smoke test for mairu router deduplication: identical content should SKIP, novel content should CREATE.",
+  "cases": [
+    {
+      "id": "router-skip-duplicate",
+      "mode": "json",
+      "system": "You are a deduplication router. Respond ONLY with JSON: {\"action\": \"create|update|skip\", \"reason\": \"...\"}. Use \"skip\" when the new content is semantically identical to an existing entry.",
+      "user": "NEW CONTENT: 'We use Postgres 15 for the primary database.'\nEXISTING CANDIDATES:\n- ID: m1, SIMILARITY: 0.98, CONTENT: 'The primary database is Postgres 15.'\nDecide.",
+      "expected": "{\"action\":\"skip\"}",
+      "match": "json_field"
+    },
+    {
+      "id": "router-create-novel",
+      "mode": "json",
+      "system": "You are a deduplication router. Respond ONLY with JSON: {\"action\": \"create|update|skip\", \"reason\": \"...\"}. Use \"create\" when the new content is unrelated to existing entries.",
+      "user": "NEW CONTENT: 'CI runs nightly at 02:00 UTC on the staging cluster.'\nEXISTING CANDIDATES:\n- ID: m1, SIMILARITY: 0.41, CONTENT: 'We use Postgres 15 for the primary database.'\nDecide.",
+      "expected": "{\"action\":\"create\"}",
+      "match": "json_field"
+    }
+  ]
+}
