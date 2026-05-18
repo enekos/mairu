@@ -115,7 +115,7 @@ func RecorderFromContext(ctx context.Context) Recorder {
 }
 
 var (
-	defaultMu sync.RWMutex
+	defaultMu  sync.RWMutex
 	defaultRec Recorder
 )
 

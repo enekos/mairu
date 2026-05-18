@@ -17,10 +17,10 @@ import (
 // CI gating with --fail-below-pass.
 func NewEvalLLMCmd() *cobra.Command {
 	var (
-		datasetPath  string
-		verbose      bool
-		failBelow    float64
-		outputJSON   bool
+		datasetPath string
+		verbose     bool
+		failBelow   float64
+		outputJSON  bool
 	)
 	cmd := &cobra.Command{
 		Use:   "eval:llm",
