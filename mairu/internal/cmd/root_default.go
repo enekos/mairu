@@ -77,6 +77,7 @@ func init() {
 	rootCmd.AddCommand(
 		admincmd.NewInitCmd(),
 		NewConfigCmd(),
+		NewProfileCmd(),
 		admincmd.NewCompletionCmd(rootCmd),
 		NewDoctorCmd(),
 		NewSetupCmd(),

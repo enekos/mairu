@@ -164,13 +164,26 @@ func NewViper(workDir string) *viper.Viper {
 	v.SetConfigType("toml")
 	_ = v.MergeInConfig() // no error if file missing
 
-	// Layer 3: project config
+	// Layer 3: active profile config (~/.config/mairu/profiles/<name>/config.toml)
+	// Selected via MAIRU_PROFILE (which the -p flag sets in root.go). Profile
+	// values override user globals but lose to per-project overrides below.
+	if profileName := strings.TrimSpace(os.Getenv("MAIRU_PROFILE")); profileName != "" {
+		profilePath := profileConfigPath(home, profileName)
+		if profilePath != "" {
+			if _, statErr := os.Stat(profilePath); statErr == nil {
+				v.SetConfigFile(profilePath)
+				_ = v.MergeInConfig()
+			}
+		}
+	}
+
+	// Layer 4: project config
 	if projectPath := FindProjectConfig(workDir); projectPath != "" {
 		v.SetConfigFile(projectPath)
 		_ = v.MergeInConfig()
 	}
 
-	// Layer 4: environment variables
+	// Layer 5: environment variables
 	v.SetEnvPrefix("MAIRU")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -178,6 +191,19 @@ func NewViper(workDir string) *viper.Viper {
 	// Legacy env var aliases (old name -> config key)
 	bindLegacyEnv(v)
 	return v
+}
+
+// profileConfigPath returns the on-disk config.toml path for a named profile.
+// Honours MAIRU_HOME for tests/Docker; falls back to ~/.config/mairu/profiles/<name>.
+// Kept package-local to avoid an import cycle with internal/profile.
+func profileConfigPath(home, name string) string {
+	if h := os.Getenv("MAIRU_HOME"); h != "" {
+		return filepath.Join(h, "profiles", name, "config.toml")
+	}
+	if home == "" {
+		return ""
+	}
+	return filepath.Join(home, ".config", "mairu", "profiles", name, "config.toml")
 }
 
 // UserConfigPath returns the path to the user-level config file.

@@ -16,6 +16,7 @@ var (
 	verbose        bool
 	quiet          bool
 	redactBashFlag bool
+	profileFlag    string
 	appConfig      *config.Config
 )
 
@@ -26,6 +27,13 @@ var rootCmd = &cobra.Command{
 	Args:  cobra.ArbitraryArgs,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 		logger.Setup(debugMode)
+
+		// Propagate -p/--profile to env so config.Load (and any downstream
+		// package that consults MAIRU_PROFILE, e.g. internal/prompts) sees
+		// it before resolving the config layers.
+		if profileFlag != "" {
+			os.Setenv("MAIRU_PROFILE", profileFlag)
+		}
 
 		cwd, _ := os.Getwd()
 		cfg, err := config.Load(cwd)
@@ -79,4 +87,8 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show extra details (timing, weights, query plan)")
 	rootCmd.PersistentFlags().BoolVar(&quiet, "quiet", false, "Only output results, no status messages")
 	rootCmd.PersistentFlags().BoolVar(&redactBashFlag, "redact", false, "Redact agent bash tool output via pii-redact before the model sees it (also settable via [agent] redact_bash_output or MAIRU_REDACT_BASH)")
+	// Note: --profile has no shorthand. `-p` is already claimed by subcommand
+	// flags (e.g. `mairu context-server -p PORT`, `mairu utcp -p`) and cobra
+	// panics on shorthand collisions during persistent-flag merge.
+	rootCmd.PersistentFlags().StringVar(&profileFlag, "profile", "", "Activate an installed profile (config.toml + prompts overlay). See `mairu profile list`.")
 }
