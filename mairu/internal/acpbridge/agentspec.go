@@ -6,6 +6,8 @@ import "os"
 type AgentSpec struct {
 	Command string   // executable name (looked up in PATH) or absolute path
 	Args    []string // arguments after Command
+	Env     []string // optional process env; nil → inherit os.Environ()
+	Dir     string   // optional working directory
 }
 
 // DefaultAgentSpecs returns the built-in registry of supported agents.

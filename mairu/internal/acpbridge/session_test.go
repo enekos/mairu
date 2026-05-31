@@ -14,7 +14,7 @@ func TestSessionFanoutConcurrentUnsubscribeNoRaceNoPanic(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	sess, err := StartSession(ctx, "race-1", AgentSpec{Command: bin}, NewRing(64))
+	sess, err := StartSession(ctx, "race-1", AgentSpec{Command: bin}, NewRing(64), defaultSessionOpts())
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
@@ -76,7 +76,7 @@ func TestSessionEchoRoundTrip(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	sess, err := StartSession(ctx, "test-1", AgentSpec{Command: bin}, NewRing(16))
+	sess, err := StartSession(ctx, "test-1", AgentSpec{Command: bin}, NewRing(16), defaultSessionOpts())
 	if err != nil {
 		t.Fatalf("start: %v", err)
 	}
