@@ -21,7 +21,7 @@ func TestWSAttachAndEcho(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	id, err := b.registry.Create(ctx, "echo", b.opts.Agents, 16)
+	id, err := b.registry.Create(ctx, "echo", b.opts.Agents, 16, defaultSessionOpts(), 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +73,7 @@ func TestWSLastEventIDReplay(t *testing.T) {
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
-	id, _ := b.registry.Create(ctx, "echo", b.opts.Agents, 16)
+	id, _ := b.registry.Create(ctx, "echo", b.opts.Agents, 16, defaultSessionOpts(), 0)
 
 	// Round 1: send 3 frames, receive them.
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/acp?session=" + id
@@ -121,7 +121,7 @@ func TestWSRejectsUnauthorizedPeer(t *testing.T) {
 	defer srv.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	id, _ := b.registry.Create(ctx, "echo", b.opts.Agents, 16)
+	id, _ := b.registry.Create(ctx, "echo", b.opts.Agents, 16, defaultSessionOpts(), 0)
 	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/acp?session=" + id
 	_, _, err := websocket.Dial(ctx, wsURL, nil)
 	if err == nil {

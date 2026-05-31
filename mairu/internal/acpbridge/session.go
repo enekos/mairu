@@ -7,9 +7,19 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os/exec"
+	"strings"
 	"sync"
+	"time"
 )
+
+// SessionStartOptions tunes Session creation.
+type SessionStartOptions struct {
+	PermissionTimeout time.Duration // forwarded to PermissionMux (default 60s)
+	Logger            *slog.Logger  // optional; nil → discard
+	StderrTailLines   int           // ring depth for agent stderr (default 64)
+}
 
 type Session struct {
 	ID    string
@@ -22,22 +32,47 @@ type Session struct {
 	stdin  io.WriteCloser
 	stdout io.ReadCloser
 	stderr io.ReadCloser
+	logger *slog.Logger
 
 	ring *Ring
 
 	mu          sync.Mutex
 	subscribers map[chan StampedFrame]struct{}
+	stderrTail  []string
+	stderrCap   int
 	closed      bool
 	closeErr    error
 	doneCh      chan struct{}
 }
 
 // StartSession spawns the agent subprocess and starts the stdout pump.
-func StartSession(ctx context.Context, id string, spec AgentSpec, ring *Ring) (*Session, error) {
+//
+// The provided ctx governs only the startup phase (spec validation, pipe
+// allocation, process launch); the subprocess itself is detached from ctx and
+// lives until Close is called or it exits on its own. This is intentional —
+// the HTTP handler typically passes its own request context, and we must not
+// let the subprocess die when the response is written.
+func StartSession(ctx context.Context, id string, spec AgentSpec, ring *Ring, opts SessionStartOptions) (*Session, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if spec.Command == "" {
 		return nil, errors.New("acpbridge: empty agent command")
 	}
-	cmd := exec.CommandContext(ctx, spec.Command, spec.Args...)
+	if opts.PermissionTimeout == 0 {
+		opts.PermissionTimeout = 60 * time.Second
+	}
+	if opts.StderrTailLines <= 0 {
+		opts.StderrTailLines = 64
+	}
+	logger := opts.Logger
+	if logger == nil {
+		logger = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	// Detached from ctx on purpose — see doc comment above.
+	cmd := exec.Command(spec.Command, spec.Args...)
+	cmd.Env = spec.Env
+	cmd.Dir = spec.Dir
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
 		return nil, fmt.Errorf("stdin: %w", err)
@@ -56,8 +91,10 @@ func StartSession(ctx context.Context, id string, spec AgentSpec, ring *Ring) (*
 	s := &Session{
 		ID: id, Spec: spec, cmd: cmd,
 		stdin: stdin, stdout: stdout, stderr: stderr,
+		logger:      logger,
 		ring:        ring,
 		subscribers: map[chan StampedFrame]struct{}{},
+		stderrCap:   opts.StderrTailLines,
 		doneCh:      make(chan struct{}),
 	}
 	go s.readLoop()
@@ -82,16 +119,78 @@ func (s *Session) readLoop() {
 			}
 		}
 	}
+	if err := sc.Err(); err != nil {
+		s.logger.Warn("acpbridge: agent stdout read error", "session", s.ID, "err", err)
+	}
 }
 
 func (s *Session) drainStderr() {
-	// Discard agent stderr for now. When the bridge gets a slog-backed logger,
-	// route this there. Errors from the agent are not protocol traffic.
-	_, _ = io.Copy(io.Discard, s.stderr)
+	sc := bufio.NewScanner(s.stderr)
+	sc.Buffer(make([]byte, 64*1024), 1024*1024)
+	for sc.Scan() {
+		line := sc.Text()
+		s.mu.Lock()
+		s.stderrTail = append(s.stderrTail, line)
+		if len(s.stderrTail) > s.stderrCap {
+			s.stderrTail = s.stderrTail[len(s.stderrTail)-s.stderrCap:]
+		}
+		s.mu.Unlock()
+		s.logger.Debug("acpbridge: agent stderr", "session", s.ID, "line", line)
+	}
+}
+
+// StderrTail returns a snapshot of the most recent agent stderr lines.
+func (s *Session) StderrTail() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.stderrTail) == 0 {
+		return nil
+	}
+	out := make([]string, len(s.stderrTail))
+	copy(out, s.stderrTail)
+	return out
+}
+
+// ExitErr returns the error from cmd.Wait, or nil if the agent has not exited
+// or exited cleanly.
+func (s *Session) ExitErr() error {
+	select {
+	case <-s.doneCh:
+		s.mu.Lock()
+		defer s.mu.Unlock()
+		return s.closeErr
+	default:
+		return nil
+	}
+}
+
+// ExitMessage returns a human-readable summary of how the agent exited, or ""
+// if it has not exited yet. Includes the stderr tail when present.
+func (s *Session) ExitMessage() string {
+	select {
+	case <-s.doneCh:
+	default:
+		return ""
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	parts := []string{}
+	if s.closeErr != nil {
+		parts = append(parts, s.closeErr.Error())
+	} else {
+		parts = append(parts, "agent exited")
+	}
+	if len(s.stderrTail) > 0 {
+		parts = append(parts, "stderr: "+strings.Join(s.stderrTail, " | "))
+	}
+	return strings.Join(parts, "; ")
 }
 
 func (s *Session) waitLoop() {
-	s.closeErr = s.cmd.Wait()
+	err := s.cmd.Wait()
+	s.mu.Lock()
+	s.closeErr = err
+	s.mu.Unlock()
 	close(s.doneCh)
 	s.closeAllSubscribers()
 }
@@ -176,6 +275,7 @@ func (s *Session) Close() error {
 	s.mu.Lock()
 	if s.closed {
 		s.mu.Unlock()
+		<-s.doneCh
 		return nil
 	}
 	s.closed = true
