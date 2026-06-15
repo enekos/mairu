@@ -11,11 +11,8 @@ var (
 	colorPrompt = lipgloss.Color("#ffd866") // yellow
 	colorInfo   = lipgloss.Color("#fc9867") // orange
 
-	appStyle    = lipgloss.NewStyle().Padding(0, 1)
-	userStyle   = lipgloss.NewStyle().Foreground(colorUser).Bold(true)
-	agentStyle  = lipgloss.NewStyle().Foreground(colorAgent).Bold(true)
-	systemStyle = lipgloss.NewStyle().Foreground(colorSystem).Italic(true)
-	errorStyle  = lipgloss.NewStyle().Foreground(colorError).Bold(true)
+	appStyle   = lipgloss.NewStyle().Padding(0, 1)
+	errorStyle = lipgloss.NewStyle().Foreground(colorError).Bold(true)
 
 	// Left accent bars on chat messages — narrow vertical bar on the left edge.
 	agentAccentBar = lipgloss.NewStyle().
@@ -94,7 +91,6 @@ var (
 
 	sidebarHeaderStyle  = lipgloss.NewStyle().Foreground(colorPrompt).Bold(true)
 	sidebarLabelStyle   = lipgloss.NewStyle().Foreground(colorSystem)
-	footerStyle         = lipgloss.NewStyle().Foreground(colorSystem).Italic(true)
 	thinkingGlyphStyle  = lipgloss.NewStyle().Foreground(colorAgent).Bold(true)
 	thinkingPhraseStyle = lipgloss.NewStyle().
 				Foreground(colorTool).

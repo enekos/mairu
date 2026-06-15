@@ -167,26 +167,6 @@ func streamingBorderColor(frame int) lipgloss.Color {
 	return pulseColor(frame)
 }
 
-// sineLite is a small sine helper that avoids importing math twice.
-func sineLite(x float64) float64 {
-	// Reduce x to [-pi, pi] to keep precision reasonable.
-	const twoPi = 6.283185307179586
-	for x > twoPi {
-		x -= twoPi
-	}
-	for x < -twoPi {
-		x += twoPi
-	}
-	// Bhaskara I approximation for speed; precision is plenty for color blending.
-	if x < 0 {
-		return -sineLite(-x)
-	}
-	if x > 3.141592653589793 {
-		return -sineLite(x - 3.141592653589793)
-	}
-	return (16 * x * (3.141592653589793 - x)) / (49.348022005446796 - 4*x*(3.141592653589793-x))
-}
-
 func humanCount(n int) string {
 	switch {
 	case n >= 1_000_000:
