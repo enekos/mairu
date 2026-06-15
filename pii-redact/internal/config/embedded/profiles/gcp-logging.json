@@ -1,13 +1,17 @@
 {
   "service_field": "resource.labels.container_name",
   "safe_keys": [
-    "timestamp", "severity", "traceId", "spanId", "traceSampled",
-    "insertId", "receiveTimestamp", "logName", "resource", "labels",
+    "timestamp", "severity", "traceSampled",
+    "receiveTimestamp", "logName", "resource", "labels",
     "container_name", "namespace_name", "project_id", "location", "zone",
     "region", "environment", "version", "commitSha", "buildId",
     "jsonPayload", "textPayload", "httpRequest", "requestMethod",
-    "status", "message", "msg", "id", "requestSize", "responseSize",
+    "status", "message", "msg", "requestSize", "responseSize",
     "latency", "protocol", "operation"
+  ],
+  "id_keys": [
+    "id", "traceId", "spanId", "insertId",
+    "*Id", "*_id", "*Uuid", "*_uuid", "*UUID", "*_UUID"
   ],
   "redact_keys": [
     "email", "phone", "phoneNumber", "mobileNumber",

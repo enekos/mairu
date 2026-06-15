@@ -14,6 +14,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"mairu/internal/httptracer"
 )
 
 var DefaultTimeout = 20 * time.Second
@@ -67,7 +69,7 @@ func Build(method, fullURL string, params map[string]string, body any) (*http.Re
 // Do executes req and returns the response body. Returns an error for any
 // status >= 400 with the body appended.
 func Do(req *http.Request) ([]byte, error) {
-	client := &http.Client{Timeout: DefaultTimeout}
+	client := httptracer.Wrap(&http.Client{Timeout: DefaultTimeout}, httptracer.Options{Component: "ctxclient"})
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("context server error: %w", err)

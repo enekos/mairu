@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-cd /Users/enekosarasola/mairu/mairu
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mairu"
 
 # Run focused agent benchmark with faster settings
 output=$(go test ./internal/agent/ -run='^$' -bench='BenchmarkAgentTurn|BenchmarkAgentRunStream|BenchmarkTruncateTailLarge|BenchmarkTruncateHeadLarge|BenchmarkReadFile' -benchtime=100ms -count=3 2>&1)

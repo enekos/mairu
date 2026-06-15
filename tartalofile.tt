@@ -1,0 +1,10 @@
+// Run mairu's focused agent benchmark and emit METRIC lines for the
+// autoresearch loop. Thin wrapper over bench_agent.sh — the awk parsing
+// of `go test -bench` output stays in shell for now. The committed .sh
+// previously had a hardcoded /Users/enekosarasola/mairu/mairu path; fixed
+// in the same change to derive the module dir from $BASH_SOURCE so the
+// script works on any checkout.
+@recipe
+func bench_agent(): void {
+  `bash "$(git rev-parse --show-toplevel)/bench_agent.sh"`
+}

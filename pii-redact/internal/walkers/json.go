@@ -122,6 +122,10 @@ func applyPolicy(key string, value any, rules *config.Ruleset, opts Options, sta
 		stats["[KEY]"]++
 		return maskKeyedValue(key, value, opts)
 	}
+	if rules.IDKeys.Match(key) {
+		stats["[ID_KEY]"]++
+		return idKeyedValue(value, rules, opts, stats)
+	}
 	_, isSafe := rules.SafeKeys[key]
 
 	switch v := value.(type) {
@@ -147,6 +151,24 @@ func applyPolicy(key string, value any, rules *config.Ruleset, opts Options, sta
 			}
 		}
 		return tokenRedactUnknown
+	}
+}
+
+// idKeyedValue handles a value under an id_keys match. Primitives pass
+// through unchanged — content regex never runs, so UUID/IP-shaped primary
+// or foreign keys survive intact. Containers recurse so nested PII still
+// gets redacted by the usual rules.
+func idKeyedValue(value any, rules *config.Ruleset, opts Options, stats patterns.Stats) any {
+	switch v := value.(type) {
+	case map[string]any, []any:
+		return walk(v, rules, opts, stats, "")
+	case string:
+		if rules.MaxSafeStringLength > 0 && len(v) > rules.MaxSafeStringLength {
+			return fmt.Sprintf("%s…[+%d chars]", v[:rules.MaxSafeStringLength], len(v)-rules.MaxSafeStringLength)
+		}
+		return v
+	default:
+		return v
 	}
 }
 

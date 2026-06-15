@@ -20,10 +20,76 @@ import (
 type Ruleset struct {
 	SafeKeys            map[string]struct{}
 	RedactKeys          map[string]struct{}
+	IDKeys              *IDKeySet         // ID-shaped keys: primitives pass through with NO content regex
 	ContentPatterns     map[string]string // name -> regex source
 	MaxSafeStringLength int
 	ServiceField        string                  // JSON path used to pick service override
 	ServiceOverrides    map[string]ServiceRules // service name -> additive overrides
+}
+
+// IDKeySet matches keys that should pass through as opaque identifiers
+// even if their value would otherwise trip a content pattern (uuid, ipv4,
+// credit_card, …). Entries are either exact keys or suffix globs of the
+// form "*<suffix>" (e.g. "*Id" matches "candidateId", "*_id" matches
+// "candidate_id"). Designed for DB-result piping where foreign-key columns
+// must survive intact.
+type IDKeySet struct {
+	Exact    map[string]struct{}
+	Suffixes []string // glob suffixes with the leading "*" stripped
+}
+
+// Match returns true if key is in the exact set or ends with any suffix.
+func (s *IDKeySet) Match(key string) bool {
+	if s == nil {
+		return false
+	}
+	if _, ok := s.Exact[key]; ok {
+		return true
+	}
+	for _, suf := range s.Suffixes {
+		if strings.HasSuffix(key, suf) {
+			return true
+		}
+	}
+	return false
+}
+
+// Add extends the set with a single pattern at runtime (exact key or "*suffix" glob).
+// Duplicate entries are ignored.
+func (s *IDKeySet) Add(pattern string) { s.add(pattern) }
+
+func (s *IDKeySet) add(pattern string) {
+	if pattern == "" {
+		return
+	}
+	if strings.HasPrefix(pattern, "*") && len(pattern) > 1 {
+		suf := pattern[1:]
+		for _, existing := range s.Suffixes {
+			if existing == suf {
+				return
+			}
+		}
+		s.Suffixes = append(s.Suffixes, suf)
+		return
+	}
+	if s.Exact == nil {
+		s.Exact = map[string]struct{}{}
+	}
+	s.Exact[pattern] = struct{}{}
+}
+
+func (s *IDKeySet) clone() *IDKeySet {
+	if s == nil {
+		return &IDKeySet{}
+	}
+	out := &IDKeySet{
+		Exact:    make(map[string]struct{}, len(s.Exact)),
+		Suffixes: append([]string(nil), s.Suffixes...),
+	}
+	for k := range s.Exact {
+		out.Exact[k] = struct{}{}
+	}
+	return out
 }
 
 // ServiceRules are additive: they can extend the global allow/deny lists but
@@ -31,12 +97,14 @@ type Ruleset struct {
 type ServiceRules struct {
 	SafeKeys   []string
 	RedactKeys []string
+	IDKeys     []string
 }
 
 // rawConfig mirrors the on-disk JSON shape so unmarshal is trivial.
 type rawConfig struct {
 	SafeKeys            []string          `json:"safe_keys"`
 	RedactKeys          []string          `json:"redact_keys"`
+	IDKeys              []string          `json:"id_keys"`
 	ContentPatterns     map[string]string `json:"content_patterns"`
 	MaxSafeStringLength int               `json:"max_safe_string_length"`
 	ServiceField        string            `json:"service_field"`
@@ -67,6 +135,7 @@ func Load(opts LoadOptions) (*Ruleset, error) {
 	merged := &Ruleset{
 		SafeKeys:         map[string]struct{}{},
 		RedactKeys:       map[string]struct{}{},
+		IDKeys:           &IDKeySet{},
 		ContentPatterns:  map[string]string{},
 		ServiceOverrides: map[string]ServiceRules{},
 	}
@@ -133,6 +202,12 @@ func applyRaw(dst *Ruleset, data []byte, source string) error {
 	for _, k := range raw.RedactKeys {
 		dst.RedactKeys[k] = struct{}{}
 	}
+	if dst.IDKeys == nil {
+		dst.IDKeys = &IDKeySet{}
+	}
+	for _, k := range raw.IDKeys {
+		dst.IDKeys.add(k)
+	}
 	for name, pat := range raw.ContentPatterns {
 		dst.ContentPatterns[name] = pat
 	}
@@ -178,6 +253,7 @@ func mergeConfigDir(dst *Ruleset, dir string) error {
 		existing := dst.ServiceOverrides[name]
 		existing.SafeKeys = append(existing.SafeKeys, raw.SafeKeys...)
 		existing.RedactKeys = append(existing.RedactKeys, raw.RedactKeys...)
+		existing.IDKeys = append(existing.IDKeys, raw.IDKeys...)
 		dst.ServiceOverrides[name] = existing
 	}
 	return nil
@@ -197,6 +273,7 @@ func (r *Ruleset) ResolveForService(name string) *Ruleset {
 	clone := &Ruleset{
 		SafeKeys:            copySet(r.SafeKeys),
 		RedactKeys:          copySet(r.RedactKeys),
+		IDKeys:              r.IDKeys.clone(),
 		ContentPatterns:     r.ContentPatterns,
 		MaxSafeStringLength: r.MaxSafeStringLength,
 		ServiceField:        r.ServiceField,
@@ -207,6 +284,9 @@ func (r *Ruleset) ResolveForService(name string) *Ruleset {
 	}
 	for _, k := range override.RedactKeys {
 		clone.RedactKeys[k] = struct{}{}
+	}
+	for _, k := range override.IDKeys {
+		clone.IDKeys.add(k)
 	}
 	return clone
 }

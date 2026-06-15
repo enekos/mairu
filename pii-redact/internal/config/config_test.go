@@ -129,6 +129,98 @@ func TestLoad_ConfigFiles_LaterWins(t *testing.T) {
 	}
 }
 
+func TestIDKeySet_ExactAndSuffix(t *testing.T) {
+	s := &IDKeySet{}
+	s.add("id")
+	s.add("*Id")
+	s.add("*_id")
+	if !s.Match("id") {
+		t.Error("expected exact match 'id'")
+	}
+	if !s.Match("candidateId") {
+		t.Error("expected '*Id' to match 'candidateId'")
+	}
+	if !s.Match("candidate_id") {
+		t.Error("expected '*_id' to match 'candidate_id'")
+	}
+	if s.Match("identifier") {
+		t.Error("'identifier' must not match exact 'id'")
+	}
+	if s.Match("email") {
+		t.Error("unrelated key must not match")
+	}
+}
+
+func TestIDKeySet_NilSafe(t *testing.T) {
+	var s *IDKeySet
+	if s.Match("anything") {
+		t.Error("nil IDKeySet must not match")
+	}
+}
+
+func TestLoad_IDKeys_FromConfigDir(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, filepath.Join(dir, "global.json"), `{
+		"id_keys": ["id", "*Id", "tenantId"]
+	}`)
+	r, err := Load(LoadOptions{ConfigDirs: []string{dir}})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if !r.IDKeys.Match("id") {
+		t.Error("id should match")
+	}
+	if !r.IDKeys.Match("candidateId") {
+		t.Error("candidateId should match via *Id")
+	}
+	if !r.IDKeys.Match("tenantId") {
+		t.Error("tenantId should match (exact)")
+	}
+}
+
+func TestLoad_GCPProfile_HasIDKeys(t *testing.T) {
+	r, err := Load(LoadOptions{Profile: "gcp-logging"})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for _, k := range []string{"id", "candidateId", "application_id", "postingUuid"} {
+		if !r.IDKeys.Match(k) {
+			t.Errorf("expected gcp profile id_keys to match %q", k)
+		}
+	}
+}
+
+func TestResolveForService_AddsIDKeys(t *testing.T) {
+	dir := t.TempDir()
+	writeJSON(t, filepath.Join(dir, "global.json"), `{
+		"id_keys": ["*Id"]
+	}`)
+	svcDir := filepath.Join(dir, "services")
+	if err := os.Mkdir(svcDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeJSON(t, filepath.Join(svcDir, "ats.json"), `{
+		"id_keys": ["scorecardRef"]
+	}`)
+
+	r, err := Load(LoadOptions{ConfigDirs: []string{dir}})
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	resolved := r.ResolveForService("ats")
+	if !resolved.IDKeys.Match("scorecardRef") {
+		t.Error("service override should add scorecardRef")
+	}
+	// Global glob must survive.
+	if !resolved.IDKeys.Match("candidateId") {
+		t.Error("service resolve must not erase global *Id glob")
+	}
+	// Original ruleset untouched.
+	if r.IDKeys.Match("scorecardRef") {
+		t.Error("global ruleset must not be mutated by ResolveForService")
+	}
+}
+
 func writeJSON(t *testing.T, path, contents string) {
 	t.Helper()
 	if err := os.WriteFile(path, []byte(contents), 0o644); err != nil {

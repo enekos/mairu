@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"mairu/internal/httptracer"
 )
 
 const (
@@ -38,9 +40,9 @@ func NewKimiClient(apiKey string, baseURL string) *KimiClient {
 	return &KimiClient{
 		apiKey:  apiKey,
 		baseURL: strings.TrimSuffix(baseURL, "/"),
-		httpClient: &http.Client{
+		httpClient: httptracer.Wrap(&http.Client{
 			Timeout: 120 * time.Second,
-		},
+		}, httptracer.Options{Component: "kimi"}),
 	}
 }
 

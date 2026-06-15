@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"mairu/internal/httptracer"
 )
 
 // OpenAIEmbedder generates embeddings via the OpenAI-compatible HTTP API.
@@ -26,7 +28,7 @@ func NewOpenAIEmbedder(model, baseURL, apiKey string) *OpenAIEmbedder {
 		BaseURL: baseURL,
 		Model:   model,
 		APIKey:  apiKey,
-		Client:  &http.Client{Timeout: 120 * time.Second},
+		Client:  httptracer.Wrap(&http.Client{Timeout: 120 * time.Second}, httptracer.Options{Component: "embedder"}),
 	}
 }
 

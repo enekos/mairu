@@ -1,5 +1,5 @@
 bin/
-pii-redact
+/pii-redact
 *.test
 *.out
 coverage.*
