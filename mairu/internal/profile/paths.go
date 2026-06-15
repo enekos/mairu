@@ -101,29 +101,6 @@ func Dir(name string) (string, error) {
 	return filepath.Join(pr, canon), nil
 }
 
-// Exists reports whether a profile directory exists. "default" always exists.
-func Exists(name string) (bool, error) {
-	canon, err := NormalizeName(name)
-	if err != nil {
-		return false, err
-	}
-	if canon == DefaultProfileName {
-		return true, nil
-	}
-	dir, err := Dir(canon)
-	if err != nil {
-		return false, err
-	}
-	info, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return false, nil
-		}
-		return false, err
-	}
-	return info.IsDir(), nil
-}
-
 // List returns the canonical names of all installed profiles, alphabetically.
 // Does not include "default".
 func List() ([]string, error) {
