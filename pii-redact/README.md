@@ -80,15 +80,26 @@ Pass `--opaque` to disable reveal — every match becomes
 In JSON mode the precedence for each field is:
 
 1. **Key in `redact_keys`** → replace the value with `"[REDACTED:KEY]"`.
-2. **Key in `safe_keys`** → primitive passes, container recurses.
-3. **Unknown key** in `--strict` (default) → value replaced with
+2. **Key in `id_keys`** (exact or `*<suffix>` glob) → primitive passes
+   through **without content-regex masking**; container recurses.
+3. **Key in `safe_keys`** → primitive passes, container recurses.
+4. **Unknown key** in `--strict` (default) → value replaced with
    `"[REDACTED:UNKNOWN_KEY]"`. In `--permissive` mode the value passes
    through.
-4. Every string that survives (1)–(3) runs through the content regex list
-   (`email`, `ipv4`, `jwt`, …) — matches become `[REDACTED:<pattern>]`.
-5. Strings longer than `max_safe_string_length` on safe keys are truncated.
+5. Every string that survives (1)–(4) **and is not under `id_keys`** runs
+   through the content regex list (`email`, `ipv4`, `jwt`, …) — matches
+   become `[REDACTED:<pattern>]`.
+6. Strings longer than `max_safe_string_length` on safe/id keys are
+   truncated.
 
-Line mode only runs step 4. That is the known weakness of cheap discovery
+`id_keys` exists so foreign-key columns and primary-key UUIDs piped from a
+DB query survive intact. Without it, `*Id`-suffixed columns get redacted
+as `UNKNOWN_KEY` (strict mode) and any UUID primitive — even on a safe
+key — gets masked by the `uuid` content pattern. Precedence: `redact_keys`
+> `id_keys` > `safe_keys`, so a sensitive key in both `redact_keys` and an
+`*Id` glob still gets redacted.
+
+Line mode only runs step 5. That is the known weakness of cheap discovery
 queries — prefer `--format=json` for anything that might land in a shared
 context.
 
@@ -100,6 +111,8 @@ pii-redact [--mode auto|json|line|ndjson]
            [--profile <name>]
            [--service-field <json-path>]
            [--strict|--permissive]
+           [--reveal|--opaque]
+           [--keep-ids]
            [--stats] [--quiet]
            < stdin > stdout
 ```
@@ -118,6 +131,7 @@ pii-redact [--mode auto|json|line|ndjson]
 | `--quiet` | Suppress non-fatal warnings |
 | `--reveal` (default) | Partial-reveal masking (keeps tails/prefixes per pattern) |
 | `--opaque` | Disable partial-reveal — render every match as `[REDACTED:<name>]` |
+| `--keep-ids` | Skip ID redaction: drop the `uuid` content pattern and broaden `id_keys` to `id`, `*Id`, `*_id`, `*Uuid`, `*_uuid`, `*UUID`, `*_UUID` plus tracing IDs. Use when piping DB query output where foreign-key columns must survive intact |
 
 ### Exit codes
 
@@ -134,7 +148,8 @@ Non-zero always means no partial output was written.
 
 ```json
 {
-  "safe_keys": ["timestamp", "id", "status", "message"],
+  "safe_keys": ["timestamp", "status", "message"],
+  "id_keys": ["id", "*Id", "*_id", "*Uuid", "*_uuid"],
   "redact_keys": ["email", "firstName", "iban"],
   "content_patterns": {
     "email": "[\\w.+-]+@[\\w-]+\\.[\\w.-]+"
@@ -149,12 +164,23 @@ Non-zero always means no partial output was written.
 ```json
 {
   "safe_keys": ["applicationStatus"],
+  "id_keys": ["scorecardRef"],
   "redact_keys": ["candidateNotes"]
 }
 ```
 
-Service overrides are **additive**: they can extend the global allow/deny
-lists but cannot remove keys from them.
+Service overrides are **additive**: they can extend the global allow/deny/id
+lists but cannot remove entries from them.
+
+### `id_keys` syntax
+
+Each entry is either:
+- an **exact key name** (`"userId"`, `"insertId"`), or
+- a **suffix glob** of the form `"*<suffix>"` (`"*Id"` matches
+  `candidateId`/`postingId`; `"*_id"` matches `candidate_id`).
+
+Only leading `*` is supported. `*` in the middle or end is treated as a
+literal character.
 
 ## Bundled profiles
 

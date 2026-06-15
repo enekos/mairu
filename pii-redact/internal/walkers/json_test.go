@@ -176,6 +176,82 @@ func TestJSON_ServiceOverride_AppliedPerEntry(t *testing.T) {
 	}
 }
 
+func TestJSON_IDKey_ExactMatch_PrimitiveUntouched(t *testing.T) {
+	opts := buildOpts(t, nil, nil, true)
+	opts.Rules.IDKeys = &config.IDKeySet{}
+	opts.Rules.IDKeys = mustIDSet("id", "*Id")
+	// id with a UUID value — content regex would otherwise mangle it.
+	uuid := "550e8400-e29b-41d4-a716-446655440000"
+	opts.Set, _ = patterns.Compile(map[string]string{
+		"uuid": `\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\b`,
+	})
+	got := redactToMap(t, `{"id": "`+uuid+`"}`, opts)
+	if got["id"] != uuid {
+		t.Errorf("id_keys must preserve UUID primary key: got %v, want %s", got["id"], uuid)
+	}
+}
+
+func TestJSON_IDKey_SuffixGlob_FKPreserved(t *testing.T) {
+	opts := buildOpts(t, nil, nil, true)
+	opts.Rules.IDKeys = mustIDSet("*Id", "*_id")
+	got := redactToMap(t, `{"candidateId": "cand-42", "application_id": "app-9", "userId": 12345}`, opts)
+	if got["candidateId"] != "cand-42" {
+		t.Errorf("candidateId not preserved: %v", got["candidateId"])
+	}
+	if got["application_id"] != "app-9" {
+		t.Errorf("application_id not preserved: %v", got["application_id"])
+	}
+	// json.Number round-trips through json.Marshal as a number.
+	if n, ok := got["userId"].(float64); !ok || n != 12345 {
+		t.Errorf("numeric userId not preserved: %v", got["userId"])
+	}
+}
+
+func TestJSON_RedactKey_StillBeatsIDKey(t *testing.T) {
+	// Precedence: redact_keys > id_keys. If a key is in both lists, redact wins.
+	opts := buildOpts(t, nil, []string{"sessionId"}, true)
+	opts.Rules.IDKeys = mustIDSet("*Id")
+	got := redactToMap(t, `{"sessionId": "s-1", "candidateId": "c-1"}`, opts)
+	if got["sessionId"] != tokenRedactKey {
+		t.Errorf("redact_keys should win over id_keys: %v", got["sessionId"])
+	}
+	if got["candidateId"] != "c-1" {
+		t.Errorf("candidateId should pass via *Id: %v", got["candidateId"])
+	}
+}
+
+func TestJSON_IDKey_ContainerRecurses(t *testing.T) {
+	// An id_keys container should still have nested PII redacted.
+	opts := buildOpts(t, nil, []string{"email"}, true)
+	opts.Rules.IDKeys = mustIDSet("*Refs")
+	got := redactToMap(t, `{"candidateRefs": {"email": "a@b.io", "candidateId": "c-1"}}`, opts)
+	inner := got["candidateRefs"].(map[string]any)
+	if inner["email"] != tokenRedactKey {
+		t.Errorf("nested email under id_keys container must still redact: %v", inner["email"])
+	}
+	if inner["candidateId"] != tokenRedactUnknown {
+		t.Errorf("nested candidateId (no id_keys for it here) should be unknown in strict: %v", inner["candidateId"])
+	}
+}
+
+func mustIDSet(patterns ...string) *config.IDKeySet {
+	s := &config.IDKeySet{}
+	for _, p := range patterns {
+		// Mirror the internal additive parsing via the public Match path:
+		// we can't call s.add (unexported) from here, but the parser is
+		// shared with the loader, so reconstruct via direct fields.
+		if len(p) > 1 && p[0] == '*' {
+			s.Suffixes = append(s.Suffixes, p[1:])
+		} else {
+			if s.Exact == nil {
+				s.Exact = map[string]struct{}{}
+			}
+			s.Exact[p] = struct{}{}
+		}
+	}
+	return s
+}
+
 func TestExtractByPath(t *testing.T) {
 	entry := map[string]any{
 		"resource": map[string]any{
